@@ -106,7 +106,7 @@ $ run checks
 ```
 
 Once you have a working shell development environment, **Open** (do not
-**Import**) the `apologiesserver` directory in IntelliJ and follow the remaining
+**Import**) the `apologies-server` directory in IntelliJ and follow the remaining
 instructions below.  (By using **Open**, the existing `.idea` directory will be
 retained.)  
 
@@ -131,7 +131,7 @@ Poetry:
 $ poetry run which python
 ```
 
-Right click on the `apologiesserver` project in IntelliJ's project explorer and
+Right click on the `apologies-server` project in IntelliJ's project explorer and
 choose **Open Module Settings**.  
 
 Click on **Project**.  In the **Project SDK**, select the Python interpreter
