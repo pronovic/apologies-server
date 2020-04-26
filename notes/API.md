@@ -416,7 +416,7 @@ Example message:
         "game_id": "8fb16554-ca00-4b65-a191-1c52cb0eae37",
         "name": "Planet Express",
         "mode": "ADULT",
-        "advertiser": "leela",
+        "advertiser_handle": "leela",
         "players": 4,
         "available": 2,
         "visibility": "PUBLIC",
@@ -492,7 +492,7 @@ Example message:
 
 ```json
 {
-  "event": "MESSAGE_RECEIVED",
+  "event": "PLAYER_MESSAGE_RECEIVED",
   "context": {
     "sender_handle": "leela",
     "recipient_handles": [ "hermes", "nibbler", ],
@@ -511,9 +511,9 @@ player that advertised the game.
   "event": "GAME_ADVERTISED",
   "context": {
     "game_id": "8fb16554-ca00-4b65-a191-1c52cb0eae37",
-    "advertiser": "leela",
     "name": "Leela's Game",
     "mode": "STANDARD",
+    "advertiser_handle": "leela",
     "players": 3,
     "visibility:": "PUBLIC",
     "invited_handles": [ "bender", "hermes", ]
@@ -535,7 +535,7 @@ Example message:
     "game_id": "8fb16554-ca00-4b65-a191-1c52cb0eae37",
     "name": "Planet Express",
     "mode": "ADULT",
-    "advertiser": "leela",
+    "advertiser_handle": "leela",
     "players": 4,
     "visibility": "PUBLIC",
   }
@@ -605,7 +605,6 @@ Example message:
 {
   "event": "GAME_COMPLETED",
   "context": {
-    "reason": "WON",
     "comment": "Player nibbler (YELLOW) won the game after 46 turns"
   }
 }
@@ -695,7 +694,7 @@ Example message:
 
 ```json
 {
-  "event": "CURRENT_STATE",
+  "event": "GAME_STATE_CHANGE",
   "context": {
     // TBD
   }
