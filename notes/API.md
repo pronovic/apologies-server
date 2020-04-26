@@ -63,7 +63,7 @@ Example request:
 {
   "request": "REGISTER_PLAYER",
   "context": {
-    "handle": "leela",
+    "handle": "leela"
   }
 }
 ```
@@ -143,7 +143,7 @@ Example requests:
     "mode": "STANDARD",
     "players": 3,
     "visibility": "PUBLIC",
-    "invited_handles": [ "bender", "hermes", ]
+    "invited_handles": [ ]
   }
 }
 ```
@@ -156,6 +156,7 @@ Example requests:
     "mode": "ADULT",
     "players": 2,
     "visibility": "PRIVATE"
+    "invited_handles": [ "bender", "hermes", ]
   }
 }
 ```
@@ -310,8 +311,8 @@ Example request:
 {
   "request": "SEND_MESSAGE",
   "context": {
-    "recipient_handles": [ "hermes", "nibbler", ],
-    "message": "Hello!"
+    "message": "Hello!",
+    "recipient_handles": [ "hermes", "nibbler" ]
   }
 }
 ```
