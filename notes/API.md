@@ -61,7 +61,7 @@ Example request:
 
 ```json
 {
-  "request": "REGISTER_PLAYER",
+  "message": "REGISTER_PLAYER",
   "context": {
     "handle": "leela"
   }
@@ -82,7 +82,7 @@ Example request:
 
 ```json
 {
-  "request": "REREGISTER_PLAYER"
+  "message": "REREGISTER_PLAYER"
 }
 ```
 
@@ -98,7 +98,7 @@ Example request:
 
 ```json
 {
-  "request": "UNREGISTER_PLAYER"
+  "message": "UNREGISTER_PLAYER"
 }
 ```
 
@@ -113,7 +113,7 @@ Example request:
 
 ```json
 {
-  "request": "LIST_PLAYERS"
+  "message": "LIST_PLAYERS"
 }
 ```
 
@@ -137,7 +137,7 @@ Example requests:
 
 ```json
 {
-  "request": "ADVERTISE_GAME",
+  "message": "ADVERTISE_GAME",
   "context": {
     "name": "Leela's Game",
     "mode": "STANDARD",
@@ -150,7 +150,7 @@ Example requests:
 
 ```json
 {
-  "request": "ADVERTISE_GAME",
+  "message": "ADVERTISE_GAME",
   "context": {
     "name": "Bender's Game",
     "mode": "ADULT",
@@ -174,7 +174,7 @@ Example request:
 
 ```json
 {
-  "request": "LIST_AVAILABLE_GAMES"
+  "message": "LIST_AVAILABLE_GAMES"
 }
 ```
 
@@ -196,7 +196,7 @@ Example request:
 
 ```json
 {
-  "request": "JOIN_GAME",
+  "message": "JOIN_GAME",
   "context": {
     "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe"
   }
@@ -218,7 +218,7 @@ Example request:
 
 ```json
 {
-  "request": "QUIT_GAME"
+  "message": "QUIT_GAME"
 }
 ```
 
@@ -234,7 +234,7 @@ Example request:
 
 ```json
 {
-  "request": "START_GAME"
+  "message": "START_GAME"
 }
 ```
 
@@ -249,7 +249,7 @@ Example request:
 
 ```json
 {
-  "request": "CANCEL_GAME"
+  "message": "CANCEL_GAME"
 }
 ```
 
@@ -271,7 +271,7 @@ Example request:
 
 ```json
 {
-  "request": "EXECUTE_MOVE",
+  "message": "EXECUTE_MOVE",
   "context": {
     "move_id": "4"
   }
@@ -291,7 +291,7 @@ Example request:
 
 ```json
 {
-  "request": "RETRIEVE_GAME_STATE"
+  "message": "RETRIEVE_GAME_STATE"
 }
 ```
 
@@ -309,7 +309,7 @@ Example request:
 
 ```json
 {
-  "request": "SEND_MESSAGE",
+  "message": "SEND_MESSAGE",
   "context": {
     "message": "Hello!",
     "recipient_handles": [ "hermes", "nibbler" ]
@@ -332,7 +332,7 @@ re-register later when the server comes back up.
 
 ```json
 {
-  "event": "SERVER_SHUTDOWN"
+  "message": "SERVER_SHUTDOWN"
 }
 ```
 
@@ -346,7 +346,7 @@ Example message:
 
 ```json
 {
-  "event": "REQUEST_FAILED",
+  "message": "REQUEST_FAILED",
   "context": {
     "reason": "USER_LIMIT",
     "comment": "The registered user limit has been reached; please try again later"
@@ -364,7 +364,7 @@ Example message:
 
 ```json
 {
-  "event": "REGISTERED_PLAYERS",
+  "message": "REGISTERED_PLAYERS",
   "context": {
     "players": [
        {
@@ -410,7 +410,7 @@ Example message:
 
 ```json
 {
-  "event": "AVAILABLE_GAMES",
+  "message": "AVAILABLE_GAMES",
   "context": {
     "games": [
       {
@@ -436,7 +436,7 @@ Example message:
 
 ```json
 {
-  "event": "PLAYER_REGISTERED",
+  "message": "PLAYER_REGISTERED",
   "context": {
     "player_id": "8fc4a03b-3e4d-438c-a3fc-b6913e829ab3",
   }
@@ -462,7 +462,7 @@ Example message:
 
 ```json
 {
-  "event": "PLAYER_IDLE"
+  "message": "PLAYER_IDLE"
 }
 ```
 
@@ -478,7 +478,7 @@ Example message:
 
 ```json
 {
-  "event": "PLAYER_INACTIVE"
+  "message": "PLAYER_INACTIVE"
 }
 ```
 
@@ -493,7 +493,7 @@ Example message:
 
 ```json
 {
-  "event": "PLAYER_MESSAGE_RECEIVED",
+  "message": "PLAYER_MESSAGE_RECEIVED",
   "context": {
     "sender_handle": "leela",
     "recipient_handles": [ "hermes", "nibbler", ],
@@ -509,7 +509,7 @@ player that advertised the game.
 
 ```json
 {
-  "event": "GAME_ADVERTISED",
+  "message": "GAME_ADVERTISED",
   "context": {
     "game_id": "8fb16554-ca00-4b65-a191-1c52cb0eae37",
     "name": "Leela's Game",
@@ -531,7 +531,7 @@ Example message:
 
 ```json
 {
-  "event": "GAME_INVITATION",
+  "message": "GAME_INVITATION",
   "context": {
     "game_id": "8fb16554-ca00-4b65-a191-1c52cb0eae37",
     "name": "Planet Express",
@@ -551,7 +551,7 @@ advertising it.
 
 ```json
 {
-  "event": "GAME_JOINED",
+  "message": "GAME_JOINED",
   "context": {
     "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe"
   }
@@ -569,7 +569,7 @@ Example message:
 
 ```json
 {
-  "event": "GAME_STARTED"
+  "message": "GAME_STARTED"
 }
 ```
 
@@ -586,7 +586,7 @@ Example message:
 
 ```json
 {
-  "event": "GAME_CANCELLED",
+  "message": "GAME_CANCELLED",
   "context": {
     "reason": "NOT_VIABLE",
     "comment": "Player nibbler (YELLOW) left the game, and it is no longer viable"
@@ -604,7 +604,7 @@ Example message:
 
 ```json
 {
-  "event": "GAME_COMPLETED",
+  "message": "GAME_COMPLETED",
   "context": {
     "comment": "Player nibbler (YELLOW) won the game after 46 turns"
   }
@@ -621,7 +621,7 @@ Example message:
 
 ```json
 {
-  "event": "GAME_IDLE"
+  "message": "GAME_IDLE"
 }
 ```
 
@@ -650,7 +650,7 @@ Example message:
 
 ```json
 {
-  "event": "GAME_PLAYER_CHANGE",
+  "message": "GAME_PLAYER_CHANGE",
   "context": {
     "comment": "Player nibbler (YELLOW) quit the game."
     "players": {
@@ -695,7 +695,7 @@ Example message:
 
 ```json
 {
-  "event": "GAME_STATE_CHANGE",
+  "message": "GAME_STATE_CHANGE",
   "context": {
     // TBD
   }
@@ -715,7 +715,7 @@ Example message:
 
 ```json
 {
-  "event": "GAME_PLAYER_TURN",
+  "message": "GAME_PLAYER_TURN",
   "context": {
     // TBD
   }
