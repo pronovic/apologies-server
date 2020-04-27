@@ -1,17 +1,23 @@
 # -*- coding: utf-8 -*-
 # vim: set ft=python ts=4 sw=4 expandtab:
+# pylint: disable=unsubscriptable-object
 
 """
-Definition of the public interface for the server (see also notes/API.md).
+Definition of the public interface for the server.
 
-Both requests (messages from a client) and events (messages to a client) can be
-serialized and deserialized to and from JSON.  However, we apply much tighter
-validation rules on requests, since the input is untrusted.  We assume that the
-Python type validations imposed by MyPy give us everything we need for events.
+Both requests (message sent from a client to the server) and events (published 
+from the server to one or more clients) can be serialized and deserialized to 
+and from JSON.  However, we apply much tighter validation rules on the context
+associated with requests, since the input is untrusted.  We assume that the
+Python type validations imposed by MyPy give us everything we need for events
+that are only built internally.
+
+The file notes/API.md includes a detailed discussion of each request and event.
 """
 
 from __future__ import annotations  # see: https://stackoverflow.com/a/33533514/2907667
 
+from abc import ABC
 from enum import Enum
 from typing import Any, Dict, Optional, Sequence
 
@@ -20,36 +26,44 @@ import cattr
 import orjson
 from apologies.game import GameMode, PlayerColor
 from attr import Attribute
-from attr.validators import and_ as _and
-from attr.validators import in_ as _in
+from attr.validators import and_, in_
 from pendulum.datetime import DateTime
 from pendulum.parser import parse
 
+from .validator import enum, notempty, string, stringlist
 
-# pylint: disable=unsubscriptable-object
-def _notempty(_: Any, attribute: Attribute[Sequence[str]], value: Sequence[str]) -> Any:
-    """attrs validator to ensure that a list is not empty."""
-    if len(value) == 0:
-        raise ValueError("'%s' may not be empty" % attribute.name)
-
-
-# pylint: disable=unsubscriptable-object
-def _string(_: Any, attribute: Attribute[str], value: str) -> Any:
-    """attrs validator to ensure that a string is non-empty."""
-    # Annoyingly, due to some quirk in the CattrConverter, we end up with "None" rather than None for strings set to JSON null
-    # As a result, we need to prevent "None" as a legal value, but that's probably better anyway.
-    if value is None or value == "None" or not isinstance(value, str) or len(value) == 0:
-        raise ValueError("'%s' must be non-empty string" % attribute.name)
-
-
-# pylint: disable=unsubscriptable-object
-def _stringlist(_: Any, attribute: Attribute[Sequence[str]], value: Sequence[str]) -> Any:
-    """attrs validator to ensure that a string list contains non-empty values."""
-    # Annoyingly, due to some quirk in the CattrConverter, we end up with "None" rather than None for strings set to JSON null
-    # As a result, we need to prevent "None" as a legal value, but that's probably better anyway.
-    for element in value:
-        if element is None or element == "None" or not isinstance(element, str) or len(element) == 0:
-            raise ValueError("'%s' elements must be non-empty strings" % attribute.name)
+# There are a lot of classes as part of this interface, so it's useful to import *.
+# However, when we do that, we want to expose only the public parts of the interface.
+__all__ = [
+    "Visibility",
+    "FailureReason",
+    "CancelledReason",
+    "PlayerType",
+    "PlayerState",
+    "ConnectionState",
+    "ActivityState",
+    "PlayState",
+    "RegisterPlayerContext",
+    "AdvertiseGameContext",
+    "JoinGameContext",
+    "ExecuteMoveContext",
+    "SendMessageContext",
+    "RequestFailedContext",
+    "RegisteredPlayersContext",
+    "AvailableGamesContext",
+    "PlayerRegisteredContext",
+    "PlayerMessageReceivedContext",
+    "GameAdvertisedContext",
+    "GameInvitationContext",
+    "GameJoinedContext",
+    "GameCancelledContext",
+    "GameCompletedContext",
+    "GamePlayerChangeContext",
+    "GameStateChangeContext",
+    "GamePlayerTurnContext",
+    "MessageType",
+    "Message",
+]
 
 
 class Visibility(Enum):
@@ -111,48 +125,52 @@ class PlayState(Enum):
     PLAYING = "Playing a Game"
 
 
+class Context(ABC):
+    """Abstract message context."""
+
+
 @attr.s
-class RegisterPlayerContext:
+class RegisterPlayerContext(Context):
     """Context for a REGISTER_PLAYER request."""
 
-    handle = attr.ib(type=str, validator=_string)
+    handle = attr.ib(type=str, validator=string)
 
 
 @attr.s
-class AdvertiseGameContext:
+class AdvertiseGameContext(Context):
     """Context for an ADVERTISE_GAME request."""
 
-    name = attr.ib(type=str, validator=_string)
-    mode = attr.ib(type=GameMode, validator=_in(GameMode))
-    players = attr.ib(type=int, validator=_in([2, 3, 4]))
-    visibility = attr.ib(type=Visibility, validator=_in(Visibility))
-    invited_handles = attr.ib(type=Sequence[str], validator=_stringlist)
+    name = attr.ib(type=str, validator=string)
+    mode = attr.ib(type=GameMode, validator=enum(GameMode))
+    players = attr.ib(type=int, validator=in_([2, 3, 4]))
+    visibility = attr.ib(type=Visibility, validator=enum(Visibility))
+    invited_handles = attr.ib(type=Sequence[str], validator=stringlist)
 
 
 @attr.s
-class JoinGameContext:
+class JoinGameContext(Context):
     """Context for a JOIN_GAME request."""
 
-    game_id = attr.ib(type=str, validator=_string)
+    game_id = attr.ib(type=str, validator=string)
 
 
 @attr.s
-class ExecuteMoveContext:
+class ExecuteMoveContext(Context):
     """Context for an EXECUTE_MOVE request."""
 
-    move_id = attr.ib(type=str, validator=_string)
+    move_id = attr.ib(type=str, validator=string)
 
 
 @attr.s
-class SendMessageContext:
+class SendMessageContext(Context):
     """Context for an SEND_MESSAGE request."""
 
-    message = attr.ib(type=str, validator=_string)
-    recipient_handles = attr.ib(type=Sequence[str], validator=_and(_stringlist, _notempty))
+    message = attr.ib(type=str, validator=string)
+    recipient_handles = attr.ib(type=Sequence[str], validator=and_(stringlist, notempty))
 
 
 @attr.s
-class RequestFailedContext:
+class RequestFailedContext(Context):
     """Context for a REQUEST_FAILED event."""
 
     reason = attr.ib(type=FailureReason)
@@ -160,7 +178,7 @@ class RequestFailedContext:
 
 
 @attr.s
-class RegisteredPlayersContext:
+class RegisteredPlayersContext(Context):
     """Context for a REGISTERED_PLAYERS event."""
 
     @attr.s
@@ -175,13 +193,9 @@ class RegisteredPlayersContext:
 
     players = attr.ib(type=Sequence["RegisteredPlayersContext.Player"])
 
-    @players.default
-    def default_players(self) -> Sequence["RegisteredPlayersContext.Player"]:
-        return []
-
 
 @attr.s
-class AvailableGamesContext:
+class AvailableGamesContext(Context):
     """Context for an AVAILABLE_GAMES event."""
 
     @attr.s
@@ -197,20 +211,16 @@ class AvailableGamesContext:
 
     games = attr.ib(type=Sequence["AvailableGamesContext.Game"])
 
-    @games.default
-    def default_games(self) -> Sequence["AvailableGamesContext.Game"]:
-        return []
-
 
 @attr.s
-class PlayerRegisteredContext:
+class PlayerRegisteredContext(Context):
     """Context for an PLAYER_REGISTERED event."""
 
     player_id = attr.ib(type=str)
 
 
 @attr.s
-class PlayerMessageReceivedContext:
+class PlayerMessageReceivedContext(Context):
     """Context for an PLAYER_MESSAGE_RECEIVED event."""
 
     sender_handle = attr.ib(type=str)
@@ -219,7 +229,7 @@ class PlayerMessageReceivedContext:
 
 
 @attr.s
-class GameAdvertisedContext:
+class GameAdvertisedContext(Context):
     """Context for an GAME_ADVERTISED event."""
 
     game_id = attr.ib(type=str)
@@ -232,7 +242,7 @@ class GameAdvertisedContext:
 
 
 @attr.s
-class GameInvitationContext:
+class GameInvitationContext(Context):
     """Context for an GAME_INVITATION event."""
 
     game_id = attr.ib(type=str)
@@ -244,14 +254,14 @@ class GameInvitationContext:
 
 
 @attr.s
-class GameJoinedContext:
+class GameJoinedContext(Context):
     """Context for an GAME_JOINED event."""
 
     game_id = attr.ib(type=str)
 
 
 @attr.s
-class GameCancelledContext:
+class GameCancelledContext(Context):
     """Context for an GAME_CANCELLED event."""
 
     reason = attr.ib(type=CancelledReason)
@@ -259,14 +269,14 @@ class GameCancelledContext:
 
 
 @attr.s
-class GameCompletedContext:
+class GameCompletedContext(Context):
     """Context for an GAME_COMPLETED event."""
 
     comment = attr.ib(type=Optional[str])
 
 
 @attr.s
-class GamePlayerChangeContext:
+class GamePlayerChangeContext(Context):
     """Context for an GAME_PLAYER_CHANGE event."""
 
     @attr.s
@@ -278,28 +288,25 @@ class GamePlayerChangeContext:
     comment = attr.ib(type=Optional[str])
     players = attr.ib(type=Dict[PlayerColor, "GamePlayerChangeContext.Player"])
 
-    @players.default
-    def default_players(self) -> Dict[PlayerColor, "GamePlayerChangeContext.Player"]:
-        return {}
-
 
 @attr.s
-class GameStateChangeContext:
+class GameStateChangeContext(Context):
     """Context for an GAME_STATE_CHANGE event."""
 
     stuff = attr.ib(type=str)  # TODO: finalize GameStateChangeContext
 
 
 @attr.s
-class GamePlayerTurnContext:
+class GamePlayerTurnContext(Context):
     """Context for an GAME_PLAYER_TURN event."""
 
     stuff = attr.ib(type=str)  # TODO: finalize GamePlayerTurnContext
 
 
-class RequestType(Enum):
-    """Enumeration of all request types, mapped to the associated context (if any)."""
+class MessageType(Enum):
+    """Enumeration of all message types, mapped to the associated context (if any)."""
 
+    # Requests sent from client to server
     REGISTER_PLAYER = RegisterPlayerContext
     REREGISTER_PLAYER = None
     UNREGISTER_PLAYER = None
@@ -314,10 +321,7 @@ class RequestType(Enum):
     RETRIEVE_GAME_STATE = None
     SEND_MESSAGE = SendMessageContext
 
-
-class EventType(Enum):
-    """Enumeration of all event types, mapped to the associated context (if any)."""
-
+    # Events published from server to one or more clients
     REQUEST_FAILED = RequestFailedContext
     REGISTERED_PLAYERS = RegisteredPlayersContext
     AVAILABLE_GAMES = AvailableGamesContext
@@ -342,17 +346,16 @@ class EventType(Enum):
 
 # List of all enumerations that are part of the public interface
 _ENUMS = [
-    GameMode,
-    ActivityState,
-    CancelledReason,
-    ConnectionState,
-    EventType,
-    FailureReason,
-    PlayState,
-    PlayerState,
-    PlayerType,
-    RequestType,
     Visibility,
+    FailureReason,
+    CancelledReason,
+    PlayerType,
+    PlayerState,
+    ConnectionState,
+    ActivityState,
+    PlayState,
+    MessageType,
+    GameMode,
 ]
 
 
@@ -365,87 +368,66 @@ class _CattrConverter(cattr.Converter):  # type: ignore
         super().__init__()
         self.register_unstructure_hook(DateTime, lambda datetime: datetime.isoformat() if datetime else None)
         self.register_structure_hook(DateTime, lambda string, _: parse(string) if string else None)
-        for enum in _ENUMS:
-            self.register_unstructure_hook(enum, lambda value: value.name if value else None)
-            self.register_structure_hook(enum, lambda string, _, e=enum: e[string] if string else None)
+        for element in _ENUMS:
+            self.register_unstructure_hook(element, lambda value: value.name if value else None)
+            self.register_structure_hook(element, lambda string, _, e=element: e[string] if string else None)
 
 
 # Cattr converter used to serialize and deserialize requests and responses
 _CONVERTER = _CattrConverter()
 
-# TODO: there's too much overlap between Request and Event
-#   I need to pull up something - not sure if it's a different
-#   module for JSON-realted stuff (maybe in util) or whether
-#   I want a parent class.  Either way, it's ugly right now.
-
-# TODO: whenever I pull this out, I need to standardize
-#   the error-handling behavior so we get errors that can
-#   be returned to callers.  Right now, it's a mismash of
-#   AssertionError, TypeError, and ValueError, and it's
-#   not intelligible.
-
-
+# noinspection PyTypeChecker
 @attr.s
-class Request:
-    """A request received from a client."""
+class Message:
+    """A message that is part of the public interface, either a client request or a published event."""
 
-    request = attr.ib(type=RequestType)
-    context = attr.ib(type=Any, default=None)
+    message = attr.ib(type=MessageType)
+    context = attr.ib(type=Context, default=None)
 
-    # noinspection PyTypeChecker
+    @message.validator
+    def _validate_message(self, attribute: Attribute[MessageType], value: MessageType) -> None:
+        if value is None or not isinstance(value, MessageType):
+            raise ValueError("'%s' must be a MessageType" % attribute.name)
+
+    @context.validator
+    def _validate_context(self, attribute: Attribute[Context], value: Context) -> None:
+        if self.message.value is not None:
+            if self.context is None:
+                raise ValueError("Message type %s requires a context" % self.message.name)
+            elif not isinstance(self.context, self.message.value):
+                raise ValueError("Message type %s does not support this context" % self.message.name)
+        else:
+            if self.context is not None:
+                raise ValueError("Message type %s does not allow a context" % self.message.name)
+
     def to_json(self) -> str:
         """Convert the request to JSON."""
-        assert self.request is not None
-        if self.request.value is not None:
-            assert isinstance(self.context, self.request.value)
-        else:
-            assert self.context is None
         d = _CONVERTER.unstructure(self)  # pylint: disable=invalid-name
         if d["context"] is None:
             del d["context"]
         return orjson.dumps(d, option=orjson.OPT_INDENT_2).decode("utf-8")  # type: ignore
 
     @staticmethod
-    def from_json(data: str) -> Request:
+    def from_json(data: str) -> Message:
         """Create a request based on JSON data."""
         d = orjson.loads(data)  # pylint: disable=invalid-name
-        request = RequestType[d["request"]]
-        if request.value is None:
-            assert "context" not in d or d["context"] is None
+        if "message" not in d or d["message"] is None:
+            raise ValueError("Message type is required")
+        try:
+            message = MessageType[d["message"]]
+        except KeyError:
+            raise ValueError("Unknown message type: %s" % d["message"])
+        if message.value is None:
+            if "context" in d and d["context"] is not None:
+                raise ValueError("Message type %s does not allow a context" % message.name)
+            context = None
         else:
-            assert "context" in d and d["context"] is not None
-        context = None if request.value is None else _CONVERTER.structure(d["context"], request.value)
-        return Request(request, context)
-
-
-@attr.s
-class Event:
-    """An event published to a client."""
-
-    event = attr.ib(type=EventType)
-    context = attr.ib(type=Any, default=None)
-
-    # noinspection PyTypeChecker
-    def to_json(self) -> str:
-        """Convert the event to JSON."""
-        assert self.event is not None
-        if self.event.value is not None:
-            assert isinstance(self.context, self.event.value)
-        else:
-            assert self.context is None
-        d = _CONVERTER.unstructure(self)  # pylint: disable=invalid-name
-        if d["context"] is None:
-            del d["context"]
-        return orjson.dumps(d, option=orjson.OPT_INDENT_2).decode("utf-8")  # type: ignore
-
-    @staticmethod
-    def from_json(data: str) -> Event:
-        """Create an event based on JSON data."""
-        d = orjson.loads(data)  # pylint: disable=invalid-name
-        event = EventType[d["event"]]
-        if event.value is None:
-            assert "context" not in d or d["context"] is None
-        else:
-            assert "context" in d and d["context"] is not None
-        context = None if event.value is None else _CONVERTER.structure(d["context"], event.value)
-        return Event(event, context)
+            if "context" not in d or d["context"] is None:
+                raise ValueError("Message type %s requires a context" % message.name)
+            try:
+                context = _CONVERTER.structure(d["context"], message.value)
+            except KeyError as e:
+                raise ValueError("Invalid value %s" % str(e))
+            except TypeError as e:
+                raise ValueError("Message type %s does not support this context" % message.name, e)
+        return Message(message, context)

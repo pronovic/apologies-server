@@ -8,93 +8,106 @@ from apologies.game import GameMode
 from apologiesserver.interface import *
 
 
-class TestRequest:
+class TestMessage:
+
+    def test_from_json_missing_message(self) -> None:
+        data = """
+        {
+          "wrong": "REGISTER_PLAYER",
+          "context": {
+            "handle": "leela"
+          }
+        }
+        """
+        with pytest.raises(ValueError, match=r"Message type is required"):
+            Message.from_json(data)    
+    
     def test_from_json_missing_context(self) -> None:
         data = """
         {
-          "request": "REGISTER_PLAYER"
+          "message": "REGISTER_PLAYER"
         }
         """
-        with pytest.raises(AssertionError):
-            Request.from_json(data)
+        with pytest.raises(ValueError, match=r"Message type REGISTER_PLAYER requires a context"):
+            Message.from_json(data)
 
     def test_from_json_extra_context(self) -> None:
         data = """
         {
-          "request": "REREGISTER_PLAYER",
+          "message": "REREGISTER_PLAYER",
           "context": {
             "handle": "leela"
           }
         }
         """
-        with pytest.raises(AssertionError):
-            Request.from_json(data)
+        with pytest.raises(ValueError, match=r"Message type REREGISTER_PLAYER does not allow a context"):
+            Message.from_json(data)
 
     def test_from_json_wrong_context(self) -> None:
         data = """
         {
-          "request": "BOGUS",
+          "message": "ADVERTISE_GAME",
           "context": {
             "handle": "leela"
           }
         }
         """
-        with pytest.raises(KeyError):
-            Request.from_json(data)
+        with pytest.raises(ValueError, match=r"Message type ADVERTISE_GAME does not support this context"):
+            Message.from_json(data)
 
-    def test_from_json_unknown_request(self) -> None:
+    def test_from_json_unknown_message(self) -> None:
         data = """
         {
-          "request": "BOGUS",
+          "message": "BOGUS",
           "context": {
             "handle": "leela"
           }
         }
         """
-        with pytest.raises(KeyError):
-            Request.from_json(data)
+        with pytest.raises(ValueError, match=r"Unknown message type: BOGUS"):
+            Message.from_json(data)
 
     def test_register_player_valid(self) -> None:
         data = """
         {
-          "request": "REGISTER_PLAYER",
+          "message": "REGISTER_PLAYER",
           "context": {
             "handle": "leela"
           }
         }
         """
-        request = Request.from_json(data)
-        assert request.request == RequestType.REGISTER_PLAYER
-        assert request.context.handle == "leela"
+        message = Message.from_json(data)
+        assert message.message == MessageType.REGISTER_PLAYER
+        assert message.context.handle == "leela"
 
     def test_register_player_invalid_handle_none(self) -> None:
         data = """
         {
-          "request": "REGISTER_PLAYER",
+          "message": "REGISTER_PLAYER",
           "context": {
             "handle": null
           }
         }
         """
-        with pytest.raises(ValueError):
-            Request.from_json(data)
+        with pytest.raises(ValueError, match=r"'handle' must be a non-empty string"):
+            Message.from_json(data)
 
     def test_register_player_invalid_handle_empty(self) -> None:
         data = """
         {
-          "request": "REGISTER_PLAYER",
+          "message": "REGISTER_PLAYER",
           "context": {
             "handle": ""
           }
         }
         """
-        with pytest.raises(ValueError):
-            Request.from_json(data)
+        with pytest.raises(ValueError, match=r"'handle' must be a non-empty string"):
+            Message.from_json(data)
 
     def test_advertise_game_valid_handles(self) -> None:
         data = """
         {
-          "request": "ADVERTISE_GAME",
+          "message": "ADVERTISE_GAME",
           "context": {
             "name": "Leela's Game",
             "mode": "STANDARD",
@@ -104,18 +117,18 @@ class TestRequest:
           }
         } 
         """
-        request = Request.from_json(data)
-        assert request.request == RequestType.ADVERTISE_GAME
-        assert request.context.name == "Leela's Game"
-        assert request.context.mode == GameMode.STANDARD
-        assert request.context.players == 3
-        assert request.context.visibility == Visibility.PRIVATE
-        assert request.context.invited_handles == ["bender", "hermes"]
+        message = Message.from_json(data)
+        assert message.message == MessageType.ADVERTISE_GAME
+        assert message.context.name == "Leela's Game"
+        assert message.context.mode == GameMode.STANDARD
+        assert message.context.players == 3
+        assert message.context.visibility == Visibility.PRIVATE
+        assert message.context.invited_handles == ["bender", "hermes"]
 
     def test_advertise_game_valid_no_handles(self) -> None:
         data = """
         {
-          "request": "ADVERTISE_GAME",
+          "message": "ADVERTISE_GAME",
           "context": {
             "name": "Leela's Game",
             "mode": "STANDARD",
@@ -125,18 +138,18 @@ class TestRequest:
           }
         } 
         """
-        request = Request.from_json(data)
-        assert request.request == RequestType.ADVERTISE_GAME
-        assert request.context.name == "Leela's Game"
-        assert request.context.mode == GameMode.STANDARD
-        assert request.context.players == 3
-        assert request.context.visibility == Visibility.PUBLIC
-        assert request.context.invited_handles == []
+        message = Message.from_json(data)
+        assert message.message == MessageType.ADVERTISE_GAME
+        assert message.context.name == "Leela's Game"
+        assert message.context.mode == GameMode.STANDARD
+        assert message.context.players == 3
+        assert message.context.visibility == Visibility.PUBLIC
+        assert message.context.invited_handles == []
 
     def test_advertise_game_invalid_name_none(self) -> None:
         data = """
         {
-          "request": "ADVERTISE_GAME",
+          "message": "ADVERTISE_GAME",
           "context": {
             "name": null,
             "mode": "STANDARD",
@@ -146,13 +159,13 @@ class TestRequest:
           }
         } 
         """
-        with pytest.raises(ValueError):
-            Request.from_json(data)
+        with pytest.raises(ValueError, match=r"'name' must be a non-empty string"):
+            Message.from_json(data)
 
     def test_advertise_game_invalid_name_empty(self) -> None:
         data = """
         {
-          "request": "ADVERTISE_GAME",
+          "message": "ADVERTISE_GAME",
           "context": {
             "name": "",
             "mode": "STANDARD",
@@ -162,13 +175,13 @@ class TestRequest:
           }
         } 
         """
-        with pytest.raises(ValueError):
-            Request.from_json(data)
+        with pytest.raises(ValueError, match=r"'name' must be a non-empty string"):
+            Message.from_json(data)
 
     def test_advertise_game_invalid_mode_none(self) -> None:
         data = """
         {
-          "request": "ADVERTISE_GAME",
+          "message": "ADVERTISE_GAME",
           "context": {
             "name": "Leela's Game",
             "mode": null,
@@ -178,13 +191,13 @@ class TestRequest:
           }
         } 
         """
-        with pytest.raises(ValueError):
-            Request.from_json(data)
+        with pytest.raises(ValueError, match=r"'mode' must be one of \[ADULT, STANDARD\]"):
+            Message.from_json(data)
 
     def test_advertise_game_invalid_mode_empty(self) -> None:
         data = """
         {
-          "request": "ADVERTISE_GAME",
+          "message": "ADVERTISE_GAME",
           "context": {
             "name": "Leela's Game",
             "mode": "",
@@ -194,13 +207,13 @@ class TestRequest:
           }
         } 
         """
-        with pytest.raises(ValueError):
-            Request.from_json(data)
+        with pytest.raises(ValueError, match=r"'mode' must be one of \[ADULT, STANDARD\]"):
+            Message.from_json(data)
 
     def test_advertise_game_invalid_mode_bad(self) -> None:
         data = """
         {
-          "request": "ADVERTISE_GAME",
+          "message": "ADVERTISE_GAME",
           "context": {
             "name": "Leela's Game",
             "mode": "BOGUS",
@@ -210,13 +223,13 @@ class TestRequest:
           }
         } 
         """
-        with pytest.raises(KeyError):
-            Request.from_json(data)
+        with pytest.raises(ValueError, match=r"Invalid value 'BOGUS'"):
+            Message.from_json(data)
 
     def test_advertise_game_invalid_player_small(self) -> None:
         data = """
         {
-          "request": "ADVERTISE_GAME",
+          "message": "ADVERTISE_GAME",
           "context": {
             "name": "Leela's Game",
             "mode": "STANDARD",
@@ -226,13 +239,13 @@ class TestRequest:
           }
         } 
         """
-        with pytest.raises(ValueError):
-            Request.from_json(data)
+        with pytest.raises(ValueError, match=r"'players' must be in \[2, 3, 4\] \(got 1\)"):
+            Message.from_json(data)
 
     def test_advertise_game_invalid_player_large(self) -> None:
         data = """
         {
-          "request": "ADVERTISE_GAME",
+          "message": "ADVERTISE_GAME",
           "context": {
             "name": "Leela's Game",
             "mode": "STANDARD",
@@ -242,13 +255,13 @@ class TestRequest:
           }
         } 
         """
-        with pytest.raises(ValueError):
-            Request.from_json(data)
+        with pytest.raises(ValueError, match=r"'players' must be in \[2, 3, 4\] \(got 5\)"):
+            Message.from_json(data)
 
     def test_advertise_game_invalid_visibility_none(self) -> None:
         data = """
         {
-          "request": "ADVERTISE_GAME",
+          "message": "ADVERTISE_GAME",
           "context": {
             "name": "Leela's Game",
             "mode": "STANDARD",
@@ -258,13 +271,13 @@ class TestRequest:
           }
         } 
         """
-        with pytest.raises(ValueError):
-            Request.from_json(data)
+        with pytest.raises(ValueError, match=r"'visibility' must be one of \[PRIVATE, PUBLIC\]"):
+            Message.from_json(data)
 
     def test_advertise_game_invalid_visibility_empty(self) -> None:
         data = """
         {
-          "request": "ADVERTISE_GAME",
+          "message": "ADVERTISE_GAME",
           "context": {
             "name": "Leela's Game",
             "mode": "STANDARD",
@@ -274,13 +287,13 @@ class TestRequest:
           }
         } 
         """
-        with pytest.raises(ValueError):
-            Request.from_json(data)
+        with pytest.raises(ValueError, match=r"'visibility' must be one of \[PRIVATE, PUBLIC\]"):
+            Message.from_json(data)
 
     def test_advertise_game_invalid_visibility_bad(self) -> None:
         data = """
         {
-          "request": "ADVERTISE_GAME",
+          "message": "ADVERTISE_GAME",
           "context": {
             "name": "Leela's Game",
             "mode": "STANDARD",
@@ -290,13 +303,13 @@ class TestRequest:
           }
         } 
         """
-        with pytest.raises(KeyError):
-            Request.from_json(data)
+        with pytest.raises(ValueError, match=r"Invalid value 'BOGUS'"):
+            Message.from_json(data)
 
     def test_advertise_game_invalid_handle_none(self) -> None:
         data = """
         {
-          "request": "ADVERTISE_GAME",
+          "message": "ADVERTISE_GAME",
           "context": {
             "name": "Leela's Game",
             "mode": "STANDARD",
@@ -306,13 +319,13 @@ class TestRequest:
           }
         } 
         """
-        with pytest.raises(TypeError):
-            Request.from_json(data)
+        with pytest.raises(ValueError, match=r"Message type ADVERTISE_GAME does not support this context"):
+            Message.from_json(data)
 
     def test_advertise_game_invalid_handle_none_value(self) -> None:
         data = """
         {
-          "request": "ADVERTISE_GAME",
+          "message": "ADVERTISE_GAME",
           "context": {
             "name": "Leela's Game",
             "mode": "STANDARD",
@@ -322,13 +335,13 @@ class TestRequest:
           }
         } 
         """
-        with pytest.raises(ValueError):
-            Request.from_json(data)
+        with pytest.raises(ValueError, match=r"'invited_handles' elements must be non-empty strings"):
+            Message.from_json(data)
 
     def test_advertise_game_invalid_handle_empty_value(self) -> None:
         data = """
         {
-          "request": "ADVERTISE_GAME",
+          "message": "ADVERTISE_GAME",
           "context": {
             "name": "Leela's Game",
             "mode": "STANDARD",
@@ -338,235 +351,235 @@ class TestRequest:
           }
         } 
         """
-        with pytest.raises(ValueError):
-            Request.from_json(data)
+        with pytest.raises(ValueError, match=r"'invited_handles' elements must be non-empty strings"):
+            Message.from_json(data)
 
     def test_join_game_valid(self) -> None:
         data = """
         {
-          "request": "JOIN_GAME",
+          "message": "JOIN_GAME",
           "context": {
             "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe"
           }
         }
         """
-        request = Request.from_json(data)
-        assert request.request == RequestType.JOIN_GAME
-        assert request.context.game_id == "f13b405e-36e5-45f3-a351-e45bf487acfe"
+        message = Message.from_json(data)
+        assert message.message == MessageType.JOIN_GAME
+        assert message.context.game_id == "f13b405e-36e5-45f3-a351-e45bf487acfe"
 
     def test_join_game_invalid_game_id_none(self) -> None:
         data = """
         {
-          "request": "JOIN_GAME",
+          "message": "JOIN_GAME",
           "context": {
             "game_id": null
           }
         }
         """
-        with pytest.raises(ValueError):
-            Request.from_json(data)
+        with pytest.raises(ValueError, match=r"'game_id' must be a non-empty string"):
+            Message.from_json(data)
 
     def test_join_game_invalid_game_id_empty(self) -> None:
         data = """
         {
-          "request": "JOIN_GAME",
+          "message": "JOIN_GAME",
           "context": {
             "game_id": ""
           }
         }
         """
-        with pytest.raises(ValueError):
-            Request.from_json(data)
+        with pytest.raises(ValueError, match=r"'game_id' must be a non-empty string"):
+            Message.from_json(data)
 
     def test_execute_move_valid(self) -> None:
         data = """
         {
-          "request": "EXECUTE_MOVE",
+          "message": "EXECUTE_MOVE",
           "context": {
             "move_id": "4"
           }
         }  
         """
-        request = Request.from_json(data)
-        assert request.request == RequestType.EXECUTE_MOVE
-        assert request.context.move_id == "4"
+        message = Message.from_json(data)
+        assert message.message == MessageType.EXECUTE_MOVE
+        assert message.context.move_id == "4"
 
     def test_execute_move_invalid_move_id_none(self) -> None:
         data = """
         {
-          "request": "EXECUTE_MOVE",
+          "message": "EXECUTE_MOVE",
           "context": {
             "move_id": null
           }
         }  
         """
-        with pytest.raises(ValueError):
-            Request.from_json(data)
+        with pytest.raises(ValueError, match=r"'move_id' must be a non-empty string"):
+            Message.from_json(data)
 
     def test_execute_move_invalid_move_id_empty(self) -> None:
         data = """
         {
-          "request": "EXECUTE_MOVE",
+          "message": "EXECUTE_MOVE",
           "context": {
             "move_id": ""
           }
         }  
         """
-        with pytest.raises(ValueError):
-            Request.from_json(data)
+        with pytest.raises(ValueError, match=r"'move_id' must be a non-empty string"):
+            Message.from_json(data)
 
     def test_send_message_valid(self) -> None:
         data = """
         {
-          "request": "SEND_MESSAGE",
+          "message": "SEND_MESSAGE",
           "context": {
             "message": "Hello!",
             "recipient_handles": [ "hermes", "nibbler" ]
           }
         }  
         """
-        request = Request.from_json(data)
-        assert request.request == RequestType.SEND_MESSAGE
-        assert request.context.message == "Hello!"
-        assert request.context.recipient_handles == ["hermes", "nibbler"]
+        message = Message.from_json(data)
+        assert message.message == MessageType.SEND_MESSAGE
+        assert message.context.message == "Hello!"
+        assert message.context.recipient_handles == ["hermes", "nibbler"]
 
     def test_send_message_invalid_message_none(self) -> None:
         data = """
         {
-          "request": "SEND_MESSAGE",
+          "message": "SEND_MESSAGE",
           "context": {
-            "message": none,
+            "message": null,
             "recipient_handles": [ "hermes", "nibbler" ]
           }
         }  
         """
-        with pytest.raises(ValueError):
-            Request.from_json(data)
+        with pytest.raises(ValueError, match=r"'message' must be a non-empty string"):
+            Message.from_json(data)
 
     def test_send_message_invalid_message_empty(self) -> None:
         data = """
         {
-          "request": "SEND_MESSAGE",
+          "message": "SEND_MESSAGE",
           "context": {
             "message": "",
             "recipient_handles": [ "hermes", "nibbler" ]
           }
         }  
         """
-        with pytest.raises(ValueError):
-            Request.from_json(data)
+        with pytest.raises(ValueError, match=r"'message' must be a non-empty string"):
+            Message.from_json(data)
 
     def test_send_message_invalid_recipients_none(self) -> None:
         data = """
         {
-          "request": "SEND_MESSAGE",
+          "message": "SEND_MESSAGE",
           "context": {
             "message": "Hello!",
             "recipient_handles": null
           }
         }  
         """
-        with pytest.raises(TypeError):
-            Request.from_json(data)
+        with pytest.raises(ValueError, match=r"Message type SEND_MESSAGE does not support this context"):
+            Message.from_json(data)
 
     def test_send_message_invalid_recipients_empty(self) -> None:
         data = """
         {
-          "request": "SEND_MESSAGE",
+          "message": "SEND_MESSAGE",
           "context": {
             "message": "Hello!",
             "recipient_handles": []
           }
         }  
         """
-        with pytest.raises(ValueError):
-            Request.from_json(data)
+        with pytest.raises(ValueError, match=r"'recipient_handles' may not be empty"):
+            Message.from_json(data)
 
     def test_send_message_invalid_recipients_none_value(self) -> None:
         data = """
         {
-          "request": "SEND_MESSAGE",
+          "message": "SEND_MESSAGE",
           "context": {
             "message": "Hello!",
             "recipient_handles": [ "hermes", null ]
           }
         }  
         """
-        with pytest.raises(ValueError):
-            Request.from_json(data)
+        with pytest.raises(ValueError, match=r"'recipient_handles' elements must be non-empty strings"):
+            Message.from_json(data)
 
     def test_send_message_invalid_recipients_empty_value(self) -> None:
         data = """
         {
-          "request": "SEND_MESSAGE",
+          "message": "SEND_MESSAGE",
           "context": {
             "message": "Hello!",
             "recipient_handles": [ "hermes", "" ]
           }
         }  
         """
-        with pytest.raises(ValueError):
-            Request.from_json(data)
+        with pytest.raises(ValueError, match=r"'recipient_handles' elements must be non-empty strings"):
+            Message.from_json(data)
 
     def test_register_player_roundtrip(self) -> None:
         context = RegisterPlayerContext(handle="leela")
-        request = Request(RequestType.REGISTER_PLAYER, context)
-        self.roundtrip(request)
+        message = Message(MessageType.REGISTER_PLAYER, context)
+        self.roundtrip(message)
 
     def test_reregister_player_roundtrip(self) -> None:
-        request = Request(RequestType.REREGISTER_PLAYER)
-        self.roundtrip(request)
+        message = Message(MessageType.REREGISTER_PLAYER)
+        self.roundtrip(message)
 
     def test_unregister_player_roundtrip(self) -> None:
-        request = Request(RequestType.UNREGISTER_PLAYER)
-        self.roundtrip(request)
+        message = Message(MessageType.UNREGISTER_PLAYER)
+        self.roundtrip(message)
 
     def test_list_players_roundtrip(self) -> None:
-        request = Request(RequestType.LIST_PLAYERS)
-        self.roundtrip(request)
+        message = Message(MessageType.LIST_PLAYERS)
+        self.roundtrip(message)
 
     def test_advertise_game_roundtrip(self) -> None:
         context = AdvertiseGameContext("Leela's Game", GameMode.STANDARD, 3, Visibility.PRIVATE, ["fry", "bender"])
-        request = Request(RequestType.ADVERTISE_GAME, context)
-        self.roundtrip(request)
+        message = Message(MessageType.ADVERTISE_GAME, context)
+        self.roundtrip(message)
 
     def test_list_available_games_roundtrip(self) -> None:
-        request = Request(RequestType.LIST_AVAILABLE_GAMES)
-        self.roundtrip(request)
+        message = Message(MessageType.LIST_AVAILABLE_GAMES)
+        self.roundtrip(message)
 
     def test_join_game_roundtrip(self) -> None:
         context = JoinGameContext("game")
-        request = Request(RequestType.JOIN_GAME, context)
-        self.roundtrip(request)
+        message = Message(MessageType.JOIN_GAME, context)
+        self.roundtrip(message)
 
     def test_quit_game_roundtrip(self) -> None:
-        request = Request(RequestType.QUIT_GAME)
-        self.roundtrip(request)
+        message = Message(MessageType.QUIT_GAME)
+        self.roundtrip(message)
 
     def test_start_game_roundtrip(self) -> None:
-        request = Request(RequestType.START_GAME)
-        self.roundtrip(request)
+        message = Message(MessageType.START_GAME)
+        self.roundtrip(message)
 
     def test_cancel_game_roundtrip(self) -> None:
-        request = Request(RequestType.CANCEL_GAME)
-        self.roundtrip(request)
+        message = Message(MessageType.CANCEL_GAME)
+        self.roundtrip(message)
 
     def test_execute_move_roundtrip(self) -> None:
         context = ExecuteMoveContext("move")
-        request = Request(RequestType.EXECUTE_MOVE, context)
-        self.roundtrip(request)
+        message = Message(MessageType.EXECUTE_MOVE, context)
+        self.roundtrip(message)
 
     def test_retrieve_game_state_roundtrip(self) -> None:
-        request = Request(RequestType.RETRIEVE_GAME_STATE)
-        self.roundtrip(request)
+        message = Message(MessageType.RETRIEVE_GAME_STATE)
+        self.roundtrip(message)
 
     def test_send_message_roundtrip(self) -> None:
         context = SendMessageContext("Hello", ["fry", "bender"])
-        request = Request(RequestType.SEND_MESSAGE, context)
-        self.roundtrip(request)
+        message = Message(MessageType.SEND_MESSAGE, context)
+        self.roundtrip(message)
 
     # noinspection PyMethodMayBeStatic
-    def roundtrip(self, request: Request) -> None:
-        data = request.to_json()
-        copy = Request.from_json(data)
-        assert request is not copy and request == copy
+    def roundtrip(self, message: Message) -> None:
+        data = message.to_json()
+        copy = Message.from_json(data)
+        assert message is not copy and message == copy
