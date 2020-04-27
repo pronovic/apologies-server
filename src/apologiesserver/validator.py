@@ -22,6 +22,8 @@ class _EnumValidator:
 
     def __call__(self, instance: Any, attribute: Attribute, value: Enum) -> None:  # type: ignore
         try:
+            # This gives us "DeprecationWarning: using non-Enums in containment checks will raise TypeError in Python 3.8"
+            # Uh, yeah.  I know.  I'm catching TypeError.  And anyway, this method is restricted to enums.
             with warnings.catch_warnings():
                 warnings.filterwarnings("ignore", category=DeprecationWarning)
                 in_options = value in self.options

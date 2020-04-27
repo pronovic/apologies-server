@@ -42,14 +42,15 @@ __all__ = [
     "PlayerState",
     "ConnectionState",
     "ActivityState",
-    "PlayState",
     "RegisterPlayerContext",
     "AdvertiseGameContext",
     "JoinGameContext",
     "ExecuteMoveContext",
     "SendMessageContext",
     "RequestFailedContext",
+    "RegisteredPlayer",
     "RegisteredPlayersContext",
+    "AvailableGame",
     "AvailableGamesContext",
     "PlayerRegisteredContext",
     "PlayerMessageReceivedContext",
@@ -58,6 +59,7 @@ __all__ = [
     "GameJoinedContext",
     "GameCancelledContext",
     "GameCompletedContext",
+    "GamePlayer",
     "GamePlayerChangeContext",
     "GameStateChangeContext",
     "GamePlayerTurnContext",
@@ -97,7 +99,9 @@ class PlayerType(Enum):
 class PlayerState(Enum):
     """State of a player within a game."""
 
+    WAITING = "Waiting"
     JOINED = "Joined"
+    PLAYING = "Playing"
     QUIT = "Quit"
     DISCONNECTED = "Disconnected"
 
@@ -115,14 +119,6 @@ class ActivityState(Enum):
     ACTIVE = "Active"
     IDLE = "Idle"
     INACTIVE = "Inactive"
-
-
-class PlayState(Enum):
-    """A player's play state."""
-
-    WAITING = "Waiting to Play"
-    JOINED = "Joined a Game"
-    PLAYING = "Playing a Game"
 
 
 class Context(ABC):
@@ -178,38 +174,44 @@ class RequestFailedContext(Context):
 
 
 @attr.s
+class RegisteredPlayer:
+    """A registered player within a RegisteredPlayersContext."""
+
+    handle = attr.ib(type=str)
+    registration_date = attr.ib(type=DateTime)
+    last_active_date = attr.ib(type=DateTime)
+    connection_state = attr.ib(type=ConnectionState)
+    activity_state = attr.ib(type=ActivityState)
+    player_state = attr.ib(type=PlayerState)
+    game_id = attr.ib(type=str)
+
+
+@attr.s
 class RegisteredPlayersContext(Context):
     """Context for a REGISTERED_PLAYERS event."""
 
-    @attr.s
-    class Player:
-        handle = attr.ib(type=str)
-        registration_date = attr.ib(type=DateTime)
-        last_active_date = attr.ib(type=DateTime)
-        connection_state = attr.ib(type=ConnectionState)
-        activity_state = attr.ib(type=ActivityState)
-        play_state = attr.ib(type=PlayState)
-        game_id = attr.ib(type=str)
+    players = attr.ib(type=Sequence[RegisteredPlayer])
 
-    players = attr.ib(type=Sequence["RegisteredPlayersContext.Player"])
+
+@attr.s
+class AvailableGame:
+    """An available game within an AvailableGamesContext."""
+
+    game_id = attr.ib(type=str)
+    name = attr.ib(type=str)
+    mode = attr.ib(type=GameMode)
+    advertiser_handle = attr.ib(type=str)
+    players = attr.ib(type=int)
+    available = attr.ib(type=int)
+    visibility = attr.ib(type=Visibility)
+    invited = attr.ib(type=bool)
 
 
 @attr.s
 class AvailableGamesContext(Context):
     """Context for an AVAILABLE_GAMES event."""
 
-    @attr.s
-    class Game:
-        game_id = attr.ib(type=str)
-        name = attr.ib(type=str)
-        mode = attr.ib(type=GameMode)
-        advertiser_handle = attr.ib(type=str)
-        players = attr.ib(type=int)
-        available = attr.ib(type=int)
-        visibility = attr.ib(type=Visibility)
-        invited = attr.ib(type=bool)
-
-    games = attr.ib(type=Sequence["AvailableGamesContext.Game"])
+    games = attr.ib(type=Sequence[AvailableGame])
 
 
 @attr.s
@@ -276,17 +278,20 @@ class GameCompletedContext(Context):
 
 
 @attr.s
+class GamePlayer:
+    """A game player within a GamePlayerChangeContext."""
+
+    handle = attr.ib(type=Optional[str])
+    player_type = attr.ib(type=PlayerType)
+    player_state = attr.ib(type=PlayerState)
+
+
+@attr.s
 class GamePlayerChangeContext(Context):
     """Context for an GAME_PLAYER_CHANGE event."""
 
-    @attr.s
-    class Player:
-        handle = attr.ib(type=str)
-        type = attr.ib(type=PlayerType)
-        state = attr.ib(type=PlayerState)
-
     comment = attr.ib(type=Optional[str])
-    players = attr.ib(type=Dict[PlayerColor, "GamePlayerChangeContext.Player"])
+    players = attr.ib(type=Dict[PlayerColor, GamePlayer])
 
 
 @attr.s
@@ -390,10 +395,12 @@ _ENUMS = [
     PlayerState,
     ConnectionState,
     ActivityState,
-    PlayState,
     MessageType,
     GameMode,
+    PlayerColor,
 ]
+
+_DATE_FORMAT = "YYYY-MM-DDTHH:mm:ss,SSSZ"  # gives us something like "2020-04-27T09:02:14,334+00:00"
 
 
 class _CattrConverter(cattr.Converter):  # type: ignore
@@ -403,15 +410,16 @@ class _CattrConverter(cattr.Converter):  # type: ignore
 
     def __init__(self) -> None:
         super().__init__()
-        self.register_unstructure_hook(DateTime, lambda datetime: datetime.isoformat() if datetime else None)
-        self.register_structure_hook(DateTime, lambda string, _: parse(string) if string else None)
+        self.register_unstructure_hook(DateTime, lambda value: value.format(_DATE_FORMAT) if value else None)
+        self.register_structure_hook(DateTime, lambda value, _: parse(value) if value else None)
         for element in _ENUMS:
             self.register_unstructure_hook(element, lambda value: value.name if value else None)
-            self.register_structure_hook(element, lambda string, _, e=element: e[string] if string else None)
+            self.register_structure_hook(element, lambda value, _, e=element: e[value] if value else None)
 
 
 # Cattr converter used to serialize and deserialize requests and responses
 _CONVERTER = _CattrConverter()
+
 
 # noinspection PyTypeChecker
 @attr.s

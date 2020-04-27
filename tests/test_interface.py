@@ -3,12 +3,31 @@
 # pylint: disable=wildcard-import,too-many-public-methods
 
 import pytest
-from apologies.game import GameMode
+from apologies.game import GameMode, PlayerColor
+from pendulum.datetime import DateTime
+from pendulum.parser import parse
 
 from apologiesserver.interface import *
 
 
-class TestMessage:
+# noinspection PyTypeChecker
+def to_date(date: str) -> DateTime:
+    # This function seems to have the wrong type hint
+    return parse(date)  # type: ignore
+
+
+def roundtrip(message: Message) -> None:
+    """Round-trip a message to JSON and back, and confirm that it is equivalent."""
+    data = message.to_json()
+    copy = Message.from_json(data)
+    assert message is not copy
+    assert message == copy
+
+
+class TestGeneral:
+
+    """General test cases for the public interface functionality."""
+
     def test_message_invalid_type(self) -> None:
         with pytest.raises(ValueError, match=r"'message' must be a MessageType"):
             Message(None, "Hello")  # type: ignore
@@ -81,6 +100,11 @@ class TestMessage:
         """
         with pytest.raises(ValueError, match=r"Unknown message type: BOGUS"):
             Message.from_json(data)
+
+
+class TestRequest:
+
+    """Test cases for request messages."""
 
     def test_register_player_valid(self) -> None:
         data = """
@@ -539,62 +563,164 @@ class TestMessage:
     def test_register_player_roundtrip(self) -> None:
         context = RegisterPlayerContext(handle="leela")
         message = Message(MessageType.REGISTER_PLAYER, context)
-        self.roundtrip(message)
+        roundtrip(message)
 
     def test_reregister_player_roundtrip(self) -> None:
         message = Message(MessageType.REREGISTER_PLAYER)
-        self.roundtrip(message)
+        roundtrip(message)
 
     def test_unregister_player_roundtrip(self) -> None:
         message = Message(MessageType.UNREGISTER_PLAYER)
-        self.roundtrip(message)
+        roundtrip(message)
 
     def test_list_players_roundtrip(self) -> None:
         message = Message(MessageType.LIST_PLAYERS)
-        self.roundtrip(message)
+        roundtrip(message)
 
     def test_advertise_game_roundtrip(self) -> None:
         context = AdvertiseGameContext("Leela's Game", GameMode.STANDARD, 3, Visibility.PRIVATE, ["fry", "bender"])
         message = Message(MessageType.ADVERTISE_GAME, context)
-        self.roundtrip(message)
+        roundtrip(message)
 
     def test_list_available_games_roundtrip(self) -> None:
         message = Message(MessageType.LIST_AVAILABLE_GAMES)
-        self.roundtrip(message)
+        roundtrip(message)
 
     def test_join_game_roundtrip(self) -> None:
         context = JoinGameContext("game")
         message = Message(MessageType.JOIN_GAME, context)
-        self.roundtrip(message)
+        roundtrip(message)
 
     def test_quit_game_roundtrip(self) -> None:
         message = Message(MessageType.QUIT_GAME)
-        self.roundtrip(message)
+        roundtrip(message)
 
     def test_start_game_roundtrip(self) -> None:
         message = Message(MessageType.START_GAME)
-        self.roundtrip(message)
+        roundtrip(message)
 
     def test_cancel_game_roundtrip(self) -> None:
         message = Message(MessageType.CANCEL_GAME)
-        self.roundtrip(message)
+        roundtrip(message)
 
     def test_execute_move_roundtrip(self) -> None:
         context = ExecuteMoveContext("move")
         message = Message(MessageType.EXECUTE_MOVE, context)
-        self.roundtrip(message)
+        roundtrip(message)
 
     def test_retrieve_game_state_roundtrip(self) -> None:
         message = Message(MessageType.RETRIEVE_GAME_STATE)
-        self.roundtrip(message)
+        roundtrip(message)
 
     def test_send_message_roundtrip(self) -> None:
         context = SendMessageContext("Hello", ["fry", "bender"])
         message = Message(MessageType.SEND_MESSAGE, context)
-        self.roundtrip(message)
+        roundtrip(message)
 
-    # noinspection PyMethodMayBeStatic
-    def roundtrip(self, message: Message) -> None:
-        data = message.to_json()
-        copy = Message.from_json(data)
-        assert message is not copy and message == copy
+
+class TestEvent:
+    def test_request_failed_roundtrip(self) -> None:
+        context = RequestFailedContext(FailureReason.INTERNAL_ERROR, "it didn't work")
+        message = Message(MessageType.REQUEST_FAILED, context)
+        roundtrip(message)
+
+    def test_registered_players_roundtrip(self) -> None:
+        player = RegisteredPlayer(
+            "handle",
+            to_date("2020-04-27T09:02:14,334"),
+            to_date("2020-04-27T13:19:23,992"),
+            ConnectionState.CONNECTED,
+            ActivityState.ACTIVE,
+            PlayerState.JOINED,
+            "game",
+        )
+        context = RegisteredPlayersContext(players=[player])
+        message = Message(MessageType.REGISTERED_PLAYERS, context)
+        roundtrip(message)
+
+    def test_available_games_roundtrip(self) -> None:
+        game = AvailableGame("game", "name", GameMode.STANDARD, "leela", 3, 2, Visibility.PUBLIC, True)
+        context = AvailableGamesContext(games=[game])
+        message = Message(MessageType.AVAILABLE_GAMES, context)
+        roundtrip(message)
+
+    def test_player_registered_roundtrip(self) -> None:
+        context = PlayerRegisteredContext("player")
+        message = Message(MessageType.PLAYER_REGISTERED, context)
+        roundtrip(message)
+
+    def test_player_disconnected_roundtrip(self) -> None:
+        message = Message(MessageType.PLAYER_DISCONNECTED)
+        roundtrip(message)
+
+    def test_player_idle_roundtrip(self) -> None:
+        message = Message(MessageType.PLAYER_IDLE)
+        roundtrip(message)
+
+    def test_player_inactive_roundtrip(self) -> None:
+        message = Message(MessageType.PLAYER_INACTIVE)
+        roundtrip(message)
+
+    def test_player_message_received_roundtrip(self) -> None:
+        context = PlayerMessageReceivedContext("leela", ["hermes", "bender"], "Hello")
+        message = Message(MessageType.PLAYER_MESSAGE_RECEIVED, context)
+        roundtrip(message)
+
+    def test_game_advertised_roundtrip(self) -> None:
+        context = GameAdvertisedContext("game", "name", GameMode.ADULT, "leela", 3, Visibility.PRIVATE, ["fry", "nibbler"])
+        message = Message(MessageType.GAME_ADVERTISED, context)
+        roundtrip(message)
+
+    def test_game_invitation_roundtrip(self) -> None:
+        context = GameInvitationContext("game", "name", GameMode.STANDARD, "leela", 3, Visibility.PUBLIC)
+        message = Message(MessageType.GAME_INVITATION, context)
+        roundtrip(message)
+
+    def test_game_joined_roundtrip(self) -> None:
+        context = GameJoinedContext("game")
+        message = Message(MessageType.GAME_JOINED, context)
+        roundtrip(message)
+
+    def test_game_started_roundtrip(self) -> None:
+        message = Message(MessageType.GAME_STARTED)
+        roundtrip(message)
+
+    def test_game_cancelled_roundtrip(self) -> None:
+        context = GameCancelledContext(CancelledReason.CANCELLED, "YELLOW player (nibbler) quit")
+        message = Message(MessageType.GAME_CANCELLED, context)
+        roundtrip(message)
+
+    def test_game_completed_roundtrip(self) -> None:
+        context = GameCompletedContext("YELLOW player (nibbler) won after 46 turns")
+        message = Message(MessageType.GAME_COMPLETED, context)
+        roundtrip(message)
+
+    def test_game_idle_roundtrip(self) -> None:
+        message = Message(MessageType.GAME_IDLE)
+        roundtrip(message)
+
+    def test_game_inactive_roundtrip(self) -> None:
+        message = Message(MessageType.GAME_INACTIVE)
+        roundtrip(message)
+
+    def test_game_obsolete_roundtrip(self) -> None:
+        message = Message(MessageType.GAME_OBSOLETE)
+        roundtrip(message)
+
+    def test_game_player_change_roundtrip(self) -> None:
+        red = GamePlayer("leela", PlayerType.HUMAN, PlayerState.QUIT)
+        yellow = GamePlayer(None, PlayerType.PROGRAMMATIC, PlayerState.PLAYING)
+        players = {PlayerColor.RED: red, PlayerColor.YELLOW: yellow}
+        context = GamePlayerChangeContext("YELLOW player (leela) quit", players)
+        message = Message(MessageType.GAME_PLAYER_CHANGE, context)
+        roundtrip(message)
+
+    def test_game_state_change_roundtrip(self) -> None:
+        context = GameStateChangeContext("blech")  # TODO: change this once we know what this context looks like
+        message = Message(MessageType.GAME_STATE_CHANGE, context)
+        roundtrip(message)
+
+    def test_game_player_turn_roundtrip(self) -> None:
+        context = GamePlayerTurnContext("blech")  # TODO: change this once we know what this context looks like
+        message = Message(MessageType.GAME_PLAYER_TURN, context)
+        roundtrip(message)

@@ -369,8 +369,8 @@ Example message:
     "players": [
        {
          "handle": "leela",
-         "registration_date": "2020-04-23 08:42:31,443",
-         "last_active_date": "2020-04-23 08:53:19,116",
+         "registration_date": "2020-04-23 08:42:31,443+00:00",
+         "last_active_date": "2020-04-23 08:53:19,116+00:00",
          "connection_state": "CONNECTED",
          "activity_state": "ACTIVE",
          "play_state": "JOINED"
@@ -378,8 +378,8 @@ Example message:
        },
        {
          "handle": "nibbler",
-         "registration_date": "2020-04-23 09:10:00,116",
-         "last_active_date": "2020-04-23 09:13:02,221",
+         "registration_date": "2020-04-23 09:10:00,116+00:00",
+         "last_active_date": "2020-04-23 09:13:02,221+00:00",
          "connection_state": "DISCONNECTED",
          "activity_state": "IDLE",
          "play_state": "PLAYING",
@@ -387,8 +387,8 @@ Example message:
        },
        {
          "handle": "hermes",
-         "registration_date": "2020-04-23 10:13:03,441",
-         "last_active_date": "2020-04-23 10:13:03,441",
+         "registration_date": "2020-04-23 10:13:03,441+00:00",
+         "last_active_date": "2020-04-23 10:13:03,441+00:00",
          "connection_state": "CONNECTED",
          "activity_state": "ACTIVE",
          "play_state": "WAITING",
@@ -656,23 +656,23 @@ Example message:
     "players": {
       "RED": {
         "handle": "leela",
-        "type": "HUMAN",
-        "state": "JOINED"  
+        "player_type": "HUMAN",
+        "player_state": "JOINED"  
       },
       "YELLOW": {
         "handle": "nibbler",
-        "type": "HUMAN",
-        "state": "QUIT"
+        "player_type": "HUMAN",
+        "player_state": "QUIT"
       },
       "BLUE": {
         "handle": null,
-        "type": "PROGRAMMATIC",
-        "state": "JOINED"
+        "player_type": "PROGRAMMATIC",
+        "player_state": "JOINED"
       },
       "GREEN": {
         "handle": "bender",
-        "type": "HUMAN",
-        "state": "DISCONNECTED"
+        "player_type": "HUMAN",
+        "player_state": "DISCONNECTED"
       }
     }
   }
