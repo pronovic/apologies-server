@@ -19,7 +19,7 @@ from __future__ import annotations  # see: https://stackoverflow.com/a/33533514/
 
 from abc import ABC
 from enum import Enum
-from typing import Any, Dict, Optional, Sequence
+from typing import Any, Dict, Optional, Sequence, Type
 
 import attr
 import cattr
@@ -307,42 +307,79 @@ class MessageType(Enum):
     """Enumeration of all message types, mapped to the associated context (if any)."""
 
     # Requests sent from client to server
-    REGISTER_PLAYER = RegisterPlayerContext
-    REREGISTER_PLAYER = None
-    UNREGISTER_PLAYER = None
-    LIST_PLAYERS = None
-    ADVERTISE_GAME = AdvertiseGameContext
-    LIST_AVAILABLE_GAMES = None
-    JOIN_GAME = JoinGameContext
-    QUIT_GAME = None
-    START_GAME = None
-    CANCEL_GAME = None
-    EXECUTE_MOVE = ExecuteMoveContext
-    RETRIEVE_GAME_STATE = None
-    SEND_MESSAGE = SendMessageContext
+    REGISTER_PLAYER = "Register Player"
+    REREGISTER_PLAYER = "Reregister Player"
+    UNREGISTER_PLAYER = "Unregister Player"
+    LIST_PLAYERS = "List Players"
+    ADVERTISE_GAME = "Advertise Game"
+    LIST_AVAILABLE_GAMES = "List Available"
+    JOIN_GAME = "Join Game"
+    QUIT_GAME = "Quit Game"
+    START_GAME = "Start Game"
+    CANCEL_GAME = "Cancel Game"
+    EXECUTE_MOVE = "Execute Move"
+    RETRIEVE_GAME_STATE = "Retrieve Game State"
+    SEND_MESSAGE = "Send Message"
 
     # Events published from server to one or more clients
-    REQUEST_FAILED = RequestFailedContext
-    REGISTERED_PLAYERS = RegisteredPlayersContext
-    AVAILABLE_GAMES = AvailableGamesContext
-    PLAYER_REGISTERED = PlayerRegisteredContext
-    PLAYER_DISCONNECTED = None
-    PLAYER_IDLE = None
-    PLAYER_INACTIVE = None
-    PLAYER_MESSAGE_RECEIVED = PlayerMessageReceivedContext
-    GAME_ADVERTISED = GameAdvertisedContext
-    GAME_INVITATION = GameInvitationContext
-    GAME_JOINED = GameJoinedContext
-    GAME_STARTED = None
-    GAME_CANCELLED = GameCancelledContext
-    GAME_COMPLETED = GameCompletedContext
-    GAME_IDLE = None
-    GAME_INACTIVE = None
-    GAME_OBSOLETE = None
-    GAME_PLAYER_CHANGE = GamePlayerChangeContext
-    GAME_STATE_CHANGE = GameStateChangeContext
-    GAME_PLAYER_TURN = GamePlayerTurnContext
+    REQUEST_FAILED = "Request Failed"
+    REGISTERED_PLAYERS = "Registered Players"
+    AVAILABLE_GAMES = "Available Games"
+    PLAYER_REGISTERED = "Player Registered"
+    PLAYER_DISCONNECTED = "Player Disconnected"
+    PLAYER_IDLE = "Player Idle"
+    PLAYER_INACTIVE = "Player Inactive"
+    PLAYER_MESSAGE_RECEIVED = "Player Message Received"
+    GAME_ADVERTISED = "Game Advertised"
+    GAME_INVITATION = "Game Invitation"
+    GAME_JOINED = "Game Joined"
+    GAME_STARTED = "Game Started"
+    GAME_CANCELLED = "Game Cancelled"
+    GAME_COMPLETED = "Game Completed"
+    GAME_IDLE = "Game Idle"
+    GAME_INACTIVE = "Game Inactive"
+    GAME_OBSOLETE = "Game Obsolete"
+    GAME_PLAYER_CHANGE = "Game Player Change"
+    GAME_STATE_CHANGE = "Game State Change"
+    GAME_PLAYER_TURN = "Game Player Turn"
 
+
+# Map from MessageType to context
+_CONTEXT: Dict[MessageType, Optional[Type[Context]]] = {
+    MessageType.REGISTER_PLAYER: RegisterPlayerContext,
+    MessageType.REREGISTER_PLAYER: None,
+    MessageType.UNREGISTER_PLAYER: None,
+    MessageType.LIST_PLAYERS: None,
+    MessageType.ADVERTISE_GAME: AdvertiseGameContext,
+    MessageType.LIST_AVAILABLE_GAMES: None,
+    MessageType.JOIN_GAME: JoinGameContext,
+    MessageType.QUIT_GAME: None,
+    MessageType.START_GAME: None,
+    MessageType.CANCEL_GAME: None,
+    MessageType.EXECUTE_MOVE: ExecuteMoveContext,
+    MessageType.RETRIEVE_GAME_STATE: None,
+    MessageType.SEND_MESSAGE: SendMessageContext,
+    MessageType.REQUEST_FAILED: RequestFailedContext,
+    MessageType.REGISTERED_PLAYERS: RegisteredPlayersContext,
+    MessageType.AVAILABLE_GAMES: AvailableGamesContext,
+    MessageType.PLAYER_REGISTERED: PlayerRegisteredContext,
+    MessageType.PLAYER_DISCONNECTED: None,
+    MessageType.PLAYER_IDLE: None,
+    MessageType.PLAYER_INACTIVE: None,
+    MessageType.PLAYER_MESSAGE_RECEIVED: PlayerMessageReceivedContext,
+    MessageType.GAME_ADVERTISED: GameAdvertisedContext,
+    MessageType.GAME_INVITATION: GameInvitationContext,
+    MessageType.GAME_JOINED: GameJoinedContext,
+    MessageType.GAME_STARTED: None,
+    MessageType.GAME_CANCELLED: GameCancelledContext,
+    MessageType.GAME_COMPLETED: GameCompletedContext,
+    MessageType.GAME_IDLE: None,
+    MessageType.GAME_INACTIVE: None,
+    MessageType.GAME_OBSOLETE: None,
+    MessageType.GAME_PLAYER_CHANGE: GamePlayerChangeContext,
+    MessageType.GAME_STATE_CHANGE: GameStateChangeContext,
+    MessageType.GAME_PLAYER_TURN: GamePlayerTurnContext,
+}
 
 # List of all enumerations that are part of the public interface
 _ENUMS = [
@@ -382,7 +419,7 @@ class Message:
     """A message that is part of the public interface, either a client request or a published event."""
 
     message = attr.ib(type=MessageType)
-    context = attr.ib(type=Context, default=None)
+    context = attr.ib(type=Any, default=None)
 
     @message.validator
     def _validate_message(self, attribute: Attribute[MessageType], value: MessageType) -> None:
@@ -391,10 +428,10 @@ class Message:
 
     @context.validator
     def _validate_context(self, attribute: Attribute[Context], value: Context) -> None:
-        if self.message.value is not None:
+        if _CONTEXT[self.message] is not None:
             if self.context is None:
                 raise ValueError("Message type %s requires a context" % self.message.name)
-            elif not isinstance(self.context, self.message.value):
+            elif not isinstance(self.context, _CONTEXT[self.message]):  # type: ignore
                 raise ValueError("Message type %s does not support this context" % self.message.name)
         else:
             if self.context is not None:
@@ -417,7 +454,7 @@ class Message:
             message = MessageType[d["message"]]
         except KeyError:
             raise ValueError("Unknown message type: %s" % d["message"])
-        if message.value is None:
+        if _CONTEXT[message] is None:
             if "context" in d and d["context"] is not None:
                 raise ValueError("Message type %s does not allow a context" % message.name)
             context = None
@@ -425,7 +462,7 @@ class Message:
             if "context" not in d or d["context"] is None:
                 raise ValueError("Message type %s requires a context" % message.name)
             try:
-                context = _CONVERTER.structure(d["context"], message.value)
+                context = _CONVERTER.structure(d["context"], _CONTEXT[message])
             except KeyError as e:
                 raise ValueError("Invalid value %s" % str(e))
             except TypeError as e:

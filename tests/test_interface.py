@@ -9,6 +9,21 @@ from apologiesserver.interface import *
 
 
 class TestMessage:
+    def test_message_invalid_type(self) -> None:
+        with pytest.raises(ValueError, match=r"'message' must be a MessageType"):
+            Message(None, "Hello")  # type: ignore
+        with pytest.raises(ValueError, match=r"'message' must be a MessageType"):
+            Message("", "Hello")  # type: ignore
+        with pytest.raises(ValueError, match=r"'message' must be a MessageType"):
+            Message(PlayerType.HUMAN, "Hello")  # type: ignore
+
+    def test_message_invalid_context(self) -> None:
+        with pytest.raises(ValueError, match=r"Message type REGISTER_PLAYER requires a context"):
+            Message(MessageType.REGISTER_PLAYER, None)
+        with pytest.raises(ValueError, match=r"Message type GAME_JOINED does not support this context"):
+            Message(MessageType.GAME_JOINED, "Hello")
+        with pytest.raises(ValueError, match=r"Message type PLAYER_IDLE does not allow a context"):
+            Message(MessageType.PLAYER_IDLE, "Hello")
 
     def test_from_json_missing_message(self) -> None:
         data = """
@@ -20,8 +35,8 @@ class TestMessage:
         }
         """
         with pytest.raises(ValueError, match=r"Message type is required"):
-            Message.from_json(data)    
-    
+            Message.from_json(data)
+
     def test_from_json_missing_context(self) -> None:
         data = """
         {
