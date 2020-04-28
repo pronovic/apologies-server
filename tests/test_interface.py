@@ -2,8 +2,11 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=wildcard-import,too-many-public-methods
 
+from typing import Sequence
+
 import pytest
-from apologies.game import Card, CardType, GameMode, Player, PlayerColor, PlayerView
+from apologies.game import Card, CardType, GameMode, Pawn, Player, PlayerColor, PlayerView, Position
+from apologies.rules import Action, ActionType, Move
 from pendulum.datetime import DateTime
 from pendulum.parser import parse
 
@@ -45,8 +48,53 @@ def create_view() -> PlayerView:
     return PlayerView(player, opponents)
 
 
+def create_moves_simple() -> Sequence[Move]:
+    """Create a complex move for testing."""
+    pawn = Pawn(color=PlayerColor.RED, index=1, name="V", position=Position().move_to_safe(3))
+    position = Position().move_to_square(10)
+
+    move = Move(
+        id="a9fff13fbe5e46feaeda87382bf4c3b8",
+        card=Card("card1", CardType.CARD_APOLOGIES),
+        actions=[Action(ActionType.MOVE_TO_POSITION, pawn, position)],
+        side_effects=[],
+    )
+
+    return [move]
+
+
+def create_moves_complex() -> Sequence[Move]:
+    """Create a complex move for testing."""
+    pawn1 = Pawn(color=PlayerColor.RED, index=1, name="V", position=Position().move_to_safe(3))
+    position1 = Position().move_to_square(10)
+
+    pawn2 = Pawn(color=PlayerColor.YELLOW, index=3, name="W", position=Position().move_to_square(10))
+    position2 = Position().move_to_square(11)
+
+    pawn3 = Pawn(color=PlayerColor.BLUE, index=2, name="X", position=Position().move_to_square(32))
+
+    pawn4 = Pawn(color=PlayerColor.RED, index=3, name="Z", position=Position().move_to_square(17))
+    position4 = Position().move_to_square(27)
+
+    move1 = Move(
+        id="a9fff13fbe5e46feaeda87382bf4c3b8",
+        card=Card("card1", CardType.CARD_APOLOGIES),
+        actions=[Action(ActionType.MOVE_TO_POSITION, pawn1, position1), Action(ActionType.MOVE_TO_POSITION, pawn2, position2),],
+        side_effects=[Action(ActionType.MOVE_TO_START, pawn3)],
+    )
+
+    move2 = Move(
+        id="d05f9b511b6e439aa18c8b70cbbcc5d3",
+        card=Card("card2", CardType.CARD_10),
+        actions=[Action(ActionType.MOVE_TO_POSITION, pawn4, position4)],
+        side_effects=[],
+    )
+
+    return [move1, move2]
+
+
 class TestGameStateChangeContext:
-    def test_from_view(self) -> None:
+    def test_for_view(self) -> None:
         view = create_view()
         context = GameStateChangeContext.for_view(view)
 
@@ -54,20 +102,64 @@ class TestGameStateChangeContext:
         assert player.color == PlayerColor.RED
         assert player.turns == 16
         assert player.hand == [CardType.CARD_APOLOGIES, CardType.CARD_1]
-        assert player.pawns[0] == GameStatePawn(start=False, home=False, safe=None, square=32)
-        assert player.pawns[1] == GameStatePawn(start=False, home=False, safe=3, square=None)
-        assert player.pawns[2] == GameStatePawn(start=False, home=False, safe=None, square=45)
-        assert player.pawns[3] == GameStatePawn(start=True, home=False, safe=None, square=None)
+        assert player.pawns[0] == GameStatePawn(color=PlayerColor.RED, id="0", start=False, home=False, safe=None, square=32)
+        assert player.pawns[1] == GameStatePawn(color=PlayerColor.RED, id="1", start=False, home=False, safe=3, square=None)
+        assert player.pawns[2] == GameStatePawn(color=PlayerColor.RED, id="2", start=False, home=False, safe=None, square=45)
+        assert player.pawns[3] == GameStatePawn(color=PlayerColor.RED, id="3", start=True, home=False, safe=None, square=None)
 
         assert len(context.opponents) == 1
         opponent = context.opponents[0]
         assert opponent.color == PlayerColor.GREEN
         assert opponent.turns == 15
         assert opponent.hand == [CardType.CARD_5, CardType.CARD_11]
-        assert opponent.pawns[0] == GameStatePawn(start=True, home=False, safe=None, square=None)
-        assert opponent.pawns[1] == GameStatePawn(start=False, home=True, safe=None, square=None)
-        assert opponent.pawns[2] == GameStatePawn(start=False, home=False, safe=4, square=None)
-        assert opponent.pawns[3] == GameStatePawn(start=False, home=False, safe=None, square=19)
+        assert opponent.pawns[0] == GameStatePawn(color=PlayerColor.GREEN, id="0", start=True, home=False, safe=None, square=None)
+        assert opponent.pawns[1] == GameStatePawn(color=PlayerColor.GREEN, id="1", start=False, home=True, safe=None, square=None)
+        assert opponent.pawns[2] == GameStatePawn(color=PlayerColor.GREEN, id="2", start=False, home=False, safe=4, square=None)
+        assert opponent.pawns[3] == GameStatePawn(color=PlayerColor.GREEN, id="3", start=False, home=False, safe=None, square=19)
+
+
+class TestGamePlayerTurnContext:
+    def test_for_moves_simple(self) -> None:
+        moves = create_moves_simple()
+        context = GamePlayerTurnContext.for_moves(moves)
+
+        assert context.drawn_card == CardType.CARD_APOLOGIES  # because there is only one card among the moves
+        assert len(context.moves) == 1
+
+        move = context.moves["a9fff13fbe5e46feaeda87382bf4c3b8"]
+        assert move.move_id == "a9fff13fbe5e46feaeda87382bf4c3b8"
+        assert move.card == CardType.CARD_APOLOGIES
+        assert len(move.actions) == 1
+        assert len(move.side_effects) == 0
+        assert move.actions[0].start == GameStatePawn(PlayerColor.RED, id="1", start=False, home=False, safe=3, square=None)
+        assert move.actions[0].end == GameStatePawn(PlayerColor.RED, id="1", start=False, home=False, safe=None, square=10)
+
+    def test_for_moves_complex(self) -> None:
+        moves = create_moves_complex()
+        context = GamePlayerTurnContext.for_moves(moves)
+
+        assert context.drawn_card is None  # because there is more than one card among the legal moves
+        assert len(context.moves) == 2
+
+        move = context.moves["a9fff13fbe5e46feaeda87382bf4c3b8"]
+        assert move.move_id == "a9fff13fbe5e46feaeda87382bf4c3b8"
+        assert move.card == CardType.CARD_APOLOGIES
+        assert len(move.actions) == 2
+        assert len(move.side_effects) == 1
+        assert move.actions[0].start == GameStatePawn(PlayerColor.RED, id="1", start=False, home=False, safe=3, square=None)
+        assert move.actions[0].end == GameStatePawn(PlayerColor.RED, id="1", start=False, home=False, safe=None, square=10)
+        assert move.actions[1].start == GameStatePawn(PlayerColor.YELLOW, id="3", start=False, home=False, safe=None, square=10)
+        assert move.actions[1].end == GameStatePawn(PlayerColor.YELLOW, id="3", start=False, home=False, safe=None, square=11)
+        assert move.side_effects[0].start == GameStatePawn(PlayerColor.BLUE, id="2", start=False, home=False, safe=None, square=32)
+        assert move.side_effects[0].end == GameStatePawn(PlayerColor.BLUE, id="2", start=True, home=False, safe=None, square=None)
+
+        move = context.moves["d05f9b511b6e439aa18c8b70cbbcc5d3"]
+        assert move.move_id == "d05f9b511b6e439aa18c8b70cbbcc5d3"
+        assert move.card == CardType.CARD_10
+        assert len(move.actions) == 1
+        assert len(move.side_effects) == 0
+        assert move.actions[0].start == GameStatePawn(PlayerColor.RED, id="3", start=False, home=False, safe=None, square=17)
+        assert move.actions[0].end == GameStatePawn(PlayerColor.RED, id="3", start=False, home=False, safe=None, square=27)
 
 
 class TestGeneral:
@@ -780,6 +872,7 @@ class TestEvent:
         roundtrip(message)
 
     def test_game_player_turn_roundtrip(self) -> None:
-        context = GamePlayerTurnContext("blech")  # TODO: change this once we know what this context looks like
+        moves = create_moves_complex()
+        context = GamePlayerTurnContext.for_moves(moves)
         message = Message(MessageType.GAME_PLAYER_TURN, context)
         roundtrip(message)

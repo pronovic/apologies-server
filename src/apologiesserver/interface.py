@@ -24,7 +24,8 @@ from typing import Any, Dict, Optional, Sequence, Type
 import attr
 import cattr
 import orjson
-from apologies.game import CardType, GameMode, Pawn, Player, PlayerColor, PlayerView
+from apologies.game import CardType, GameMode, Pawn, Player, PlayerColor, PlayerView, Position
+from apologies.rules import Action, ActionType, Move
 from attr import Attribute
 from attr.validators import and_, in_
 from pendulum.datetime import DateTime
@@ -304,15 +305,34 @@ class GamePlayerChangeContext(Context):
 class GameStatePawn:
     """State of a pawn in a game."""
 
-    start = attr.ib(default=True, type=bool)
-    home = attr.ib(default=False, type=bool)
-    safe = attr.ib(default=None, type=Optional[int])
-    square = attr.ib(default=None, type=Optional[int])
+    color = attr.ib(type=PlayerColor)
+    id = attr.ib(type=str)
+    start = attr.ib(type=bool)
+    home = attr.ib(type=bool)
+    safe = attr.ib(type=Optional[int])
+    square = attr.ib(type=Optional[int])
 
     @staticmethod
     def for_pawn(pawn: Pawn) -> GameStatePawn:
         """Create a GameStatePawn based on apologies.game.Pawn."""
-        return GameStatePawn(pawn.position.start, pawn.position.home, pawn.position.safe, pawn.position.square)
+        color = pawn.color
+        index = "%s" % pawn.index
+        start = pawn.position.start
+        home = pawn.position.home
+        safe = pawn.position.safe
+        square = pawn.position.square
+        return GameStatePawn(color, index, start, home, safe, square)
+
+    @staticmethod
+    def for_position(pawn: Pawn, position: Position) -> GameStatePawn:
+        """Create a GameStatePawn based on apologies.game.Pawn and apologies.gamePosition."""
+        color = pawn.color
+        index = "%s" % pawn.index
+        start = position.start
+        home = position.home
+        safe = position.safe
+        square = position.square
+        return GameStatePawn(color, index, start, home, safe, square)
 
 
 @attr.s
@@ -350,10 +370,61 @@ class GameStateChangeContext(Context):
 
 
 @attr.s
+class GamePlayerAction:
+    """An action applied to a pawn in a game."""
+
+    start = attr.ib(type=GameStatePawn)
+    end = attr.ib(type=GameStatePawn)
+
+    @staticmethod
+    def for_action(action: Action) -> GamePlayerAction:
+        """Create a GamePlayerAction based on apologies.rules.Action."""
+        if action.actiontype == ActionType.MOVE_TO_START:
+            # We normalize a MOVE_TO_START action to just a position change, to simplify what the client sees
+            start = GameStatePawn.for_pawn(action.pawn)
+            end = GameStatePawn.for_position(action.pawn, Position().move_to_start())
+            return GamePlayerAction(start, end)
+        elif action.actiontype == ActionType.MOVE_TO_POSITION:
+            start = GameStatePawn.for_pawn(action.pawn)
+            end = GameStatePawn.for_position(action.pawn, action.position)
+            return GamePlayerAction(start, end)
+        else:
+            raise RuntimeError("Can't handle actiontype %s" % action.actiontype)
+
+
+@attr.s
+class GamePlayerMove:
+    """A move that may be executed as a result of a player's turn."""
+
+    move_id = attr.ib(type=str)
+    card = attr.ib(type=CardType)
+    actions = attr.ib(type=Sequence[GamePlayerAction])
+    side_effects = attr.ib(type=Sequence[GamePlayerAction])
+
+    @staticmethod
+    def for_move(move: Move) -> GamePlayerMove:
+        """Create a GamePlayerMove based on apologies.rules.Move."""
+        move_id = move.id
+        card = move.card.cardtype
+        actions = [GamePlayerAction.for_action(action) for action in move.actions]
+        side_effects = [GamePlayerAction.for_action(side_effect) for side_effect in move.side_effects]
+        return GamePlayerMove(move_id, card, actions, side_effects)
+
+
+@attr.s
 class GamePlayerTurnContext(Context):
     """Context for an GAME_PLAYER_TURN event."""
 
-    stuff = attr.ib(type=str)  # TODO: finalize GamePlayerTurnContext
+    drawn_card = attr.ib(type=Optional[CardType])
+    moves = attr.ib(type=Dict[str, GamePlayerMove])
+
+    @staticmethod
+    def for_moves(moves: Sequence[Move]) -> GamePlayerTurnContext:
+        """Create a GamePlayerTurnContext based on a sequence of apologies.rules.Move."""
+        cards = {move.card.cardtype for move in moves}
+        drawn_card = None if len(cards) > 1 else next(iter(cards))  # if there's only one card, it's the one they drew from the deck
+        converted = {move.id: GamePlayerMove.for_move(move) for move in moves}
+        return GamePlayerTurnContext(drawn_card, converted)
 
 
 class MessageType(Enum):

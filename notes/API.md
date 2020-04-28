@@ -681,15 +681,17 @@ Example message:
 
 ### Game State Change
 
-When triggered, this event notifies one or more players about the current state
-of a game.  The event can be triggered when a player requests the current state
-via the _Request Game State_ request, or can be triggered when the state of
-the game has changed.  Among other things, the state of the game is considered
-to have changed when the game starts, when a player executes a move, when a
-player wins the game, or when the game is cancelled or is terminated due to
-inactivity.  Each player's view of the game is different; for instance, in an
-`ADULT` mode game, a player can only see their own cards, not the cards held by
-other players.  
+When triggered, this event notifies a player about the current state of a game.
+The event can be triggered when a player requests the current state via the
+_Request Game State_ request, or can be triggered when the state of the game
+has changed.  Among other things, the state of the game is considered to have
+changed when the game starts, when a player executes a move, when a player wins
+the game, or when the game is cancelled or is terminated due to inactivity.
+Each player's view of the game is different; for instance, in an `ADULT` mode
+game, a player can only see their own cards, not the cards held by other
+players.  In an `ADULT` mode game, there is no explict message when the player
+draws a card to fill their hand.  Instead, the state change event simply
+reflects the new hand.
 
 Example message:
 
@@ -703,24 +705,32 @@ Example message:
       "hand": [ "CARD_APOLOGIES", "CARD_1" ],
       "pawns": [
         {
+          "color": "RED",
+          "id": "0",
           "start": false,
           "home": false,
           "safe": null,
           "square": 32
         },
         {
+          "color": "RED",
+          "id": "1",
           "start": false,
           "home": false,
           "safe": 3,
           "square": null
         },
         {
+          "color": "RED",
+          "id": "2",
           "start": false,
           "home": false,
           "safe": null,
           "square": 45
         },
         {
+          "color": "RED",
+          "id": "3",
           "start": true,
           "home": false,
           "safe": null,
@@ -735,24 +745,32 @@ Example message:
         "hand": [ ],
         "pawns": [
           {
+            "color": "GREEN",
+            "id": "0",
             "start": true,
             "home": false,
             "safe": null,
             "square": null
           },
           {
+            "color": "GREEN",
+            "id": "1",
             "start": false,
             "home": true,
             "safe": null,
             "square": null
           },
           {
+            "color": "GREEN",
+            "id": "2",
             "start": false,
             "home": false,
             "safe": 4,
             "square": null
           },
           {
+            "color": "GREEN",
+            "id": "3",
             "start": false,
             "home": false,
             "safe": null,
@@ -768,11 +786,14 @@ Example message:
 ### Game Player Turn
 
 When the game play engine determines that it is a player's turn to execute a
-move, the server will notify the player.  The message will contain all of
-the information needed for the player to choose and execute a move, including
-the player's view of the game state, the card the player has pulled from the
-deck (if any), and the set of legal moves to choose from.  In response, the
-player must send back an _Execute Move_ request with its chosen move.
+move, the server will notify the player.  The message will contain all of the
+information needed for the player to choose and execute a legal move.  In
+response, the player must send back an _Execute Move_ request with the id of
+its chosen move.  In a `STANDARD` mode game, all moves will be for a single
+card, and that is the card that the player has drawn.  In an `ADULT` mode game,
+legal moves will span all of the cards in the player's hand and so the drawn
+card will be unset.  The player should assume that the state of the game board
+matches what was received in the most recent _Game State Change_ message.
 
 Example message:
 
@@ -780,7 +801,89 @@ Example message:
 {
   "message": "GAME_PLAYER_TURN",
   "context": {
-    // TBD
+    "drawn_card": "CARD_APOLOGIES",
+    "moves": {
+      "a9fff13fbe5e46feaeda87382bf4c3b8": {
+        "move_id": "a9fff13fbe5e46feaeda87382bf4c3b8",
+        "card": "CARD_APOLOGIES",
+        "actions": [
+          {
+            "start": {
+              "color": "RED",
+              "id": "1",
+              "start": false,
+              "home": false,
+              "safe": 3,
+              "square": null
+            },
+            "end": {
+              "color": "RED",
+              "id": "1",
+              "start": false,
+              "home": false,
+              "safe": null,
+              "square": 10
+            }
+          },
+          {
+            "start": {
+              "color": "YELLOW",
+              "id": "3",
+              "start": false,
+              "home": false,
+              "safe": null,
+              "square": 10
+            },
+            "end": {
+              "color": "YELLOW",
+              "id": "3",
+              "start": false,
+              "home": false,
+              "safe": null,
+              "square": 11
+            }
+          }
+        ],
+        "side_effects": [
+          {
+            "start": {
+              "color": "BLUE",
+              "id": "2",
+              "start": false,
+              "home": false,
+              "safe": null,
+              "square": 32
+            },
+            "end": {
+              "color": "BLUE",
+              "id": "2",
+              "start": true,
+              "home": false,
+              "safe": null,
+              "square": null
+            }
+          },
+          {
+            "start": {
+              "color": "GREEN",
+              "id": "0",
+              "start": false,
+              "home": true,
+              "safe": null,
+              "square": null
+            },
+            "end": {
+              "color": "GREEN",
+              "id": "0",
+              "start": false,
+              "home": false,
+              "safe": null,
+              "square": 12
+            }
+          }
+        ]
+      }
+    }
   }
 }
 ```
