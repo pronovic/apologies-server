@@ -697,7 +697,70 @@ Example message:
 {
   "message": "GAME_STATE_CHANGE",
   "context": {
-    // TBD
+    "player": {
+      "color": "RED",
+      "turns": 16,
+      "hand": [ "CARD_APOLOGIES", "CARD_1" ],
+      "pawns": [
+        {
+          "start": false,
+          "home": false,
+          "safe": null,
+          "square": 32
+        },
+        {
+          "start": false,
+          "home": false,
+          "safe": 3,
+          "square": null
+        },
+        {
+          "start": false,
+          "home": false,
+          "safe": null,
+          "square": 45
+        },
+        {
+          "start": true,
+          "home": false,
+          "safe": null,
+          "square": null
+        }
+      ]
+    },
+    "opponents": [
+      {
+        "color": "GREEN",
+        "turns": 15,
+        "hand": [ ],
+        "pawns": [
+          {
+            "start": true,
+            "home": false,
+            "safe": null,
+            "square": null
+          },
+          {
+            "start": false,
+            "home": true,
+            "safe": null,
+            "square": null
+          },
+          {
+            "start": false,
+            "home": false,
+            "safe": 4,
+            "square": null
+          },
+          {
+            "start": false,
+            "home": false,
+            "safe": null,
+            "square": 19
+          }
+        ]
+      }
+    ]
   }
 }
 ```

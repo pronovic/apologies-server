@@ -3,7 +3,7 @@
 # pylint: disable=wildcard-import,too-many-public-methods
 
 import pytest
-from apologies.game import GameMode, PlayerColor
+from apologies.game import Card, CardType, GameMode, Player, PlayerColor, PlayerView
 from pendulum.datetime import DateTime
 from pendulum.parser import parse
 
@@ -22,6 +22,52 @@ def roundtrip(message: Message) -> None:
     copy = Message.from_json(data)
     assert message is not copy
     assert message == copy
+
+
+def create_view() -> PlayerView:
+    """Create a realistic-looking player view for testing."""
+    player = Player(PlayerColor.RED)
+    player.turns = 16
+    player.hand = [Card("card1", CardType.CARD_APOLOGIES), Card("card2", CardType.CARD_1)]
+    player.pawns[0].position.move_to_square(32)
+    player.pawns[1].position.move_to_safe(3)
+    player.pawns[2].position.move_to_square(45)
+
+    opponent = Player(PlayerColor.GREEN)
+    opponent.turns = 15
+    opponent.hand = [Card("card3", CardType.CARD_5), Card("card4", CardType.CARD_11)]
+    opponent.pawns[1].position.move_to_home()
+    opponent.pawns[2].position.move_to_safe(4)
+    opponent.pawns[3].position.move_to_square(19)
+
+    opponents = {opponent.color: opponent}
+
+    return PlayerView(player, opponents)
+
+
+class TestGameStateChangeContext:
+    def test_from_view(self) -> None:
+        view = create_view()
+        context = GameStateChangeContext.for_view(view)
+
+        player = context.player
+        assert player.color == PlayerColor.RED
+        assert player.turns == 16
+        assert player.hand == [CardType.CARD_APOLOGIES, CardType.CARD_1]
+        assert player.pawns[0] == GameStatePawn(start=False, home=False, safe=None, square=32)
+        assert player.pawns[1] == GameStatePawn(start=False, home=False, safe=3, square=None)
+        assert player.pawns[2] == GameStatePawn(start=False, home=False, safe=None, square=45)
+        assert player.pawns[3] == GameStatePawn(start=True, home=False, safe=None, square=None)
+
+        assert len(context.opponents) == 1
+        opponent = context.opponents[0]
+        assert opponent.color == PlayerColor.GREEN
+        assert opponent.turns == 15
+        assert opponent.hand == [CardType.CARD_5, CardType.CARD_11]
+        assert opponent.pawns[0] == GameStatePawn(start=True, home=False, safe=None, square=None)
+        assert opponent.pawns[1] == GameStatePawn(start=False, home=True, safe=None, square=None)
+        assert opponent.pawns[2] == GameStatePawn(start=False, home=False, safe=4, square=None)
+        assert opponent.pawns[3] == GameStatePawn(start=False, home=False, safe=None, square=19)
 
 
 class TestGeneral:
@@ -728,7 +774,8 @@ class TestEvent:
         roundtrip(message)
 
     def test_game_state_change_roundtrip(self) -> None:
-        context = GameStateChangeContext("blech")  # TODO: change this once we know what this context looks like
+        view = create_view()
+        context = GameStateChangeContext.for_view(view)
         message = Message(MessageType.GAME_STATE_CHANGE, context)
         roundtrip(message)
 

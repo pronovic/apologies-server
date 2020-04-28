@@ -24,7 +24,7 @@ from typing import Any, Dict, Optional, Sequence, Type
 import attr
 import cattr
 import orjson
-from apologies.game import GameMode, PlayerColor
+from apologies.game import CardType, GameMode, Pawn, Player, PlayerColor, PlayerView
 from attr import Attribute
 from attr.validators import and_, in_
 from pendulum.datetime import DateTime
@@ -61,6 +61,8 @@ __all__ = [
     "GameCompletedContext",
     "GamePlayer",
     "GamePlayerChangeContext",
+    "GameStatePawn",
+    "GameStatePlayer",
     "GameStateChangeContext",
     "GamePlayerTurnContext",
     "MessageType",
@@ -299,10 +301,52 @@ class GamePlayerChangeContext(Context):
 
 
 @attr.s
+class GameStatePawn:
+    """State of a pawn in a game."""
+
+    start = attr.ib(default=True, type=bool)
+    home = attr.ib(default=False, type=bool)
+    safe = attr.ib(default=None, type=Optional[int])
+    square = attr.ib(default=None, type=Optional[int])
+
+    @staticmethod
+    def for_pawn(pawn: Pawn) -> GameStatePawn:
+        """Create a GameStatePawn based on apologies.game.Pawn."""
+        return GameStatePawn(pawn.position.start, pawn.position.home, pawn.position.safe, pawn.position.square)
+
+
+@attr.s
+class GameStatePlayer:
+    """State of a player in a game."""
+
+    color = attr.ib(type=PlayerColor)
+    turns = attr.ib(type=int)
+    hand = attr.ib(type=Sequence[CardType])
+    pawns = attr.ib(type=Sequence[GameStatePawn])
+
+    @staticmethod
+    def for_player(player: Player) -> GameStatePlayer:
+        """Create a GameStatePlayer based on apologies.game.Player."""
+        color = player.color
+        turns = player.turns
+        hand = [card.cardtype for card in player.hand]
+        pawns = [GameStatePawn.for_pawn(pawn) for pawn in player.pawns]
+        return GameStatePlayer(color, turns, hand, pawns)
+
+
+@attr.s
 class GameStateChangeContext(Context):
     """Context for an GAME_STATE_CHANGE event."""
 
-    stuff = attr.ib(type=str)  # TODO: finalize GameStateChangeContext
+    player = attr.ib(type=GameStatePlayer)
+    opponents = attr.ib(type=Sequence[GameStatePlayer])
+
+    @staticmethod
+    def for_view(view: PlayerView) -> GameStateChangeContext:
+        """Create a GameStateChangeContext based on apologies.game.PlayerView."""
+        player = GameStatePlayer.for_player(view.player)
+        opponents = [GameStatePlayer.for_player(opponent) for opponent in view.opponents.values()]
+        return GameStateChangeContext(player, opponents)
 
 
 @attr.s
@@ -402,6 +446,7 @@ _ENUMS = [
     MessageType,
     GameMode,
     PlayerColor,
+    CardType,
 ]
 
 _DATE_FORMAT = "YYYY-MM-DDTHH:mm:ss,SSSZ"  # gives us something like "2020-04-27T09:02:14,334+00:00"
