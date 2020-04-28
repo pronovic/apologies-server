@@ -34,18 +34,34 @@ class _EnumValidator:
             raise ValueError("'%s' must be one of [%s]" % (attribute.name, legal))
 
 
+@attrs(repr=False, slots=True, hash=True)
+class _LengthValidator:
+    """Validator for use by maxlength(), following the pattern from the standard attrs _InValidator."""
+
+    maxlength = attr.ib(type=int)
+
+    def __call__(self, instance: Any, attribute: Attribute, value: str) -> None:  # type: ignore
+        if len(value) > self.maxlength:
+            raise ValueError("'%s' must not exceed length %d" % (attribute.name, self.maxlength))
+
+
 def enum(options: Type[Enum]) -> _EnumValidator:
     """attrs validator to ensure that a value is a legal enumeration."""
     return _EnumValidator(options)
 
 
-def notempty(instance: Any, attribute: Attribute, value: Any) -> None:  # type: ignore
+def length(maxlength: int) -> _LengthValidator:
+    """attrs validator to ensure that a string value does not exceed a length."""
+    return _LengthValidator(maxlength)
+
+
+def notempty(_instance: Any, attribute: Attribute, value: Any) -> None:  # type: ignore
     """attrs validator to ensure that a list is not empty."""
     if len(value) == 0:
         raise ValueError("'%s' may not be empty" % attribute.name)
 
 
-def string(instance: Any, attribute: Attribute, value: str) -> None:  # type: ignore
+def string(_instance: Any, attribute: Attribute, value: str) -> None:  # type: ignore
     """attrs validator to ensure that a string is non-empty."""
     # Annoyingly, due to some quirk in the CattrConverter, we end up with "None" rather than None for strings set to JSON null
     # As a result, we need to prevent "None" as a legal value, but that's probably better anyway.
@@ -53,7 +69,7 @@ def string(instance: Any, attribute: Attribute, value: str) -> None:  # type: ig
         raise ValueError("'%s' must be a non-empty string" % attribute.name)
 
 
-def stringlist(instance: Any, attribute: Attribute, value: Sequence[str]) -> None:  # type: ignore
+def stringlist(_instance: Any, attribute: Attribute, value: Sequence[str]) -> None:  # type: ignore
     """attrs validator to ensure that a string list contains non-empty values."""
     # Annoyingly, due to some quirk in the CattrConverter, we end up with "None" rather than None for strings set to JSON null
     # As a result, we need to prevent "None" as a legal value, but that's probably better anyway.

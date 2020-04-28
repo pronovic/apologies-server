@@ -111,13 +111,13 @@ class TestRequest:
         {
           "message": "REGISTER_PLAYER",
           "context": {
-            "handle": "leela"
+            "handle": "1234567890123456789012345"
           }
         }
         """
         message = Message.from_json(data)
         assert message.message == MessageType.REGISTER_PLAYER
-        assert message.context.handle == "leela"
+        assert message.context.handle == "1234567890123456789012345"
 
     def test_register_player_invalid_handle_none(self) -> None:
         data = """
@@ -141,6 +141,18 @@ class TestRequest:
         }
         """
         with pytest.raises(ValueError, match=r"'handle' must be a non-empty string"):
+            Message.from_json(data)
+
+    def test_register_player_invalid_handle_length(self) -> None:
+        data = """
+        {
+          "message": "REGISTER_PLAYER",
+          "context": {
+            "handle": "12345678901234567890123456"
+          }
+        }
+        """
+        with pytest.raises(ValueError, match=r"'handle' must not exceed length 25"):
             Message.from_json(data)
 
     def test_advertise_game_valid_handles(self) -> None:

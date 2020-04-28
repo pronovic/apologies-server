@@ -30,7 +30,7 @@ from attr.validators import and_, in_
 from pendulum.datetime import DateTime
 from pendulum.parser import parse
 
-from .validator import enum, notempty, string, stringlist
+from .validator import enum, length, notempty, string, stringlist
 
 # There are a lot of classes as part of this interface, so it's useful to import *.
 # However, when we do that, we want to expose only the public parts of the interface.
@@ -125,11 +125,15 @@ class Context(ABC):
     """Abstract message context."""
 
 
+MAX_HANDLE = 25
+"""Maximum length of a player handle."""
+
+
 @attr.s
 class RegisterPlayerContext(Context):
     """Context for a REGISTER_PLAYER request."""
 
-    handle = attr.ib(type=str, validator=string)
+    handle = attr.ib(type=str, validator=and_(string, length(MAX_HANDLE)))
 
 
 @attr.s
@@ -435,14 +439,14 @@ class Message:
             raise ValueError("'%s' must be a MessageType" % attribute.name)
 
     @context.validator
-    def _validate_context(self, attribute: Attribute[Context], value: Context) -> None:
+    def _validate_context(self, _attribute: Attribute[Context], value: Context) -> None:
         if _CONTEXT[self.message] is not None:
-            if self.context is None:
+            if value is None:
                 raise ValueError("Message type %s requires a context" % self.message.name)
-            elif not isinstance(self.context, _CONTEXT[self.message]):  # type: ignore
+            elif not isinstance(value, _CONTEXT[self.message]):  # type: ignore
                 raise ValueError("Message type %s does not support this context" % self.message.name)
         else:
-            if self.context is not None:
+            if value is not None:
                 raise ValueError("Message type %s does not allow a context" % self.message.name)
 
     def to_json(self) -> str:
