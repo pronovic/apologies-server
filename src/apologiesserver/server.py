@@ -1,217 +1,282 @@
 # -*- coding: utf-8 -*-
 # vim: set ft=python ts=4 sw=4 expandtab:
+# pylint: disable=wildcard-import,unused-variable,unused-argument
+
+# TODO: remove unused-variable and unused-argument once code is done
 
 import asyncio
-import json
-import logging
-from typing import Awaitable
+import re
+import signal
+from asyncio import Future  # pylint: disable=unused-import
+from typing import Any, Callable, Coroutine, Dict, Optional, cast
 
+import attr
 import websockets
+from periodic import Periodic
 from websockets import WebSocketServerProtocol
 
-import time
-import asyncio
-import signal
-import logging
-from asyncio import AbstractEventLoop
+from .interface import *
+from .state import mark_player_active
 
-# logging.basicConfig()
 
-import logging
+@attr.s
+class ProcessingError(RuntimeError):
+    """Exception thrown when authorization is required and is missing."""
 
-logger = logging.getLogger("websockets")
-logger.setLevel(logging.DEBUG)
-logger.addHandler(logging.StreamHandler())
+    reason = attr.ib(type=FailureReason)
+    comment = attr.ib(type=Optional[str], default=None)
 
-# # Signals that are handled to cause shutdown
+
+async def _idle_game_check() -> None:
+    """Execute the Idle Game Check task."""
+
+
+async def _idle_player_check() -> None:
+    """Execute the Idle Player Check task."""
+
+
+async def _obsolete_game_check() -> None:
+    """Execute the Obsolete Game Check task."""
+
+
+async def _handle_register_player(websocket: WebSocketServerProtocol, message: Message) -> None:
+    """Handle the Register Player request."""
+    context = cast(RegisterPlayerContext, message.context)
+
+
+async def _handle_reregister_player(player_id: str, message: Message) -> None:
+    """Handle the Reregister Player request."""
+    mark_player_active(player_id)
+
+
+async def _handle_unregister_player(player_id: str, message: Message) -> None:
+    """Handle the Unregister Player request."""
+    mark_player_active(player_id)
+
+
+async def _handle_list_players(player_id: str, message: Message) -> None:
+    """Handle the List Players request."""
+    mark_player_active(player_id)
+
+
+async def _handle_advertise_game(player_id: str, message: Message) -> None:
+    """Handle the Advertise Game request."""
+    mark_player_active(player_id)
+    context = cast(AdvertiseGameContext, message.context)
+
+
+async def _handle_list_available_games(player_id: str, message: Message) -> None:
+    """Handle the List Available Games request."""
+    mark_player_active(player_id)
+
+
+async def _handle_join_game(player_id: str, message: Message) -> None:
+    """Handle the Join Game request."""
+    mark_player_active(player_id)
+    context = cast(JoinGameContext, message.context)
+
+
+async def _handle_quit_game(player_id: str, message: Message) -> None:
+    """Handle the Quit Game request."""
+    mark_player_active(player_id)
+
+
+async def _handle_start_game(player_id: str, message: Message) -> None:
+    """Handle the Start Game request."""
+    mark_player_active(player_id)
+
+
+async def _handle_cancel_game(player_id: str, message: Message) -> None:
+    """Handle the Cancel Game request."""
+    mark_player_active(player_id)
+
+
+async def _handle_execute_move(player_id: str, message: Message) -> None:
+    """Handle the Execute Move request."""
+    mark_player_active(player_id)
+    context = cast(ExecuteMoveContext, message.context)
+
+
+async def _handle_retrieve_game_state(player_id: str, message: Message) -> None:
+    """Handle the Retrieve Game State request."""
+    mark_player_active(player_id)
+
+
+async def _handle_send_message(player_id: str, message: Message) -> None:
+    """Handle the Send Message request."""
+    mark_player_active(player_id)
+    context = cast(SendMessageContext, message.context)
+
+
+async def _handle_server_shutdown() -> None:
+    """Handle the Server Shutdown event."""
+
+
+async def _handle_request_failed(websocket: WebSocketServerProtocol, exception: Exception) -> None:
+    """Handle the Request Failed event."""
+
+
+async def _handle_registered_players(player_id: str) -> None:
+    """Handle the Registered Players event."""
+
+
+async def _handle_available_games(player_id: str) -> None:
+    """Handle the AvailableGames event."""
+
+
+async def _handle_player_registered(player_id: str) -> None:
+    """Handle the Player Registered event."""
+
+
+async def _handle_player_disconnected(player_id: str) -> None:
+    """Handle the Player Disconnected event."""
+
+
+async def _handle_player_idle(player_id: str) -> None:
+    """Handle the Player Idle event."""
+
+
+async def _handle_player_inactive(player_id: str) -> None:
+    """Handle the Player Inactive event."""
+
+
+async def _handle_player_message_received(player_id: str) -> None:
+    """Handle the Player Message Received event."""
+
+
+async def _handle_game_advertised(player_id: str) -> None:
+    """Handle the GameAdvertised event."""
+
+
+async def _handle_game_invitation(player_id: str) -> None:
+    """Handle the Game Invitation event."""
+
+
+async def _handle_game_joined(player_id: str) -> None:
+    """Handle the Game Joined event."""
+
+
+async def _handle_game_started(player_id: str) -> None:
+    """Handle the Game Started event."""
+
+
+async def _handle_game_cancelled(player_id: str) -> None:
+    """Handle the Game Cancelled event."""
+
+
+async def _handle_game_completed(player_id: str) -> None:
+    """Handle the Game Completed event."""
+
+
+async def _handle_game_idle(player_id: str) -> None:
+    """Handle the Game Idle event."""
+
+
+async def _handle_game_inactive(player_id: str) -> None:
+    """Handle the Game Inactive event."""
+
+
+async def _handle_game_obsolete(player_id: str) -> None:
+    """Handle the Game Obsolete event."""
+
+
+async def _handle_game_player_change(player_id: str) -> None:
+    """Handle the Game PlayerChange event."""
+
+
+async def _handle_game_state_change(player_id: str) -> None:
+    """Handle the Game State Change event."""
+
+
+async def _handle_game_player_turn(player_id: str) -> None:
+    """Handle the Game Player Turn event."""
+
+
+async def _schedule_idle_game_check(period: int = 60, delay: int = 15) -> None:
+    """Schedule the Idle Game Check task to run periodically, with a delay before starting."""
+    p = Periodic(period, _idle_game_check)
+    await p.start(delay=delay)
+
+
+async def _schedule_idle_player_check(period: int = 60, delay: int = 30) -> None:
+    """Schedule the Idle Player Check task to run periodically, with a delay before starting."""
+    p = Periodic(period, _idle_player_check)
+    await p.start(delay=delay)
+
+
+async def _schedule_obsolete_game_check(period: int = 60, delay: int = 45) -> None:
+    """Schedule the Obsolete Check task to run periodically, with a delay before starting."""
+    p = Periodic(period, _obsolete_game_check)
+    await p.start(delay=delay)
+
+
+# Map from MessageType to request handler couroutine and whether the message requires authorization
+_HANDLERS: Dict[MessageType, Callable[[str, Message], Coroutine[Any, Any, None]]] = {
+    MessageType.REREGISTER_PLAYER: _handle_reregister_player,
+    MessageType.UNREGISTER_PLAYER: _handle_unregister_player,
+    MessageType.LIST_PLAYERS: _handle_list_players,
+    MessageType.ADVERTISE_GAME: _handle_advertise_game,
+    MessageType.LIST_AVAILABLE_GAMES: _handle_list_available_games,
+    MessageType.JOIN_GAME: _handle_join_game,
+    MessageType.QUIT_GAME: _handle_quit_game,
+    MessageType.START_GAME: _handle_start_game,
+    MessageType.CANCEL_GAME: _handle_cancel_game,
+    MessageType.EXECUTE_MOVE: _handle_execute_move,
+    MessageType.RETRIEVE_GAME_STATE: _handle_retrieve_game_state,
+    MessageType.SEND_MESSAGE: _handle_send_message,
+}
+
+
+def _parse_authorization(websocket: WebSocketServerProtocol) -> Optional[str]:
+    """Return the player id from the authorization header, raising _MissingAuthError if missing or invalid."""
+    try:
+        # For most requests, we expect a header like "Authorization: Player d669c200-74aa-4deb-ad91-2f5c27e51d74"
+        authorization = websocket.request_headers["Authorization"]
+        return re.fullmatch(r"( *)(Player )([^ ]+)( *)", authorization, flags=re.IGNORECASE).group(3)  # type: ignore
+    except:
+        raise ProcessingError(FailureReason.MISSING_AUTH)
+
+
+async def _handle_connection(websocket: WebSocketServerProtocol, _path: str) -> None:
+    """Client connection handler coroutine, invoked once for each client that connects."""
+    async for data in websocket:
+        try:
+            message = Message.for_json(str(data))
+            if message.message == MessageType.REGISTER_PLAYER:
+                await _handle_register_player(websocket, message)
+            else:
+                player_id = _parse_authorization(websocket)
+                await _HANDLERS[message.message](player_id, message)  # type: ignore
+        except Exception as e:  # pylint: disable=broad-except
+            await _handle_request_failed(websocket, e)
+
+
+async def _websocket_server(stop: "Future[Any]", host: str = "localhost", port: int = 8765) -> None:
+    """A coroutine to run the websocket server."""
+    async with websockets.serve(_handle_connection, host, port):
+        await stop
+        await _handle_server_shutdown()
+
+
+# Signals that are handled to cause shutdown
 _SHUTDOWN_SIGNALS = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
 
-
-STATE = {"value": 0}
-
-USERS = set()
+# Scheduled tasks
+_SCHEDULED_TASKS = [_schedule_idle_game_check, _schedule_idle_player_check, _schedule_obsolete_game_check]
 
 
-def state_event() -> str:
-    return json.dumps({"type": "state", **STATE})
-
-
-def users_event() -> str:
-    return json.dumps({"type": "users", "count": len(USERS)})
-
-
-async def notify_state():
-    print("notify_state()")
-    if USERS:  # asyncio.wait doesn't accept an empty list
-        message = state_event()
-        print("   message: %s" % message)
-        await asyncio.wait([user.send(message) for user in USERS])
-
-
-async def notify_users():
-    print("notify_users()")
-    if USERS:  # asyncio.wait doesn't accept an empty list
-        message = users_event()
-        print("   message: %s" % message)
-        await asyncio.wait([user.send(message) for user in USERS])
-
-
-async def register(websocket: WebSocketServerProtocol):
-    print("Got register event for: %s" % websocket)
-    USERS.add(websocket)
-    await notify_users()
-
-
-async def unregister(websocket: WebSocketServerProtocol):
-    print("Got unregister event for: %s" % websocket)
-    USERS.remove(websocket)
-    await notify_users()
-
-
-async def apologies(websocket: WebSocketServerProtocol, path: str):
-    # This method seems to be invoked once for each client that connects.
-    # I guess it's the main processing loop for a client?
-    print("In apologies() for %s" % websocket)
-    # register(websocket) sends user_event() to websocket
-    await register(websocket)
-    print("After register() for %s" % websocket)
-    try:
-        print("Now at websocket.send(state_event()) for %s" % websocket)
-        await websocket.send(state_event())
-        print("Now after websocket.send(state_event()) for %s" % websocket)
-        async for message in websocket:
-            # This appears to effectively be a loop, even though it doesn't look
-            # like it.  We stay in this block, executing the code below once
-            # for every message that is received. This goes on forever, until
-            # the finally block detects that the client has gone away.  So
-            # this block effectively needs to check all of the allowed messages
-            # and reject anything else.  It looks like there is no equivalent
-            # of HTTP status for the response - there's either data or there
-            # isn't.  Everything operates on the data.  It appears that we do
-            # not necessarily need to return a response for an event.  It's all
-            # asynchronous, so the client isn't "expecting" anything.  This is
-            # going to require a whole new way of thinking about how code is
-            # structured.
-            print("Within async for message in websocket for %s" % websocket)
-            data = json.loads(message)
-            print("Data for %s: %s" % (websocket, data))
-            if data["action"] == "minus":
-                STATE["value"] -= 1
-                await notify_state()
-            elif data["action"] == "plus":
-                STATE["value"] += 1
-                await notify_state()
-            else:
-                logging.error("unsupported event: {}", data)
-    finally:
-        print("Now unregistering: %s" % websocket)
-        await unregister(websocket)
-
-
-import time
-
-
-async def hello(s):
-    print("hello {} ({:.4f})".format(s, time.time()))
-    time.sleep(0.3)
-
-
-# import time
-
-# # See: https://stackoverflow.com/a/28034554/2907667
-# async def do_every(period, f, *args) -> None:
-#     """
-#     Execute a function periodically.
-#
-#     Args:
-#         period: A period as passed to time.sleep(), fractional seconds
-#         f: Function to execute
-#         *args: Arguments to pass to f() when executed
-#     """
-#     def g_tick():
-#         t = time.time()
-#         count = 0
-#         while True:
-#             count += 1
-#             yield max(t + count * period - time.time(), 0)
-#
-#     g = g_tick()
-#     while True:
-#         await asyncio.sleep(next(g))
-#         f(*args)
-
-# async def _run_task(period, f, *args) -> None:
-#     """Run a task periodically."""
-#     # See also: https://stackoverflow.com/a/28034554/2907667
-#     def g_tick():
-#         t = time.time()
-#         count = 0
-#         while True:
-#             count += 1
-#             yield max(t + count * period - time.time(), 0)
-#
-#     g = g_tick()
-#     while True:
-#         await asyncio.sleep(next(g))
-#         f(*args)
-#
-# from threading import Thread
-#
-# def _start(loop):
-#     asyncio.set_event_loop(loop)
-#     loop.run_forever()
-
-
-# def main():
-# try:
-# new_loop = asyncio.new_event_loop()
-# t = Thread(target=_start, args=(new_loop,))
-# t.start()
-# # asyncio.run_coroutine_threadsafe(do_every(1, hello, "foo"), new_loop)
-# asyncio.run_coroutine_threadsafe(_run_task(1, hello, "foo"), new_loop)
-
-# setup_signal_handlers(asyncio.get_event_loop())
-#
-# start_scheduler()
-# schedule_periodic_task(1, hello, "foo")
-
-# print("Server started")
-# start_server = websockets.serve(apologies, "localhost", 8765)
-# asyncio.get_event_loop().run_until_complete(start_server)
-# asyncio.get_event_loop().run_forever()
-# except KeyboardInterrupt:  # TODO: need some signal setup here so we can shutdown gracefully
-#     print("Server completed")
-
-import asyncio
-from datetime import datetime
-
-from periodic import Periodic
-
-
-async def task1():
-    p = Periodic(1, hello, "foo")
-    await p.start()
-
-
-async def task2():
-    p = Periodic(2, hello, "bar")
-    await p.start()
-
-
-async def apologies_server(stop):
-    async with websockets.serve(apologies, "localhost", 8765):
-        await stop
-
-
-def main():
+def main() -> None:
+    """The server main routine."""
     loop = asyncio.get_event_loop()
+
     stop = loop.create_future()
-    for s in _SHUTDOWN_SIGNALS:
-        loop.add_signal_handler(s, stop.set_result, None)
-    loop.create_task(task1())
-    loop.create_task(task2())
-    server = websockets.serve(apologies, "localhost", 8765)
-    loop.run_until_complete(apologies_server(stop))
+    for sig in _SHUTDOWN_SIGNALS:
+        loop.add_signal_handler(sig, stop.set_result, None)
+
+    for task in _SCHEDULED_TASKS:
+        loop.create_task(task())
+
+    loop.run_until_complete(_websocket_server(stop))
     loop.stop()
     loop.close()
 

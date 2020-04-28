@@ -81,7 +81,11 @@ class Visibility(Enum):
 class FailureReason(Enum):
     """Failure reasons advertised to clients."""
 
+    DUPLICATE_USER = "Handle is already in use"
+    MISSING_AUTH = "Missing or invalid authorization header"
     USER_LIMIT = "User limit reached"
+    UNKNOWN_GAME = "Unknown game"
+    UNKNOWN_PLAYER = "Unknown player"
     INTERNAL_ERROR = "Internal error"
 
 
@@ -122,6 +126,14 @@ class ActivityState(Enum):
     ACTIVE = "Active"
     IDLE = "Idle"
     INACTIVE = "Inactive"
+
+
+class GameState(Enum):
+    """States that a game can be in."""
+
+    ADVERTISED = "Advertised"
+    PLAYING = "Playing"
+    COMPLETED = "Completed"
 
 
 class Context(ABC):
@@ -573,7 +585,7 @@ class Message:
         return orjson.dumps(d, option=orjson.OPT_INDENT_2).decode("utf-8")  # type: ignore
 
     @staticmethod
-    def from_json(data: str) -> Message:
+    def for_json(data: str) -> Message:
         """Create a request based on JSON data."""
         d = orjson.loads(data)  # pylint: disable=invalid-name
         if "message" not in d or d["message"] is None:

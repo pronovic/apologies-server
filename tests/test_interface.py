@@ -22,7 +22,7 @@ def to_date(date: str) -> DateTime:
 def roundtrip(message: Message) -> None:
     """Round-trip a message to JSON and back, and confirm that it is equivalent."""
     data = message.to_json()
-    copy = Message.from_json(data)
+    copy = Message.for_json(data)
     assert message is not copy
     assert message == copy
 
@@ -192,7 +192,7 @@ class TestGeneral:
         }
         """
         with pytest.raises(ValueError, match=r"Message type is required"):
-            Message.from_json(data)
+            Message.for_json(data)
 
     def test_from_json_missing_context(self) -> None:
         data = """
@@ -201,7 +201,7 @@ class TestGeneral:
         }
         """
         with pytest.raises(ValueError, match=r"Message type REGISTER_PLAYER requires a context"):
-            Message.from_json(data)
+            Message.for_json(data)
 
     def test_from_json_extra_context(self) -> None:
         data = """
@@ -213,7 +213,7 @@ class TestGeneral:
         }
         """
         with pytest.raises(ValueError, match=r"Message type REREGISTER_PLAYER does not allow a context"):
-            Message.from_json(data)
+            Message.for_json(data)
 
     def test_from_json_wrong_context(self) -> None:
         data = """
@@ -225,7 +225,7 @@ class TestGeneral:
         }
         """
         with pytest.raises(ValueError, match=r"Message type ADVERTISE_GAME does not support this context"):
-            Message.from_json(data)
+            Message.for_json(data)
 
     def test_from_json_unknown_message(self) -> None:
         data = """
@@ -237,7 +237,7 @@ class TestGeneral:
         }
         """
         with pytest.raises(ValueError, match=r"Unknown message type: BOGUS"):
-            Message.from_json(data)
+            Message.for_json(data)
 
 
 class TestRequest:
@@ -253,7 +253,7 @@ class TestRequest:
           }
         }
         """
-        message = Message.from_json(data)
+        message = Message.for_json(data)
         assert message.message == MessageType.REGISTER_PLAYER
         assert message.context.handle == "1234567890123456789012345"
 
@@ -267,7 +267,7 @@ class TestRequest:
         }
         """
         with pytest.raises(ValueError, match=r"'handle' must be a non-empty string"):
-            Message.from_json(data)
+            Message.for_json(data)
 
     def test_register_player_invalid_handle_empty(self) -> None:
         data = """
@@ -279,7 +279,7 @@ class TestRequest:
         }
         """
         with pytest.raises(ValueError, match=r"'handle' must be a non-empty string"):
-            Message.from_json(data)
+            Message.for_json(data)
 
     def test_register_player_invalid_handle_length(self) -> None:
         data = """
@@ -291,7 +291,7 @@ class TestRequest:
         }
         """
         with pytest.raises(ValueError, match=r"'handle' must not exceed length 25"):
-            Message.from_json(data)
+            Message.for_json(data)
 
     def test_advertise_game_valid_handles(self) -> None:
         data = """
@@ -306,7 +306,7 @@ class TestRequest:
           }
         } 
         """
-        message = Message.from_json(data)
+        message = Message.for_json(data)
         assert message.message == MessageType.ADVERTISE_GAME
         assert message.context.name == "Leela's Game"
         assert message.context.mode == GameMode.STANDARD
@@ -327,7 +327,7 @@ class TestRequest:
           }
         } 
         """
-        message = Message.from_json(data)
+        message = Message.for_json(data)
         assert message.message == MessageType.ADVERTISE_GAME
         assert message.context.name == "Leela's Game"
         assert message.context.mode == GameMode.STANDARD
@@ -349,7 +349,7 @@ class TestRequest:
         } 
         """
         with pytest.raises(ValueError, match=r"'name' must be a non-empty string"):
-            Message.from_json(data)
+            Message.for_json(data)
 
     def test_advertise_game_invalid_name_empty(self) -> None:
         data = """
@@ -365,7 +365,7 @@ class TestRequest:
         } 
         """
         with pytest.raises(ValueError, match=r"'name' must be a non-empty string"):
-            Message.from_json(data)
+            Message.for_json(data)
 
     def test_advertise_game_invalid_mode_none(self) -> None:
         data = """
@@ -381,7 +381,7 @@ class TestRequest:
         } 
         """
         with pytest.raises(ValueError, match=r"'mode' must be one of \[ADULT, STANDARD\]"):
-            Message.from_json(data)
+            Message.for_json(data)
 
     def test_advertise_game_invalid_mode_empty(self) -> None:
         data = """
@@ -397,7 +397,7 @@ class TestRequest:
         } 
         """
         with pytest.raises(ValueError, match=r"'mode' must be one of \[ADULT, STANDARD\]"):
-            Message.from_json(data)
+            Message.for_json(data)
 
     def test_advertise_game_invalid_mode_bad(self) -> None:
         data = """
@@ -413,7 +413,7 @@ class TestRequest:
         } 
         """
         with pytest.raises(ValueError, match=r"Invalid value 'BOGUS'"):
-            Message.from_json(data)
+            Message.for_json(data)
 
     def test_advertise_game_invalid_player_small(self) -> None:
         data = """
@@ -429,7 +429,7 @@ class TestRequest:
         } 
         """
         with pytest.raises(ValueError, match=r"'players' must be in \[2, 3, 4\] \(got 1\)"):
-            Message.from_json(data)
+            Message.for_json(data)
 
     def test_advertise_game_invalid_player_large(self) -> None:
         data = """
@@ -445,7 +445,7 @@ class TestRequest:
         } 
         """
         with pytest.raises(ValueError, match=r"'players' must be in \[2, 3, 4\] \(got 5\)"):
-            Message.from_json(data)
+            Message.for_json(data)
 
     def test_advertise_game_invalid_visibility_none(self) -> None:
         data = """
@@ -461,7 +461,7 @@ class TestRequest:
         } 
         """
         with pytest.raises(ValueError, match=r"'visibility' must be one of \[PRIVATE, PUBLIC\]"):
-            Message.from_json(data)
+            Message.for_json(data)
 
     def test_advertise_game_invalid_visibility_empty(self) -> None:
         data = """
@@ -477,7 +477,7 @@ class TestRequest:
         } 
         """
         with pytest.raises(ValueError, match=r"'visibility' must be one of \[PRIVATE, PUBLIC\]"):
-            Message.from_json(data)
+            Message.for_json(data)
 
     def test_advertise_game_invalid_visibility_bad(self) -> None:
         data = """
@@ -493,7 +493,7 @@ class TestRequest:
         } 
         """
         with pytest.raises(ValueError, match=r"Invalid value 'BOGUS'"):
-            Message.from_json(data)
+            Message.for_json(data)
 
     def test_advertise_game_invalid_handle_none(self) -> None:
         data = """
@@ -509,7 +509,7 @@ class TestRequest:
         } 
         """
         with pytest.raises(ValueError, match=r"Message type ADVERTISE_GAME does not support this context"):
-            Message.from_json(data)
+            Message.for_json(data)
 
     def test_advertise_game_invalid_handle_none_value(self) -> None:
         data = """
@@ -525,7 +525,7 @@ class TestRequest:
         } 
         """
         with pytest.raises(ValueError, match=r"'invited_handles' elements must be non-empty strings"):
-            Message.from_json(data)
+            Message.for_json(data)
 
     def test_advertise_game_invalid_handle_empty_value(self) -> None:
         data = """
@@ -541,7 +541,7 @@ class TestRequest:
         } 
         """
         with pytest.raises(ValueError, match=r"'invited_handles' elements must be non-empty strings"):
-            Message.from_json(data)
+            Message.for_json(data)
 
     def test_join_game_valid(self) -> None:
         data = """
@@ -552,7 +552,7 @@ class TestRequest:
           }
         }
         """
-        message = Message.from_json(data)
+        message = Message.for_json(data)
         assert message.message == MessageType.JOIN_GAME
         assert message.context.game_id == "f13b405e-36e5-45f3-a351-e45bf487acfe"
 
@@ -566,7 +566,7 @@ class TestRequest:
         }
         """
         with pytest.raises(ValueError, match=r"'game_id' must be a non-empty string"):
-            Message.from_json(data)
+            Message.for_json(data)
 
     def test_join_game_invalid_game_id_empty(self) -> None:
         data = """
@@ -578,7 +578,7 @@ class TestRequest:
         }
         """
         with pytest.raises(ValueError, match=r"'game_id' must be a non-empty string"):
-            Message.from_json(data)
+            Message.for_json(data)
 
     def test_execute_move_valid(self) -> None:
         data = """
@@ -589,7 +589,7 @@ class TestRequest:
           }
         }  
         """
-        message = Message.from_json(data)
+        message = Message.for_json(data)
         assert message.message == MessageType.EXECUTE_MOVE
         assert message.context.move_id == "4"
 
@@ -603,7 +603,7 @@ class TestRequest:
         }  
         """
         with pytest.raises(ValueError, match=r"'move_id' must be a non-empty string"):
-            Message.from_json(data)
+            Message.for_json(data)
 
     def test_execute_move_invalid_move_id_empty(self) -> None:
         data = """
@@ -615,7 +615,7 @@ class TestRequest:
         }  
         """
         with pytest.raises(ValueError, match=r"'move_id' must be a non-empty string"):
-            Message.from_json(data)
+            Message.for_json(data)
 
     def test_send_message_valid(self) -> None:
         data = """
@@ -627,7 +627,7 @@ class TestRequest:
           }
         }  
         """
-        message = Message.from_json(data)
+        message = Message.for_json(data)
         assert message.message == MessageType.SEND_MESSAGE
         assert message.context.message == "Hello!"
         assert message.context.recipient_handles == ["hermes", "nibbler"]
@@ -643,7 +643,7 @@ class TestRequest:
         }  
         """
         with pytest.raises(ValueError, match=r"'message' must be a non-empty string"):
-            Message.from_json(data)
+            Message.for_json(data)
 
     def test_send_message_invalid_message_empty(self) -> None:
         data = """
@@ -656,7 +656,7 @@ class TestRequest:
         }  
         """
         with pytest.raises(ValueError, match=r"'message' must be a non-empty string"):
-            Message.from_json(data)
+            Message.for_json(data)
 
     def test_send_message_invalid_recipients_none(self) -> None:
         data = """
@@ -669,7 +669,7 @@ class TestRequest:
         }  
         """
         with pytest.raises(ValueError, match=r"Message type SEND_MESSAGE does not support this context"):
-            Message.from_json(data)
+            Message.for_json(data)
 
     def test_send_message_invalid_recipients_empty(self) -> None:
         data = """
@@ -682,7 +682,7 @@ class TestRequest:
         }  
         """
         with pytest.raises(ValueError, match=r"'recipient_handles' may not be empty"):
-            Message.from_json(data)
+            Message.for_json(data)
 
     def test_send_message_invalid_recipients_none_value(self) -> None:
         data = """
@@ -695,7 +695,7 @@ class TestRequest:
         }  
         """
         with pytest.raises(ValueError, match=r"'recipient_handles' elements must be non-empty strings"):
-            Message.from_json(data)
+            Message.for_json(data)
 
     def test_send_message_invalid_recipients_empty_value(self) -> None:
         data = """
@@ -708,7 +708,7 @@ class TestRequest:
         }  
         """
         with pytest.raises(ValueError, match=r"'recipient_handles' elements must be non-empty strings"):
-            Message.from_json(data)
+            Message.for_json(data)
 
     def test_register_player_roundtrip(self) -> None:
         context = RegisterPlayerContext(handle="leela")

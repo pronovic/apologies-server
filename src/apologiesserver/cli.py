@@ -7,7 +7,7 @@ from typing import Any, List
 from .server import main as server_main
 
 
-def run_server(argv: List[str]) -> None:
+def run_server(_argv: List[str]) -> None:
     """Start the websockets server."""
     server_main()
 

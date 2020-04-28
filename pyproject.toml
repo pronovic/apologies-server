@@ -21,6 +21,8 @@ classifiers=[
 [tool.poetry.dependencies]
 python = "^3.7"
 apologies = "^0.1.13"
+websockets = "^8.1"
+asyncio-periodic = "^2019.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
