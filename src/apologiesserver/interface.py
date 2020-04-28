@@ -422,7 +422,7 @@ _CONVERTER = _CattrConverter()
 
 
 # noinspection PyTypeChecker
-@attr.s
+@attr.s(frozen=True)
 class Message:
     """A message that is part of the public interface, either a client request or a published event."""
 
