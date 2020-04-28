@@ -149,6 +149,11 @@ run_publish() {
    git push origin "v$SHORT_VERSION"
 }
 
+# Start the websockets server
+run_server() {
+   poetry run python src/scripts/server $*
+}
+   
 # Execute one of the developer tasks
 case $1 in
    install|setup)
@@ -191,6 +196,9 @@ case $1 in
    publish)
       run_publish
       ;;
+   server)
+      run_server
+      ;;
    *)
       echo ""
       echo "------------------------------------"
@@ -210,6 +218,7 @@ case $1 in
       echo "- run docs: Build the Spinx documentation for apologies-server.readthedocs.io"
       echo "- run docs -o: Build the Spinx documentation and open in a browser"
       echo "- run publish: Tag the current code and publish to PyPI"
+      echo "- run server: Start the websockets server"
       echo ""
       exit 1
 esac
