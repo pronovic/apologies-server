@@ -34,7 +34,6 @@ from pendulum.parser import parse
 from .validator import enum, length, notempty, string, stringlist
 
 __all__ = [
-    "ProcessingError",
     "Visibility",
     "FailureReason",
     "CancelledReason",
@@ -42,6 +41,7 @@ __all__ = [
     "PlayerState",
     "ConnectionState",
     "ActivityState",
+    "ProcessingError",
     "RegisterPlayerContext",
     "AdvertiseGameContext",
     "JoinGameContext",
@@ -68,14 +68,6 @@ __all__ = [
     "MessageType",
     "Message",
 ]
-
-
-@attr.s
-class ProcessingError(RuntimeError):
-    """Exception thrown when there is a general processing error."""
-
-    reason = attr.ib(type=FailureReason)
-    comment = attr.ib(type=Optional[str], default=None)
 
 
 class Visibility(Enum):
@@ -141,6 +133,14 @@ class GameState(Enum):
     ADVERTISED = "Advertised"
     PLAYING = "Playing"
     COMPLETED = "Completed"
+
+
+@attr.s
+class ProcessingError(RuntimeError):
+    """Exception thrown when there is a general processing error."""
+
+    reason = attr.ib(type=FailureReason)
+    comment = attr.ib(type=Optional[str], default=None)
 
 
 class Context(ABC):
