@@ -4,12 +4,12 @@
 import sys
 from typing import Any, List
 
-from .server import main as server_main
+from .server import server
 
 
 def run_server(_argv: List[str]) -> None:
     """Start the websockets server."""
-    server_main()
+    server()
 
 
 def _example(argv: List[str]) -> List[str]:

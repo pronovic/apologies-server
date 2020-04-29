@@ -15,7 +15,7 @@ will be marked as idle, triggering an _Game Idle_ event.  A game which remains
 idle and exceeds the inactive threshold will be terminated, triggering a _Game
 Inactive_ event.  
 
-### Idle Player
+### Idle Player Check
 
 On a periodic basis, the server will check how long it has been since the most
 recent activity for each registered player.  A player which exceeds the idle
@@ -24,7 +24,7 @@ Idle_ event.  A player which exceeds the idle threshold and is disconnected, or
 which was already idle and exceeds the inactive threshold, will be terminated,
 triggering a _Player Inactive_ event.
 
-### Obsolete Game
+### Obsolete Game Check
 
 On a periodic basis, the server will check how long it has been since each
 completed or cancelled game has finished.  A game which exceeds the game
@@ -325,10 +325,9 @@ Other events only change internal server state, or trigger other events.
 
 ### Server Shutdown
 
-State is maintained across server restarts.  When a server shuts down, users
-remain registered and games remain in-progress.  At shutdown, the server will
-send a message to all players, so each player has the opportunity to
-re-register later when the server comes back up.
+At shutdown, the server will send a message to all players, so each player
+knows that the server is going away and can cleanup.  State is not maintained
+across server restarts, so any in-progress game will be interrupted.
 
 ```json
 {

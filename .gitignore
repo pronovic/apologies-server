@@ -13,6 +13,9 @@ __pycache__
 /.mypy_cache
 /.idea/MypyConfig.xml 
 
+# Temporary stuff
+/temp
+
 # Generated docs and code distribution
 /src/*.egg-info
 /docs/_build

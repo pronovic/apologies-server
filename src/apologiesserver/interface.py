@@ -84,6 +84,8 @@ class FailureReason(Enum):
     DUPLICATE_USER = "Handle is already in use"
     MISSING_AUTH = "Missing or invalid authorization header"
     USER_LIMIT = "User limit reached"
+    UNKNOWN_PLAYER = "Unknown player"
+    UNKNOWN_GAME = "Unknown game"
     INTERNAL_ERROR = "Internal error"
 
 
