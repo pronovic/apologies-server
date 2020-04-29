@@ -33,9 +33,8 @@ from pendulum.parser import parse
 
 from .validator import enum, length, notempty, string, stringlist
 
-# There are a lot of classes as part of this interface, so it's useful to import *.
-# However, when we do that, we want to expose only the public parts of the interface.
 __all__ = [
+    "ProcessingError",
     "Visibility",
     "FailureReason",
     "CancelledReason",
@@ -71,6 +70,14 @@ __all__ = [
 ]
 
 
+@attr.s
+class ProcessingError(RuntimeError):
+    """Exception thrown when there is a general processing error."""
+
+    reason = attr.ib(type=FailureReason)
+    comment = attr.ib(type=Optional[str], default=None)
+
+
 class Visibility(Enum):
     """Visibility for advertised games."""
 
@@ -81,11 +88,10 @@ class Visibility(Enum):
 class FailureReason(Enum):
     """Failure reasons advertised to clients."""
 
+    INVALID_REQUEST = "Invalid request"
     DUPLICATE_USER = "Handle is already in use"
     MISSING_AUTH = "Missing or invalid authorization header"
     USER_LIMIT = "User limit reached"
-    UNKNOWN_GAME = "Unknown game"
-    UNKNOWN_PLAYER = "Unknown player"
     INTERNAL_ERROR = "Internal error"
 
 
@@ -94,6 +100,7 @@ class CancelledReason(Enum):
 
     CANCELLED = "Game was cancelled by advertiser"
     NOT_VIABLE = "Game is no longer viable."
+    INACTIVE = "The game was idle too long and was marked inactive"
 
 
 class PlayerType(Enum):
@@ -458,6 +465,7 @@ class MessageType(Enum):
     SEND_MESSAGE = "Send Message"
 
     # Events published from server to one or more clients
+    SERVER_SHUTDOWN = "Server Shutdown"
     REQUEST_FAILED = "Request Failed"
     REGISTERED_PLAYERS = "Registered Players"
     AVAILABLE_GAMES = "Available Games"
