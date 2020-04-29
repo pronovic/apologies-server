@@ -31,7 +31,7 @@ class TrackedPlayer:
     helper methods that takes care of the lock.
     """
 
-    player_id = attr.ib(type=str)
+    player_id = attr.ib(type=str, repr=False)  # this is a secret, so we don't want it printed or logged
     websocket = attr.ib(type=WebSocketServerProtocol)
     handle = attr.ib(type=str)
     registration_date = attr.ib(type=DateTime)

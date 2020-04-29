@@ -197,7 +197,7 @@ case $1 in
       run_publish
       ;;
    server)
-      run_server
+      run_server $*
       ;;
    *)
       echo ""
