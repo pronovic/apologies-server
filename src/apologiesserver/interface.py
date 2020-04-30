@@ -41,6 +41,7 @@ __all__ = [
     "PlayerState",
     "ConnectionState",
     "ActivityState",
+    "GameState",
     "ProcessingError",
     "RegisterPlayerContext",
     "AdvertiseGameContext",

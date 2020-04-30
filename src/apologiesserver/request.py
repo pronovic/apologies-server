@@ -15,76 +15,76 @@ from .event import *
 from .interface import Message, MessageType
 from .state import TrackedPlayer
 
-logger = logging.getLogger("apologies.request")
+log = logging.getLogger("apologies.request")
 
 
 async def handle_register_player_request(websocket: WebSocketServerProtocol, message: Message) -> None:
     """Handle the Register Player request."""
-    logger.info("REQUEST[Register Player]")
+    log.info("REQUEST[Register Player]")
     # context = cast(RegisterPlayerContext, message.context)
 
 
 async def handle_reregister_player_request(player: TrackedPlayer, message: Message) -> None:
     """Handle the Reregister Player request."""
-    logger.info("REQUEST[Reregister Player]")
+    log.info("REQUEST[Reregister Player]")
 
 
 async def handle_unregister_player_request(player: TrackedPlayer, message: Message) -> None:
     """Handle the Unregister Player request."""
-    logger.info("REQUEST[Unregister Player]")
+    log.info("REQUEST[Unregister Player]")
 
 
 async def handle_list_players_request(player: TrackedPlayer, message: Message) -> None:
     """Handle the List Players request."""
-    logger.info("REQUEST[List Players]")
+    log.info("REQUEST[List Players]")
 
 
 async def handle_advertise_game_request(player: TrackedPlayer, message: Message) -> None:
     """Handle the Advertise Game request."""
-    logger.info("REQUEST[Advertise Game]")
+    log.info("REQUEST[Advertise Game]")
     # context = cast(AdvertiseGameContext, message.context)
 
 
 async def handle_list_available_games_request(player: TrackedPlayer, message: Message) -> None:
     """Handle the List Available Games request."""
-    logger.info("REQUEST[List Available Games]")
+    log.info("REQUEST[List Available Games]")
 
 
 async def handle_join_game_request(player: TrackedPlayer, message: Message) -> None:
     """Handle the Join Game request."""
     # context = cast(JoinGameContext, message.context)
-    logger.info("REQUEST[Join Game]")
+    log.info("REQUEST[Join Game]")
 
 
 async def handle_quit_game_request(player: TrackedPlayer, message: Message) -> None:
     """Handle the Quit Game request."""
-    logger.info("REQUEST[Quit Game]")
+    log.info("REQUEST[Quit Game]")
 
 
 async def handle_start_game_request(player: TrackedPlayer, message: Message) -> None:
     """Handle the Start Game request."""
-    logger.info("REQUEST[Start Game]")
+    log.info("REQUEST[Start Game]")
 
 
 async def handle_cancel_game_request(player: TrackedPlayer, message: Message) -> None:
     """Handle the Cancel Game request."""
-    logger.info("REQUEST[Cancel Game]")
+    log.info("REQUEST[Cancel Game]")
 
 
 async def handle_execute_move_request(player: TrackedPlayer, message: Message) -> None:
     """Handle the Execute Move request."""
-    logger.info("REQUEST[Execute Move]")
+    log.info("REQUEST[Execute Move]")
     # context = cast(ExecuteMoveContext, message.context)
 
 
 async def handle_retrieve_game_state_request(player: TrackedPlayer, message: Message) -> None:
     """Handle the Retrieve Game State request."""
-    logger.info("REQUEST[Retrieve Game]")
+    log.info("REQUEST[Retrieve Game]")
 
 
 async def handle_send_message_request(player: TrackedPlayer, message: Message) -> None:
     """Handle the Send Message request."""
-    logger.info("REQUEST[Semd Message]")
+    log.info("REQUEST[Semd Message]")
     # context = cast(SendMessageContext, message.context)
 
 

@@ -9,7 +9,7 @@ Code to manage application state.
 from __future__ import annotations  # see: https://stackoverflow.com/a/33533514/2907667
 
 import asyncio
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, List, Optional, Sequence, Tuple
 from uuid import uuid4
 
 import attr
@@ -19,6 +19,7 @@ from pendulum.datetime import DateTime
 from websockets import WebSocketServerProtocol
 
 from .interface import *
+from .util import copydate
 
 
 @attr.s
@@ -86,8 +87,12 @@ class TrackedGame:
     visibility = attr.ib(type=Visibility)
     invited_handles = attr.ib(type=Sequence[str])
     advertised_date = attr.ib(type=DateTime)
-    last_active_date = attr.ib(type=Optional[DateTime])
+    last_active_date = attr.ib(type=DateTime)
+    started_date = attr.ib(type=Optional[DateTime], default=None)
+    completed_date = attr.ib(type=Optional[DateTime], default=None)
+    game_state = attr.ib(type=GameState, default=GameState.ADVERTISED)
     activity_state = attr.ib(type=ActivityState, default=ActivityState.ACTIVE)
+    completed_reason = attr.ib(type=Optional[str], default=None)
     lock = attr.ib(type=asyncio.Lock)
 
     @advertised_date.default
@@ -118,8 +123,23 @@ class TrackedGame:
     async def mark_active(self) -> None:
         """Mark the game as active."""
         async with self.lock:
-            self.last_active_date = pendulum.now()
             self.activity_state = ActivityState.ACTIVE
+            self.last_active_date = pendulum.now()
+
+    async def mark_started(self) -> None:
+        """Mark the game as started"""
+        async with self.lock:
+            self.game_state = GameState.PLAYING
+            self.last_active_date = pendulum.now()
+            self.started_date = pendulum.now()
+
+    async def mark_completed(self, reason: str) -> None:
+        """Mark the game as completed."""
+        async with self.lock:
+            self.game_state = GameState.COMPLETED
+            self.last_active_date = pendulum.now()
+            self.completed_date = pendulum.now()
+            self.completed_reason = reason
 
 
 _LOCK = asyncio.Lock()
@@ -198,7 +218,7 @@ async def lookup_websocket(player_id: Optional[str] = None, handle: Optional[str
     """Look up the websocket for a player id or handle."""
     if player_id:
         player = await lookup_player(player_id=player_id)
-        with player.lock:
+        async with player.lock:
             return player.websocket
     elif handle:
         player = await lookup_player(handle=handle)
@@ -220,11 +240,54 @@ async def lookup_websockets(
     return websockets
 
 
+async def lookup_game_completion() -> Dict[str, DateTime]:
+    """Look up the completed date for all completed games."""
+    result = {}
+    async with _LOCK:
+        for game in _GAME_MAP.values():
+            async with game.lock:
+                if game.game_state == GameState.COMPLETED:
+                    result[game.game_id] = copydate(game.completed_date)  # type: ignore
+    return result
+
+
+async def lookup_game_activity() -> Dict[str, DateTime]:
+    """Look up the last active date for all games."""
+    result = {}
+    async with _LOCK:
+        for game in _GAME_MAP.values():
+            async with game.lock:
+                result[game.game_id] = copydate(game.last_active_date)
+    return result
+
+
+async def lookup_player_activity() -> Dict[str, Tuple[DateTime, ConnectionState]]:
+    """Look up the last active date for all players."""
+    result = {}
+    async with _LOCK:
+        for player in _PLAYER_MAP.values():
+            async with player.lock:
+                result[player.player_id] = (copydate(player.last_active_date), player.connection_state)
+    return result
+
+
 async def mark_game_active(game_id: str) -> TrackedGame:
     """Mark that a game is active, and return the up-to-date game."""
     game = await lookup_game(game_id=game_id)
     await game.mark_active()
     return game
+
+
+async def mark_game_started(game_id: str) -> None:
+    """Mark that a game is completed."""
+    game = await lookup_game(game_id=game_id)
+    await game.mark_started()
+
+
+async def mark_game_completed(game_id: str, reason: str) -> None:
+    """Mark that a game is completed, with a reason."""
+    game = await lookup_game(game_id=game_id)
+    await game.mark_completed(reason)
 
 
 async def mark_player_active(player_id: str) -> TrackedPlayer:
