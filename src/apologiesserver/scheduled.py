@@ -25,16 +25,17 @@ async def handle_idle_player_check_task() -> None:
     now = pendulum.now()
     dates = await lookup_player_activity()
     for player_id, (last_active_date, connection_state) in dates.items():
+        disconnected = connection_state == ConnectionState.DISCONNECTED
         if now.diff(last_active_date).in_minutes > config().player_inactive_thresh_min:
             inactive += 1
             await handle_player_inactive_event(player_id)
         elif now.diff(last_active_date).in_minutes > config().player_idle_thresh_min:
-            if connection_state == ConnectionState.CONNECTED:
-                idle += 1
-                await handle_player_idle_event(player_id)
-            else:
+            if disconnected:
                 inactive += 1
                 await handle_player_inactive_event(player_id)
+            else:
+                idle += 1
+                await handle_player_idle_event(player_id)
     log.debug("Idle player check completed, found %d idle and %d inactive players", idle, inactive)
 
 
@@ -51,7 +52,7 @@ async def handle_idle_game_check_task() -> None:
             await handle_game_inactive_event(game_id)
         elif now.diff(last_active_date).in_minutes > config().game_idle_thresh_min:
             idle += 1
-            await handle_game_inactive_event(game_id)
+            await handle_game_idle_event(game_id)
     log.debug("Idle game check completed, found %d idle and %d inactive games", idle, inactive)
 
 

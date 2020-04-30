@@ -19,7 +19,7 @@ from __future__ import annotations  # see: https://stackoverflow.com/a/33533514/
 
 from abc import ABC
 from enum import Enum
-from typing import Any, Dict, Optional, Sequence, Type
+from typing import Any, Dict, List, Optional, Type
 
 import attr
 import cattr
@@ -87,6 +87,7 @@ class FailureReason(Enum):
     USER_LIMIT = "User limit reached"
     UNKNOWN_PLAYER = "Unknown player"
     UNKNOWN_GAME = "Unknown game"
+    NO_GAME = "There is no game available in this context"
     INTERNAL_ERROR = "Internal error"
 
 
@@ -136,6 +137,7 @@ class GameState(Enum):
     ADVERTISED = "Advertised"
     PLAYING = "Playing"
     COMPLETED = "Completed"
+    CANCELLED = "Cancelled"
 
 
 @attr.s
@@ -154,14 +156,14 @@ MAX_HANDLE = 25
 """Maximum length of a player handle."""
 
 
-@attr.s
+@attr.s(frozen=True)
 class RegisterPlayerContext(Context):
     """Context for a REGISTER_PLAYER request."""
 
     handle = attr.ib(type=str, validator=and_(string, length(MAX_HANDLE)))
 
 
-@attr.s
+@attr.s(frozen=True)
 class AdvertiseGameContext(Context):
     """Context for an ADVERTISE_GAME request."""
 
@@ -169,32 +171,32 @@ class AdvertiseGameContext(Context):
     mode = attr.ib(type=GameMode, validator=enum(GameMode))
     players = attr.ib(type=int, validator=in_([2, 3, 4]))
     visibility = attr.ib(type=Visibility, validator=enum(Visibility))
-    invited_handles = attr.ib(type=Sequence[str], validator=stringlist)
+    invited_handles = attr.ib(type=List[str], validator=stringlist)
 
 
-@attr.s
+@attr.s(frozen=True)
 class JoinGameContext(Context):
     """Context for a JOIN_GAME request."""
 
     game_id = attr.ib(type=str, validator=string)
 
 
-@attr.s
+@attr.s(frozen=True)
 class ExecuteMoveContext(Context):
     """Context for an EXECUTE_MOVE request."""
 
     move_id = attr.ib(type=str, validator=string)
 
 
-@attr.s
+@attr.s(frozen=True)
 class SendMessageContext(Context):
     """Context for an SEND_MESSAGE request."""
 
     message = attr.ib(type=str, validator=string)
-    recipient_handles = attr.ib(type=Sequence[str], validator=and_(stringlist, notempty))
+    recipient_handles = attr.ib(type=List[str], validator=and_(stringlist, notempty))
 
 
-@attr.s
+@attr.s(frozen=True)
 class RequestFailedContext(Context):
     """Context for a REQUEST_FAILED event."""
 
@@ -202,7 +204,7 @@ class RequestFailedContext(Context):
     comment = attr.ib(type=Optional[str])
 
 
-@attr.s
+@attr.s(frozen=True)
 class RegisteredPlayer:
     """A registered player within a RegisteredPlayersContext."""
 
@@ -212,17 +214,17 @@ class RegisteredPlayer:
     connection_state = attr.ib(type=ConnectionState)
     activity_state = attr.ib(type=ActivityState)
     player_state = attr.ib(type=PlayerState)
-    game_id = attr.ib(type=str)
+    game_id = attr.ib(type=Optional[str])
 
 
-@attr.s
+@attr.s(frozen=True)
 class RegisteredPlayersContext(Context):
     """Context for a REGISTERED_PLAYERS event."""
 
-    players = attr.ib(type=Sequence[RegisteredPlayer])
+    players = attr.ib(type=List[RegisteredPlayer])
 
 
-@attr.s
+@attr.s(frozen=True)
 class AvailableGame:
     """An available game within an AvailableGamesContext."""
 
@@ -233,65 +235,54 @@ class AvailableGame:
     players = attr.ib(type=int)
     available = attr.ib(type=int)
     visibility = attr.ib(type=Visibility)
-    invited = attr.ib(type=bool)
+    invited_handles = attr.ib(type=List[str])
 
 
-@attr.s
+@attr.s(frozen=True)
 class AvailableGamesContext(Context):
     """Context for an AVAILABLE_GAMES event."""
 
-    games = attr.ib(type=Sequence[AvailableGame])
+    games = attr.ib(type=List[AvailableGame])
 
 
-@attr.s
+@attr.s(frozen=True)
 class PlayerRegisteredContext(Context):
     """Context for an PLAYER_REGISTERED event."""
 
     player_id = attr.ib(type=str)
 
 
-@attr.s
+@attr.s(frozen=True)
 class PlayerMessageReceivedContext(Context):
     """Context for an PLAYER_MESSAGE_RECEIVED event."""
 
     sender_handle = attr.ib(type=str)
-    recipient_handles = attr.ib(type=Sequence[str])
+    recipient_handles = attr.ib(type=List[str])
     message = attr.ib(type=str)
 
 
-@attr.s
+@attr.s(frozen=True)
 class GameAdvertisedContext(Context):
     """Context for an GAME_ADVERTISED event."""
 
-    game_id = attr.ib(type=str)
-    name = attr.ib(type=str)
-    mode = attr.ib(type=GameMode)
-    advertiser_handle = attr.ib(type=str)
-    players = attr.ib(type=int)
-    visibility = attr.ib(type=Visibility)
-    invited_handles = attr.ib(type=Sequence[str])
+    game = attr.ib(type=AvailableGame)
 
 
-@attr.s
+@attr.s(frozen=True)
 class GameInvitationContext(Context):
     """Context for an GAME_INVITATION event."""
 
-    game_id = attr.ib(type=str)
-    name = attr.ib(type=str)
-    mode = attr.ib(type=GameMode)
-    advertiser_handle = attr.ib(type=str)
-    players = attr.ib(type=int)
-    visibility = attr.ib(type=Visibility)
+    game = attr.ib(type=AvailableGame)
 
 
-@attr.s
+@attr.s(frozen=True)
 class GameJoinedContext(Context):
     """Context for an GAME_JOINED event."""
 
     game_id = attr.ib(type=str)
 
 
-@attr.s
+@attr.s(frozen=True)
 class GameCancelledContext(Context):
     """Context for an GAME_CANCELLED event."""
 
@@ -299,14 +290,14 @@ class GameCancelledContext(Context):
     comment = attr.ib(type=Optional[str])
 
 
-@attr.s
+@attr.s(frozen=True)
 class GameCompletedContext(Context):
     """Context for an GAME_COMPLETED event."""
 
     comment = attr.ib(type=Optional[str])
 
 
-@attr.s
+@attr.s(frozen=True)
 class GamePlayer:
     """A game player within a GamePlayerChangeContext."""
 
@@ -315,7 +306,7 @@ class GamePlayer:
     player_state = attr.ib(type=PlayerState)
 
 
-@attr.s
+@attr.s(frozen=True)
 class GamePlayerChangeContext(Context):
     """Context for an GAME_PLAYER_CHANGE event."""
 
@@ -323,7 +314,7 @@ class GamePlayerChangeContext(Context):
     players = attr.ib(type=Dict[PlayerColor, GamePlayer])
 
 
-@attr.s
+@attr.s(frozen=True)
 class GameStatePawn:
     """State of a pawn in a game."""
 
@@ -357,14 +348,14 @@ class GameStatePawn:
         return GameStatePawn(color, index, start, home, safe, square)
 
 
-@attr.s
+@attr.s(frozen=True)
 class GameStatePlayer:
     """State of a player in a game."""
 
     color = attr.ib(type=PlayerColor)
     turns = attr.ib(type=int)
-    hand = attr.ib(type=Sequence[CardType])
-    pawns = attr.ib(type=Sequence[GameStatePawn])
+    hand = attr.ib(type=List[CardType])
+    pawns = attr.ib(type=List[GameStatePawn])
 
     @staticmethod
     def for_player(player: Player) -> GameStatePlayer:
@@ -376,12 +367,12 @@ class GameStatePlayer:
         return GameStatePlayer(color, turns, hand, pawns)
 
 
-@attr.s
+@attr.s(frozen=True)
 class GameStateChangeContext(Context):
     """Context for an GAME_STATE_CHANGE event."""
 
     player = attr.ib(type=GameStatePlayer)
-    opponents = attr.ib(type=Sequence[GameStatePlayer])
+    opponents = attr.ib(type=List[GameStatePlayer])
 
     @staticmethod
     def for_view(view: PlayerView) -> GameStateChangeContext:
@@ -391,7 +382,7 @@ class GameStateChangeContext(Context):
         return GameStateChangeContext(player, opponents)
 
 
-@attr.s
+@attr.s(frozen=True)
 class GamePlayerAction:
     """An action applied to a pawn in a game."""
 
@@ -414,14 +405,14 @@ class GamePlayerAction:
             raise RuntimeError("Can't handle actiontype %s" % action.actiontype)
 
 
-@attr.s
+@attr.s(frozen=True)
 class GamePlayerMove:
     """A move that may be executed as a result of a player's turn."""
 
     move_id = attr.ib(type=str)
     card = attr.ib(type=CardType)
-    actions = attr.ib(type=Sequence[GamePlayerAction])
-    side_effects = attr.ib(type=Sequence[GamePlayerAction])
+    actions = attr.ib(type=List[GamePlayerAction])
+    side_effects = attr.ib(type=List[GamePlayerAction])
 
     @staticmethod
     def for_move(move: Move) -> GamePlayerMove:
@@ -433,7 +424,7 @@ class GamePlayerMove:
         return GamePlayerMove(move_id, card, actions, side_effects)
 
 
-@attr.s
+@attr.s(frozen=True)
 class GamePlayerTurnContext(Context):
     """Context for an GAME_PLAYER_TURN event."""
 
@@ -441,7 +432,7 @@ class GamePlayerTurnContext(Context):
     moves = attr.ib(type=Dict[str, GamePlayerMove])
 
     @staticmethod
-    def for_moves(moves: Sequence[Move]) -> GamePlayerTurnContext:
+    def for_moves(moves: List[Move]) -> GamePlayerTurnContext:
         """Create a GamePlayerTurnContext based on a sequence of apologies.rules.Move."""
         cards = {move.card.cardtype for move in moves}
         drawn_card = None if len(cards) > 1 else next(iter(cards))  # if there's only one card, it's the one they drew from the deck
@@ -477,7 +468,7 @@ class MessageType(Enum):
     PLAYER_IDLE = "Player Idle"
     PLAYER_INACTIVE = "Player Inactive"
     PLAYER_MESSAGE_RECEIVED = "Player Message Received"
-    GAME_ADVERTISED = "Game Advertised"
+    GAME_ADVERTISED = "Game Advertise"
     GAME_INVITATION = "Game Invitation"
     GAME_JOINED = "Game Joined"
     GAME_STARTED = "Game Started"

@@ -8,7 +8,7 @@ Implements various generic attrs validators.
 
 import warnings
 from enum import Enum
-from typing import Any, Sequence, Type
+from typing import Any, List, Type
 
 import attr
 from attr import Attribute, attrs
@@ -69,7 +69,7 @@ def string(_instance: Any, attribute: Attribute, value: str) -> None:  # type: i
         raise ValueError("'%s' must be a non-empty string" % attribute.name)
 
 
-def stringlist(_instance: Any, attribute: Attribute, value: Sequence[str]) -> None:  # type: ignore
+def stringlist(_instance: Any, attribute: Attribute, value: List[str]) -> None:  # type: ignore
     """attrs validator to ensure that a string list contains non-empty values."""
     # Annoyingly, due to some quirk in the CattrConverter, we end up with "None" rather than None for strings set to JSON null
     # As a result, we need to prevent "None" as a legal value, but that's probably better anyway.

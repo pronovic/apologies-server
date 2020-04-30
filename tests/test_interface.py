@@ -2,7 +2,7 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=wildcard-import,too-many-public-methods
 
-from typing import Sequence
+from typing import List
 
 import pytest
 from apologies.game import Card, CardType, GameMode, Pawn, Player, PlayerColor, PlayerView, Position
@@ -48,7 +48,7 @@ def create_view() -> PlayerView:
     return PlayerView(player, opponents)
 
 
-def create_moves_simple() -> Sequence[Move]:
+def create_moves_simple() -> List[Move]:
     """Create a complex move for testing."""
     pawn = Pawn(color=PlayerColor.RED, index=1, name="V", position=Position().move_to_safe(3))
     position = Position().move_to_square(10)
@@ -63,7 +63,7 @@ def create_moves_simple() -> Sequence[Move]:
     return [move]
 
 
-def create_moves_complex() -> Sequence[Move]:
+def create_moves_complex() -> List[Move]:
     """Create a complex move for testing."""
     pawn1 = Pawn(color=PlayerColor.RED, index=1, name="V", position=Position().move_to_safe(3))
     position1 = Position().move_to_square(10)
@@ -789,7 +789,7 @@ class TestEvent:
         roundtrip(message)
 
     def test_available_games_roundtrip(self) -> None:
-        game = AvailableGame("game", "name", GameMode.STANDARD, "leela", 3, 2, Visibility.PUBLIC, True)
+        game = AvailableGame("game", "name", GameMode.STANDARD, "leela", 3, 2, Visibility.PUBLIC, ["fry", "bender"])
         context = AvailableGamesContext(games=[game])
         message = Message(MessageType.AVAILABLE_GAMES, context)
         roundtrip(message)
@@ -817,12 +817,14 @@ class TestEvent:
         roundtrip(message)
 
     def test_game_advertised_roundtrip(self) -> None:
-        context = GameAdvertisedContext("game", "name", GameMode.ADULT, "leela", 3, Visibility.PRIVATE, ["fry", "nibbler"])
+        game = AvailableGame("game", "name", GameMode.STANDARD, "leela", 3, 2, Visibility.PUBLIC, ["fry", "bender"])
+        context = GameAdvertisedContext(game)
         message = Message(MessageType.GAME_ADVERTISED, context)
         roundtrip(message)
 
     def test_game_invitation_roundtrip(self) -> None:
-        context = GameInvitationContext("game", "name", GameMode.STANDARD, "leela", 3, Visibility.PUBLIC)
+        game = AvailableGame("game", "name", GameMode.STANDARD, "leela", 3, 2, Visibility.PUBLIC, ["fry", "bender"])
+        context = GameInvitationContext(game)
         message = Message(MessageType.GAME_INVITATION, context)
         roundtrip(message)
 
