@@ -2,19 +2,51 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=wildcard-import
 
+# TODO: should be ok to start unit testing this, I think the structure is final
+
 """Coroutines to handle scheduled tasks, executed on a periodic basis."""
 
 import logging
+from typing import List, Optional, Tuple
 
 import pendulum
+from pendulum.datetime import DateTime
 from periodic import Periodic
 
 from .config import config
 from .event import *
-from .interface import ConnectionState
-from .state import lookup_game_activity, lookup_game_completion, lookup_player_activity
+from .interface import ConnectionState, GameState
+from .state import TrackedGame, TrackedPlayer, lookup_all_games, lookup_all_players
 
 log = logging.getLogger("apologies.scheduled")
+
+
+async def _lookup_player_activity() -> List[Tuple[TrackedPlayer, DateTime, ConnectionState]]:
+    """Look up the last active date and connection state for all players."""
+    result: List[Tuple[TrackedPlayer, DateTime, ConnectionState]] = []
+    for player in await lookup_all_players():
+        async with player.lock:
+            result.append((player, player.last_active_date, player.connection_state))
+    return result
+
+
+async def _lookup_game_activity() -> List[Tuple[TrackedGame, DateTime]]:
+    """Look up the last active date for all games."""
+    result: List[Tuple[TrackedGame, DateTime]] = []
+    for game in await lookup_all_games():
+        async with game.lock:
+            result.append((game, game.last_active_date))
+    return result
+
+
+async def _lookup_game_completion() -> List[Tuple[TrackedGame, Optional[DateTime]]]:
+    """Look up the completed date for all completed games."""
+    result: List[Tuple[TrackedGame, Optional[DateTime]]] = []
+    for game in await lookup_all_games():
+        async with game.lock:
+            if game.game_state == GameState.COMPLETED:
+                result.append((game, game.completed_date))
+    return result
 
 
 async def handle_idle_player_check_task() -> None:
@@ -23,19 +55,18 @@ async def handle_idle_player_check_task() -> None:
     idle = 0
     inactive = 0
     now = pendulum.now()
-    dates = await lookup_player_activity()
-    for player_id, (last_active_date, connection_state) in dates.items():
+    for (player, last_active_date, connection_state) in await _lookup_player_activity():
         disconnected = connection_state == ConnectionState.DISCONNECTED
         if now.diff(last_active_date).in_minutes > config().player_inactive_thresh_min:
             inactive += 1
-            await handle_player_inactive_event(player_id)
+            await handle_player_inactive_event(player)
         elif now.diff(last_active_date).in_minutes > config().player_idle_thresh_min:
             if disconnected:
                 inactive += 1
-                await handle_player_inactive_event(player_id)
+                await handle_player_inactive_event(player)
             else:
                 idle += 1
-                await handle_player_idle_event(player_id)
+                await handle_player_idle_event(player)
     log.debug("Idle player check completed, found %d idle and %d inactive players", idle, inactive)
 
 
@@ -45,14 +76,13 @@ async def handle_idle_game_check_task() -> None:
     idle = 0
     inactive = 0
     now = pendulum.now()
-    dates = await lookup_game_activity()
-    for game_id, last_active_date in dates.items():
+    for (game, last_active_date) in await _lookup_game_activity():
         if now.diff(last_active_date).in_minutes > config().game_inactive_thresh_min:
             inactive += 1
-            await handle_game_inactive_event(game_id)
+            await handle_game_inactive_event(game)
         elif now.diff(last_active_date).in_minutes > config().game_idle_thresh_min:
             idle += 1
-            await handle_game_idle_event(game_id)
+            await handle_game_idle_event(game)
     log.debug("Idle game check completed, found %d idle and %d inactive games", idle, inactive)
 
 
@@ -61,11 +91,11 @@ async def handle_obsolete_game_check_task() -> None:
     log.info("SCHEDULED[Obsolete Game Check]")
     obsolete = 0
     now = pendulum.now()
-    dates = await lookup_game_completion()
-    for game_id, completed_date in dates.items():
-        if now.diff(completed_date).in_minutes > config().game_retension_thresh_min:
-            obsolete += 1
-            await handle_game_obsolete_event(game_id)
+    for (game, completed_date) in await _lookup_game_completion():
+        if completed_date:
+            if now.diff(completed_date).in_minutes > config().game_retension_thresh_min:
+                obsolete += 1
+                await handle_game_obsolete_event(game)
     log.debug("Obsolete game check completed, found %d obsolete games", obsolete)
 
 

@@ -2,6 +2,14 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=wildcard-import
 
+# TODO: this needs unit tests, but only once the code is better understood and cleaned up
+# TODO: need to go through and make sure all methods and functions are used and have a non-duplicitive purpose
+# TODO: I feel like there is way too much business logic in here.  I think a lot of the functions
+#       are really only used one place, and that business logic can be pulled out into the associated
+#       event function instead.  It's still ok for TrackedPlayer and TrackedGame to have things like
+#       mark_started() or whatever, but composing which combinations of things... that feels like it's
+#       in the wrong place.
+
 """
 Code to manage application state.
 """
@@ -9,52 +17,34 @@ Code to manage application state.
 from __future__ import annotations  # see: https://stackoverflow.com/a/33533514/2907667
 
 import asyncio
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 from uuid import uuid4
 
 import attr
 import pendulum
-from apologies.game import GameMode, PlayerColor, PlayerView
+from apologies.game import GameMode
 from pendulum.datetime import DateTime
 from websockets import WebSocketServerProtocol
 
 from .interface import *
-from .util import copydate
 
 __all__ = [
     "TrackedPlayer",
     "TrackedGame",
     "track_game",
-    "track_player",
     "delete_game",
-    "disconnect_player",
-    "delete_player",
-    "lookup_websocket",
-    "lookup_all_websockets",
-    "lookup_websockets",
-    "lookup_available_games",
     "lookup_game",
-    "lookup_connected_players",
-    "lookup_player",
-    "lookup_player_handle",
-    "lookup_player_id",
-    "lookup_player_game_id",
-    "lookup_game_completion",
-    "lookup_game_player_handles",
-    "lookup_game_activity",
-    "lookup_game_state",
+    "lookup_all_games",
     "lookup_game_players",
-    "lookup_player_activity",
-    "mark_game_active",
-    "mark_game_started",
-    "mark_game_idle",
-    "mark_game_completed",
-    "mark_game_cancelled",
-    "mark_player_active",
-    "mark_player_idle",
-    "mark_player_joined",
-    "mark_player_quit",
-    "mark_player_disconnected",
+    "lookup_available_games",
+    "track_player",
+    "delete_player",
+    "lookup_player",
+    "lookup_all_players",
+    "lookup_websocket",
+    "lookup_websockets",
+    "lookup_all_websockets",
+    "lookup_player_for_websocket",
 ]
 
 
@@ -63,14 +53,16 @@ class TrackedPlayer:
     """
     The state that is tracked for a player within the game server.
     
-    Any code that wishes to read or write attributes on a TrackedPlayer object 
-    must acquire the object's asyncio lock first, or else call one of the
-    helper methods that takes care of the lock.
+    Any code that wishes to read or write attributes on a TrackedPlayer object must acquire the
+    object's asyncio lock first, or else call one of the helper methods that takes care of the
+    lock.  It is safe to reference the player id or handle without locking the object, since
+    these values must never be changed after the player is created.  (Unfortunately, there is
+    no way to enforce this using attrs at the present time.)
     """
 
-    player_id = attr.ib(type=str, repr=False)  # this is a secret, so we don't want it printed or logged
+    player_id = attr.ib(type=str, repr=False)  # treat as read-only; this is a secret, so we don't want it printed or logged
+    handle = attr.ib(type=str)  # treat as read-only
     websocket = attr.ib(type=Optional[WebSocketServerProtocol])
-    handle = attr.ib(type=str)
     registration_date = attr.ib(type=DateTime)
     last_active_date = attr.ib(type=DateTime)
     activity_state = attr.ib(type=ActivityState, default=ActivityState.ACTIVE)
@@ -101,6 +93,15 @@ class TrackedPlayer:
         async with self.lock:
             return self.connection_state == ConnectionState.CONNECTED
 
+    async def disconnect(self) -> None:
+        async with self.lock:
+            if self.websocket:
+                try:
+                    await self.websocket.close()
+                except:  # pylint: disable=bare-except
+                    pass
+        await self.mark_disconnected()
+
     async def mark_active(self) -> None:
         """Mark the player as active."""
         async with self.lock:
@@ -122,6 +123,7 @@ class TrackedPlayer:
         """Mark the player as disconnected."""
         async with self.lock:
             self.websocket = None
+            self.game_id = None  # if they disconnect, it's like quitting
             self.activity_state = ActivityState.IDLE
             self.connection_state = ConnectionState.DISCONNECTED
 
@@ -162,14 +164,17 @@ class TrackedGame:
     """
     The state that is tracked for a game within the game server.
     
-    Any code that wishes to read or write attributes on a TrackedGame object 
-    must acquire the object's asyncio lock first, or else call one of the
-    helper methods that takes care of the lock.
+    Any code that wishes to read or write attributes on a TrackedGame object must acquire the
+    object's asyncio lock first, or else call one of the helper methods that takes care of the
+    lock.  It is safe to reference the game id, advertiser handle, name, mode, players,
+    visibility, and invited handles without locking the class, since they must not be changed
+    after the game is created.  (Unfortunately, there is no way to enforce this using attrs at
+    the present time.)
     """
 
-    game_id = attr.ib(type=str)
-    advertiser_handle = attr.ib(type=str)
-    name = attr.ib(type=str)
+    game_id = attr.ib(type=str)  # treat as read-only
+    advertiser_handle = attr.ib(type=str)  # treat as read-only
+    name = attr.ib(type=str)  # treat as read-only
     mode = attr.ib(type=GameMode)
     players = attr.ib(type=int)
     visibility = attr.ib(type=Visibility)
@@ -183,7 +188,6 @@ class TrackedGame:
     cancelled_reason = attr.ib(type=Optional[CancelledReason], default=None)
     completed_comment = attr.ib(type=Optional[str], default=None)
     joined_handles = attr.ib(type=List[str])
-    color_map = attr.ib(type=Dict[PlayerColor, str])
     lock = attr.ib(type=asyncio.Lock)
 
     @advertised_date.default
@@ -202,10 +206,6 @@ class TrackedGame:
     def _default_joined_handles(self) -> List[str]:
         return []
 
-    @color_map.default
-    def _default_color_map(self) -> Dict[PlayerColor, str]:
-        return {}
-
     @staticmethod
     def for_context(advertiser_handle: str, game_id: str, context: AdvertiseGameContext) -> TrackedGame:
         """Create a tracked game based on provided context."""
@@ -219,81 +219,75 @@ class TrackedGame:
             invited_handles=context.invited_handles[:],
         )
 
-    async def is_advertised(self, handle: str) -> bool:
-        """Whether the game is currently being advertised to be joined by the handle."""
+    async def is_available(self, player: TrackedPlayer) -> bool:
+        """Whether the game is available to be joined by the passed-in player."""
         async with self.lock:
             return self.game_state == GameState.ADVERTISED and (
-                self.visibility == Visibility.PUBLIC or handle in self.invited_handles
+                self.visibility == Visibility.PUBLIC or player.handle in self.invited_handles
             )
 
     async def is_viable(self) -> bool:
         """Whether the game is viable."""
-        return True  # TODO: I have no idea how I am going to do this; it has something to do with number of remaining human players
+        # TODO: I have no idea how I am going to do this; it has something to do with number of remaining human players
+        #       I think there's some additional logic or state somewhere to track human vs. programmatic players?
+        return True
 
     async def mark_active(self) -> None:
         """Mark the game as active."""
         async with self.lock:
-            self.activity_state = ActivityState.ACTIVE
             self.last_active_date = pendulum.now()
+            self.activity_state = ActivityState.ACTIVE
 
-    async def mark_idle(self) -> List[str]:
-        """Mark the game as idle, returning list of handles to notify."""
+    async def mark_idle(self) -> None:
+        """Mark the game as idle."""
         async with self.lock:
             self.activity_state = ActivityState.IDLE
-            return self.joined_handles
 
-    async def mark_inactive(self) -> List[str]:
-        """Mark the game as inactive, returning list of handles to notify."""
+    async def mark_inactive(self) -> None:
+        """Mark the game as inactive."""
         async with self.lock:
             self.activity_state = ActivityState.INACTIVE
-            return self.joined_handles
 
-    async def mark_joined(self, handle: str) -> List[str]:
-        """Mark that the player has joined a game, returning list of handles to notify."""
+    async def mark_joined(self, handle: str) -> None:
+        """Mark that the player has joined a game."""
         async with self.lock:
             self.joined_handles.append(handle)
-            return self.joined_handles
 
-    async def mark_quit(self, handle: str) -> List[str]:
-        """Mark that the player has quit a game, returning list of handles to notify."""
+    async def mark_quit(self, handle: str) -> None:
+        """Mark that the player has quit a game."""
         async with self.lock:
             if handle in self.joined_handles:
                 self.joined_handles.remove(handle)
-            return self.joined_handles
 
-    async def mark_started(self) -> List[str]:
-        """Mark the game as started, returning list of handles to notify."""
+    async def mark_started(self) -> None:
+        """Mark the game as started."""
+        # TODO: something has to happen here to assign programmatic players to any empty slots
         async with self.lock:
             self.game_state = GameState.PLAYING
             self.last_active_date = pendulum.now()
             self.started_date = pendulum.now()
-            # TODO: fill in the color map - not sure how I deal with this for programmatic players
-            #       I'm missing everything to deal properly with programmatic playrs.  Are they joined?  Or something else?
-            #       I don't think I want them in the joined handles, because that's for notification, but at the same
-            #       time I need to deal with it somehow - otherwise the list of players makes no sense and doesn't include them.
-            return self.joined_handles
 
-    async def mark_completed(self, comment: Optional[str]) -> List[str]:
-        """Mark the game as completed, returning list of handles to notify."""
+    async def mark_completed(self, comment: Optional[str]) -> None:
+        """Mark the game as completed."""
         async with self.lock:
+            self.joined_handles = []
+            self.completed_date = pendulum.now()
             self.game_state = GameState.COMPLETED
-            self.completed_date = pendulum.now()
             self.completed_comment = comment
-            return self.joined_handles
 
-    async def mark_cancelled(self, reason: CancelledReason, comment: Optional[str] = None) -> List[str]:
-        """Mark the game as cancelled, returning list of handles to notify."""
+    async def mark_cancelled(self, reason: CancelledReason, comment: Optional[str] = None) -> None:
+        """Mark the game as cancelled."""
         async with self.lock:
-            self.game_state = GameState.CANCELLED
+            self.joined_handles = []
             self.completed_date = pendulum.now()
+            self.game_state = GameState.CANCELLED
             self.cancelled_reason = reason
             self.completed_comment = comment
-            return self.joined_handles
 
-    async def to_available_game(self) -> AvailableGame:
-        """Convert this TrackedGame to an AvailableGame."""
+    async def to_advertised_game(self) -> AdvertisedGame:
+        """Convert this TrackedGame to an AdvertisedGame."""
         async with self.lock:
-            return AvailableGame(
+            return AdvertisedGame(
                 game_id=self.game_id,
                 name=self.name,
                 mode=self.mode,
@@ -311,68 +305,103 @@ _PLAYER_MAP: Dict[str, TrackedPlayer] = {}
 _HANDLE_MAP: Dict[str, str] = {}
 
 
-async def track_game(player_id: str, advertised: AdvertiseGameContext) -> TrackedGame:
+async def track_game(player: TrackedPlayer, advertised: AdvertiseGameContext) -> TrackedGame:
     """Track a newly-advertised game, returning the tracked game."""
-    player = await lookup_player(player_id)
-    if not player:
-        raise ProcessingError(FailureReason.UNKNOWN_PLAYER)
-    async with player.lock:
-        handle = player.handle
     async with _LOCK:
         game_id = "%s" % uuid4()
-        _GAME_MAP[game_id] = TrackedGame.for_context(handle, game_id, advertised)
+        _GAME_MAP[game_id] = TrackedGame.for_context(player.handle, game_id, advertised)
         return _GAME_MAP[game_id]
 
 
-async def track_player(websocket: WebSocketServerProtocol, handle: str) -> str:
-    """Track a newly-registered player, returning the player id."""
+async def delete_game(game: TrackedGame) -> None:
+    """Delete a tracked game, so it is no longer tracked."""
+    async with _LOCK:
+        if game.game_id in _GAME_MAP:
+            del _GAME_MAP[game.game_id]
+
+
+async def lookup_game(game_id: Optional[str] = None, player: Optional[TrackedPlayer] = None) -> Optional[TrackedGame]:
+    """Look up a game by id, returning None if the game is not found."""
+    if game_id:
+        async with _LOCK:
+            return _GAME_MAP[game_id] if game_id in _GAME_MAP else None
+    elif player:
+        async with player.lock:
+            game_id = player.game_id
+        return await lookup_game(game_id=game_id)
+    else:
+        return None
+
+
+async def lookup_all_games() -> List[TrackedGame]:
+    """Return a list of all tracked games."""
+    async with _LOCK:
+        return list(_GAME_MAP.values())
+
+
+async def lookup_game_players(game: TrackedGame) -> List[TrackedPlayer]:
+    """Lookup the players that are currently playing a game."""
+    # TODO: need to ensure that joined_handles only includes human players, connected to a websocket
+    #       not sure where/how I'm going to track the programmatic players.  needs some more state?
+    async with game.lock:
+        handles = game.joined_handles[:]
+    players = [await lookup_player(handle=handle) for handle in handles]
+    return [player for player in players if player is not None]
+
+
+async def lookup_available_games(player: TrackedPlayer) -> List[TrackedGame]:
+    """Return a list of games the passed-in player may join."""
+    games = await lookup_all_games()
+    return [game for game in games if game.is_available(player)]
+
+
+async def track_player(websocket: WebSocketServerProtocol, handle: str) -> TrackedPlayer:
+    """Track a newly-registered player, the tracked player."""
     async with _LOCK:
         if handle in _HANDLE_MAP:
             raise ProcessingError(FailureReason.DUPLICATE_USER)
         player_id = "%s" % uuid4()
         _PLAYER_MAP[player_id] = TrackedPlayer.for_context(player_id, websocket, handle)
         _HANDLE_MAP[handle] = player_id
-        return player_id
+        return _PLAYER_MAP[player_id]
 
 
-async def delete_game(game_id: str) -> None:
-    """Delete a tracked game, so it is no longer tracked."""
-    async with _LOCK:
-        if game_id in _GAME_MAP:
-            del _GAME_MAP[game_id]
-
-
-# noinspection PyBroadException
-async def disconnect_player(player_id: str) -> None:
-    """Disconnect a player's websocket."""
-    player = await lookup_player(player_id)
-    if not player:
-        return
-    async with player.lock:
-        websocket = player.websocket
-    await player.mark_disconnected()
-    if websocket:
-        try:
-            await websocket.close()
-        except:  # pylint: disable=bare-except
-            pass
-
-
-async def delete_player(player_id: str) -> None:
+async def delete_player(player: TrackedPlayer) -> None:
     """Delete a tracked player, so it is no longer tracked."""
     async with _LOCK:
-        if player_id in _PLAYER_MAP:
-            player = _PLAYER_MAP[player_id]
-            async with player.lock:
-                handle = player.handle
-            if handle in _HANDLE_MAP:
-                del _HANDLE_MAP[handle]
-            del _PLAYER_MAP[player_id]
+        if player.handle in _HANDLE_MAP:
+            del _HANDLE_MAP[player.handle]
+        if player.player_id in _PLAYER_MAP:
+            del _PLAYER_MAP[player.player_id]
 
 
-async def lookup_websocket(player_id: Optional[str] = None, handle: Optional[str] = None) -> Optional[WebSocketServerProtocol]:
-    """Look up the websocket for a player id or handle, returning None if the player can't be found or is disconnected."""
+async def lookup_player(player_id: Optional[str] = None, handle: Optional[str] = None) -> Optional[TrackedPlayer]:
+    """Look up a player by either player id or handle."""
     if player_id:
+        async with _LOCK:
+            return _PLAYER_MAP[player_id] if player_id in _PLAYER_MAP else None
+    elif handle:
+        async with _LOCK:
+            player_id = _HANDLE_MAP[handle] if handle in _HANDLE_MAP else None
+        return await lookup_player(player_id=player_id)
+    else:
+        return None
+
+
+async def lookup_all_players() -> List[TrackedPlayer]:
+    """Return a list of all tracked players."""
+    async with _LOCK:
+        return list(_PLAYER_MAP.values())
+
+
+async def lookup_websocket(
+    player: Optional[TrackedPlayer] = None, player_id: Optional[str] = None, handle: Optional[str] = None
+) -> Optional[WebSocketServerProtocol]:
+    """Look up the websocket for a player, player id or handle, returning None for an unknown or disconnected player."""
+    if player:
+        async with player.lock:
+            return player.websocket
+    elif player_id:
         player = await lookup_player(player_id=player_id)
         if not player:
             return None
@@ -388,17 +417,13 @@ async def lookup_websocket(player_id: Optional[str] = None, handle: Optional[str
         return None
 
 
-async def lookup_all_websockets() -> List[WebSocketServerProtocol]:
-    """Return a list of websockets for all connected players."""
-    async with _LOCK:
-        return [player.websocket for player in _PLAYER_MAP.values() if player.websocket is not None]
-
-
 async def lookup_websockets(
-    player_ids: Optional[List[str]] = None, handles: Optional[List[str]] = None
+    players: Optional[List[TrackedPlayer]], player_ids: Optional[List[str]] = None, handles: Optional[List[str]] = None
 ) -> List[WebSocketServerProtocol]:
-    """Look up the websockets for a list of player ids and/or handles, for players that can be found and are connected."""
+    """Look up the websockets for a list of players, player ids and/or handles, for players that are connected."""
     websockets = set()
+    if players:
+        websockets.update([await lookup_websocket(player=player) for player in players])
     if player_ids:
         websockets.update([await lookup_websocket(player_id=player_id) for player_id in player_ids])
     if handles:
@@ -406,233 +431,15 @@ async def lookup_websockets(
     return list([websocket for websocket in websockets if websocket is not None])
 
 
-async def lookup_available_games(player_id: str) -> List[TrackedGame]:
-    """Return a list of all advertised games."""
-    handle = await lookup_player_handle(player_id)
-    async with _LOCK:
-        return [] if not handle else [game for game in _GAME_MAP.values() if game.is_advertised(handle)]
+async def lookup_all_websockets() -> List[WebSocketServerProtocol]:
+    """Return a list of websockets for all tracked players."""
+    return await lookup_websockets(players=await lookup_all_players())
 
 
-async def lookup_game(game_id: str) -> Optional[TrackedGame]:
-    """Look up a game by id."""
-    async with _LOCK:
-        return _GAME_MAP[game_id] if game_id in _GAME_MAP else None
-
-
-async def lookup_connected_players() -> List[TrackedPlayer]:
-    """Return a list of all active players."""
-    async with _LOCK:
-        return [player for player in _PLAYER_MAP.values() if player.is_connected()]
-
-
-async def lookup_player(player_id: Optional[str] = None, handle: Optional[str] = None) -> Optional[TrackedPlayer]:
-    """Look up a player by either player id or handle."""
-    async with _LOCK:
-        if player_id:
-            return _PLAYER_MAP[player_id] if player_id in _PLAYER_MAP else None
-        elif handle:
-            if handle not in _HANDLE_MAP:
-                raise ProcessingError(FailureReason.UNKNOWN_PLAYER)
-            player_id = _HANDLE_MAP[handle]
-            return _PLAYER_MAP[player_id] if player_id in _PLAYER_MAP else None
-        else:
-            return None
-
-
-async def lookup_player_handle(player_id: str) -> Optional[str]:
-    """Lookup the handle associated with a player id."""
-    player = await lookup_player(player_id=player_id)
-    if not player:
-        return None
-    else:
-        with player.lock:
-            return player.handle
-
-
-async def lookup_player_id(handle: str) -> Optional[str]:
-    """Lookup the player id associated with a handle."""
-    player = await lookup_player(handle=handle)
-    if not player:
-        return None
-    else:
-        with player.lock:
-            return player.player_id
-
-
-async def lookup_player_game_id(player_id: str) -> Optional[str]:  # TODO: are there other places this can be used?
-    """Lookup the game id for the player, if any."""
-    player = await lookup_player(player_id=player_id)
-    if not player:
-        return None
-    else:
-        with player.lock:
-            return player.game_id
-
-
-async def lookup_game_completion() -> Dict[str, DateTime]:
-    """Look up the completed date for all completed games."""
-    result = {}
-    async with _LOCK:
-        for game in _GAME_MAP.values():
-            async with game.lock:
-                if game.game_state == GameState.COMPLETED:
-                    result[game.game_id] = copydate(game.completed_date)  # type: ignore
-    return result
-
-
-async def lookup_game_player_handles(game_id: str) -> List[str]:
-    """Lookup handles for players that have joined a game, or empty if game can't be found."""
-    game = await lookup_game(game_id)
-    if not game:
-        return []
-    else:
-        async with game.lock:
-            return game.joined_handles
-
-
-async def lookup_game_activity() -> Dict[str, DateTime]:
-    """Look up the last active date for all games."""
-    result = {}
-    async with _LOCK:
-        for game in _GAME_MAP.values():
-            async with game.lock:
-                result[game.game_id] = copydate(game.last_active_date)
-    return result
-
-
-# TODO: remove unused-argument
-async def lookup_game_players(game_id: str) -> Dict[PlayerColor, GamePlayer]:  # pylint: disable=unused-argument
-    """Look up the players associated with a game."""
-    return {}  # TODO: implement this
-
-
-# TODO: remove unused-argument
-async def lookup_game_state(game_id: str) -> Dict[str, PlayerView]:  # pylint: disable=unused-argument
-    """Look up the game state by player, a map from player handle to PlayerView."""
-    return {}  # TODO: implement this
-
-
-async def lookup_player_activity() -> Dict[str, Tuple[DateTime, ConnectionState]]:
-    """Look up the last active date and connection state for all players."""
-    result = {}
-    async with _LOCK:
-        for player in _PLAYER_MAP.values():
-            async with player.lock:
-                result[player.player_id] = (copydate(player.last_active_date), player.connection_state)
-    return result
-
-
-async def mark_game_active(game_id: str) -> TrackedGame:
-    """Mark that a game is active, and return the up-to-date game."""
-    game = await lookup_game(game_id=game_id)
-    if not game:
-        raise ProcessingError(FailureReason.UNKNOWN_GAME)
-    await game.mark_active()
-    return game
-
-
-async def mark_game_started(game_id: str) -> List[str]:
-    """Mark that a game is started, returning list of handles to notify."""
-    game = await lookup_game(game_id=game_id)
-    if not game:
-        raise ProcessingError(FailureReason.UNKNOWN_GAME)
-    return await game.mark_started()
-
-
-async def mark_game_idle(game_id: str) -> List[str]:
-    """Mark that a game is idle, returning list of handles to notify."""
-    game = await lookup_game(game_id=game_id)
-    if not game:
-        raise ProcessingError(FailureReason.UNKNOWN_GAME)
-    return await game.mark_idle()
-
-
-async def mark_game_completed(game_id: str, comment: Optional[str] = None) -> List[str]:
-    """Mark that a game is completed, returning list of handles to notify."""
-    game = await lookup_game(game_id=game_id)
-    if not game:
-        raise ProcessingError(FailureReason.UNKNOWN_GAME)
-    return await game.mark_completed(comment)
-
-
-async def mark_game_cancelled(game_id: str, reason: CancelledReason, comment: Optional[str] = None) -> List[str]:
-    """Mark that a game is cancelled, returning list of handles to notify."""
-    game = await lookup_game(game_id=game_id)
-    if not game:
-        raise ProcessingError(FailureReason.UNKNOWN_GAME)
-    handles = await game.mark_cancelled(reason, comment)
-    for handle in handles:
-        player = await lookup_player(handle=handle)
-        if player:
-            await player.mark_quit()
-    return handles
-
-
-async def mark_player_active(player_id: str) -> TrackedPlayer:
-    """Mark that a player is active, and return the up-to-date player."""
-    player = await lookup_player(player_id=player_id)
-    if not player:
-        raise ProcessingError(FailureReason.UNKNOWN_PLAYER)
-    await player.mark_active()
-    return player
-
-
-async def mark_player_idle(player_id: str) -> None:
-    """Mark that a player is idle."""
-    player = await lookup_player(player_id)
-    if not player:
-        raise ProcessingError(FailureReason.UNKNOWN_PLAYER)
-    await player.mark_idle()
-
-
-async def mark_player_joined(player_id: str, game_id: str) -> None:
-    """Mark that a player has joined a game."""
-    player = await lookup_player(player_id=player_id)
-    if not player:
-        raise ProcessingError(FailureReason.UNKNOWN_PLAYER)
-    async with player.lock:
-        handle = player.handle
-    game = await lookup_game(game_id=game_id)
-    if not game:
-        raise ProcessingError(FailureReason.UNKNOWN_GAME)
-    await player.mark_joined(game_id)
-    await game.mark_joined(handle)
-
-
-async def mark_player_quit(player_id: str) -> Tuple[str, Optional[str], bool]:
-    """Mark that a player has quit any game they are playing."""
-    player = await lookup_player(player_id=player_id)  # TODO: what if player does not exist?
-    if not player:
-        raise ProcessingError(FailureReason.UNKNOWN_PLAYER)
-    async with player.lock:
-        handle = player.handle
-        game_id = player.game_id
-    if not game_id:
-        return handle, None, False
-    else:
-        game = await lookup_game(game_id=game_id)  # TODO: what if there is no game?
-        if not game:
-            raise ProcessingError(FailureReason.UNKNOWN_GAME)
-        await player.mark_quit()
-        await game.mark_quit(handle)
-        viable = await game.is_viable()  # TODO: what if there is no game? is this true?  or false?
-        return handle, game_id, viable
-
-
-async def mark_player_disconnected(player_id: str) -> Tuple[str, Optional[str], bool]:
-    """Mark that a player has been disconnected, quitting any game they are playing."""
-    player = await lookup_player(player_id=player_id)  # TODO: what if player does not exist
-    if not player:
-        raise ProcessingError(FailureReason.UNKNOWN_PLAYER)
-    async with player.lock:
-        handle = player.handle
-        game_id = player.game_id
-    if not game_id:
-        return handle, None, False
-    game = await lookup_game(game_id=game_id)  # TODO: what if there is no game?
-    if not game:
-        raise ProcessingError(FailureReason.UNKNOWN_GAME)
-    await player.mark_disconnected()
-    await game.mark_quit(handle)
-    viable = await game.is_viable()  # TODO: what if there is no game? is this true?  or false?
-    return handle, game_id, viable
+async def lookup_player_for_websocket(websocket: WebSocketServerProtocol) -> Optional[TrackedPlayer]:
+    """Look up the player associated with a websocket, if any."""
+    # We can't track this in a map because it's not a constant identifying aspect of a player
+    for player in await lookup_all_players():
+        if websocket is await lookup_websocket(player=player):
+            return player
+    return None

@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 # vim: set ft=python ts=4 sw=4 expandtab:
 
+# TODO: should be ok to start unit testing this, I think the structure is final
+
 import argparse
 import sys
 from typing import Any, List

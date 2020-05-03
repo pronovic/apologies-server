@@ -5,6 +5,9 @@
 System configuration.
 """
 
+# TODO: should be ok to start unit testing this, I think the structure is final
+
+
 import configparser
 import os
 from configparser import ConfigParser, SectionProxy

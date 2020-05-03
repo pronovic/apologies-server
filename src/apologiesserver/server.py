@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 # vim: set ft=python ts=4 sw=4 expandtab:
-# pylint: disable=wildcard-import
 
+# TODO: should be ok to start unit testing this, I think the structure is final
+# TODO: need to raise an exception if the player is not found
 
 import asyncio
 import logging
@@ -14,11 +15,11 @@ import websockets
 from websockets import WebSocketServerProtocol
 
 from .config import config
-from .event import handle_request_failed_event, handle_server_shutdown_event
+from .event import handle_player_disconnected_event, handle_request_failed_event, handle_server_shutdown_event
 from .interface import FailureReason, Message, MessageType, ProcessingError
-from .request import REQUEST_HANDLERS, handle_register_player_request
+from .request import REQUEST_HANDLERS, RequestContext, handle_register_player_request
 from .scheduled import SCHEDULED_TASKS
-from .state import mark_player_active
+from .state import lookup_game, lookup_player
 
 log = logging.getLogger("apologies.server")
 
@@ -35,30 +36,50 @@ def _parse_authorization(websocket: WebSocketServerProtocol) -> str:
         raise ProcessingError(FailureReason.MISSING_AUTH)
 
 
+async def _dispatch_register_player(websocket: WebSocketServerProtocol, message: Message) -> None:
+    # This request has a different interface than the others, since there is never a player or a game
+    log.debug("Handling request REGISTER_PLAYER vi mapping to handle_register_player_request")
+    await handle_register_player_request(websocket, message)
+
+
+async def _dispatch_request(websocket: WebSocketServerProtocol, message: Message) -> None:
+    """Dispatch a websocket request to the right handler function."""
+    handler = REQUEST_HANDLERS[message.message]
+    log.debug("Handling request %s via mapping to %s", message.message, handler)
+    player_id = _parse_authorization(websocket)
+    player = await lookup_player(player_id=player_id)
+    if not player:
+        raise ProcessingError(FailureReason.UNKNOWN_PLAYER)
+    async with player.lock:
+        log.debug("Request is for player: %s", player)
+        game_id = player.game_id
+    game = await lookup_game(game_id=game_id)
+    request = RequestContext(websocket, message, player, game)
+    await player.mark_active()
+    await handler(request)
+
+
 async def _handle_connection(websocket: WebSocketServerProtocol, _path: str) -> None:
-    """Client connection handler coroutine, invoked once for each client that connects."""
+    """Client connection handler, invoked once for each client that connects."""
+    log.debug("Got new websocket connection: %s", websocket)
     async for data in websocket:
+        log.debug("Received raw data for websocket %s: %s", websocket, data)
         try:
-            log.debug("Received raw data for websocket %s: %s", websocket, data)
             message = Message.for_json(str(data))
             log.debug("Extracted message: %s", message)
             if message.message == MessageType.REGISTER_PLAYER:
-                log.debug("Handling request REGISTER_PLAYER as a special case")
-                await handle_register_player_request(websocket, message)
+                await _dispatch_register_player(websocket, message)
             else:
-                log.debug("Handling request %s via mapping", message.message)
-                player_id = _parse_authorization(websocket)
-                player = await mark_player_active(player_id)
-                async with player.lock:
-                    log.debug("Request is for player: %s", player)
-                await REQUEST_HANDLERS[message.message](player_id, message)
+                await _dispatch_request(websocket, message)
         except Exception as e:  # pylint: disable=broad-except
-            log.error("Error handling connection: %s", str(e))
+            log.error("Error handling request: %s", str(e))
             await handle_request_failed_event(websocket, e)
+    log.debug("Websocket is disconnected: %s", websocket)
+    await handle_player_disconnected_event(websocket)
 
 
 async def _websocket_server(stop: "Future[Any]", host: str = "localhost", port: int = 8765) -> None:
-    """Websocket server coroutine."""
+    """Websocket server."""
     async with websockets.serve(_handle_connection, host, port):
         await stop
         await handle_server_shutdown_event()

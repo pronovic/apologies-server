@@ -51,7 +51,7 @@ __all__ = [
     "RequestFailedContext",
     "RegisteredPlayer",
     "RegisteredPlayersContext",
-    "AvailableGame",
+    "AdvertisedGame",
     "AvailableGamesContext",
     "PlayerRegisteredContext",
     "PlayerMessageReceivedContext",
@@ -225,8 +225,8 @@ class RegisteredPlayersContext(Context):
 
 
 @attr.s(frozen=True)
-class AvailableGame:
-    """An available game within an AvailableGamesContext."""
+class AdvertisedGame:
+    """A game that has been advertised in the system."""
 
     game_id = attr.ib(type=str)
     name = attr.ib(type=str)
@@ -242,7 +242,7 @@ class AvailableGame:
 class AvailableGamesContext(Context):
     """Context for an AVAILABLE_GAMES event."""
 
-    games = attr.ib(type=List[AvailableGame])
+    games = attr.ib(type=List[AdvertisedGame])
 
 
 @attr.s(frozen=True)
@@ -265,14 +265,14 @@ class PlayerMessageReceivedContext(Context):
 class GameAdvertisedContext(Context):
     """Context for an GAME_ADVERTISED event."""
 
-    game = attr.ib(type=AvailableGame)
+    game = attr.ib(type=AdvertisedGame)  # TODO: update example in API.md, for new structure
 
 
 @attr.s(frozen=True)
 class GameInvitationContext(Context):
     """Context for an GAME_INVITATION event."""
 
-    game = attr.ib(type=AvailableGame)
+    game = attr.ib(type=AdvertisedGame)  # TODO: update example in API.md, for new structure
 
 
 @attr.s(frozen=True)

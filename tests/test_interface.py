@@ -789,7 +789,7 @@ class TestEvent:
         roundtrip(message)
 
     def test_available_games_roundtrip(self) -> None:
-        game = AvailableGame("game", "name", GameMode.STANDARD, "leela", 3, 2, Visibility.PUBLIC, ["fry", "bender"])
+        game = AdvertisedGame("game", "name", GameMode.STANDARD, "leela", 3, 2, Visibility.PUBLIC, ["fry", "bender"])
         context = AvailableGamesContext(games=[game])
         message = Message(MessageType.AVAILABLE_GAMES, context)
         roundtrip(message)
@@ -817,13 +817,13 @@ class TestEvent:
         roundtrip(message)
 
     def test_game_advertised_roundtrip(self) -> None:
-        game = AvailableGame("game", "name", GameMode.STANDARD, "leela", 3, 2, Visibility.PUBLIC, ["fry", "bender"])
+        game = AdvertisedGame("game", "name", GameMode.STANDARD, "leela", 3, 2, Visibility.PUBLIC, ["fry", "bender"])
         context = GameAdvertisedContext(game)
         message = Message(MessageType.GAME_ADVERTISED, context)
         roundtrip(message)
 
     def test_game_invitation_roundtrip(self) -> None:
-        game = AvailableGame("game", "name", GameMode.STANDARD, "leela", 3, 2, Visibility.PUBLIC, ["fry", "bender"])
+        game = AdvertisedGame("game", "name", GameMode.STANDARD, "leela", 3, 2, Visibility.PUBLIC, ["fry", "bender"])
         context = GameInvitationContext(game)
         message = Message(MessageType.GAME_INVITATION, context)
         roundtrip(message)

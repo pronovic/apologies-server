@@ -1,6 +1,12 @@
 # -*- coding: utf-8 -*-
 # vim: set ft=python ts=4 sw=4 expandtab:
-# pylint: disable=wildcard-import
+# pylint: disable=wildcard-import,unused-argument
+
+# TODO: remove unused-argument once these are implemented
+# TODO: needs unit test, but more code needs to be written/understood/cleaned up first
+# TODO: there are race conditions here - like, what if a player quits at the same time we're starting a game?
+#       there probably need to be some boundary conditions so we throw an exception or ignore a change where
+#       initial state doens't seem right.
 
 """Coroutines to events, most of which publish data to Websocket connections."""
 
@@ -39,6 +45,7 @@ __all__ = [
     "handle_game_player_quit_event",
     "handle_game_player_change_event",
     "handle_game_state_change_event",
+    "handle_game_execute_move_event",
     "handle_game_player_turn_event",
 ]
 
@@ -48,13 +55,14 @@ log = logging.getLogger("apologies.event")
 async def send_message(
     message: Message,
     websockets: Optional[List[WebSocketServerProtocol]] = None,
+    players: Optional[List[TrackedPlayer]] = None,
     player_ids: Optional[List[str]] = None,
     handles: Optional[List[str]] = None,
 ) -> None:
     """Send a message as JSON to one or more websockets, provided explicitly and/or identified by player id and/or handle."""
     data = message.to_json()
     destinations = set(websockets) if websockets else set()
-    destinations.update(await lookup_websockets(player_ids=player_ids, handles=handles))
+    destinations.update(await lookup_websockets(players=players, player_ids=player_ids, handles=handles))
     log.debug("Sending message to %d websockets: %s", len(destinations), data)
     await asyncio.wait([destination.send(data) for destination in destinations])
     # TODO: not sure what happens here if sending data fails; may need to handle an error and disconnect the player?
@@ -84,209 +92,219 @@ async def handle_server_shutdown_event() -> None:
     await send_message(message, websockets=websockets)
 
 
-async def handle_registered_players_event(player_id: str) -> None:
+async def handle_registered_players_event(player: TrackedPlayer) -> None:
     """Handle the Registered Players event."""
     log.info("EVENT[Registered Players]")
-    players = [await player.to_registered_player() for player in await lookup_connected_players()]
+    players = [await player.to_registered_player() for player in await lookup_all_players()]
     context = RegisteredPlayersContext(players=players)
     message = Message(MessageType.REGISTERED_PLAYERS, context)
-    await send_message(message, player_ids=[player_id])
+    await send_message(message, players=[player])
 
 
-async def handle_available_games_event(player_id: str) -> None:
+async def handle_available_games_event(player: TrackedPlayer) -> None:
     """Handle the Available Games event."""
     log.info("EVENT[Available Games]")
-    games = [await game.to_available_game() for game in await lookup_available_games(player_id)]
+    games = [await game.to_advertised_game() for game in await lookup_available_games(player)]
     context = AvailableGamesContext(games=games)
     message = Message(MessageType.AVAILABLE_GAMES, context)
-    await send_message(message, player_ids=[player_id])
+    await send_message(message, players=[player])
 
 
 async def handle_player_registered_event(websocket: WebSocketServerProtocol, handle: str) -> None:
     """Handle the Player Registered event."""
     log.info("EVENT[Player Registered]")
-    player_id = await track_player(websocket, handle)
-    context = PlayerRegisteredContext(player_id=player_id)
+    player = await track_player(websocket, handle)
+    context = PlayerRegisteredContext(player_id=player.player_id)
     message = Message(MessageType.PLAYER_REGISTERED, context)
     await send_message(message, websockets=[websocket])
 
 
-async def handle_player_reregistered_event(player_id: str) -> None:
+async def handle_player_reregistered_event(player: TrackedPlayer, websocket: WebSocketServerProtocol) -> None:
     """Handle the Player Registered event."""
     log.info("EVENT[Player Registered]")
-    player = await lookup_player(player_id)
-    if not player:
-        raise ProcessingError(FailureReason.UNKNOWN_PLAYER)
-    context = PlayerRegisteredContext(player_id=player_id)
+    async with player.lock:
+        player.websocket = websocket
+    context = PlayerRegisteredContext(player_id=player.player_id)
     message = Message(MessageType.PLAYER_REGISTERED, context)
-    await send_message(message, player_ids=[player_id])
+    await send_message(message, players=[player])
 
 
-async def handle_player_unregistered_event(player_id: str) -> None:
+async def handle_player_unregistered_event(player: TrackedPlayer, game: Optional[TrackedGame] = None) -> None:
     """Handle the Player Unregistered event."""
     log.info("EVENT[Player Unregistered]")
-    handle, game_id, viable = await mark_player_quit(player_id)
-    if game_id:
-        comment = "Player %s unregistered" % handle
-        await handle_game_player_change_event(game_id, comment)
-        if not viable:
-            await handle_game_cancelled_event(game_id, CancelledReason.NOT_VIABLE, comment)
-    await delete_player(player_id)
+    await player.mark_quit()
+    if game:
+        comment = "Player %s unregistered" % player.handle
+        await game.mark_quit(player.handle)
+        await handle_game_player_change_event(game, comment)
+        if not await game.is_viable():
+            await handle_game_cancelled_event(game, CancelledReason.NOT_VIABLE, comment)
+    await delete_player(player)
 
 
-async def handle_player_disconnected_event(player_id: str) -> None:
+async def handle_player_disconnected_event(websocket: WebSocketServerProtocol) -> None:
     """Handle the Player Disconnected event."""
     log.info("EVENT[Player Disconnected]")
-    handle, game_id, viable = await mark_player_disconnected(player_id)
-    if game_id:
-        comment = "Player %s was disconnected" % handle
-        await handle_game_player_change_event(game_id, comment)
-        if not viable:
-            await handle_game_cancelled_event(game_id, CancelledReason.NOT_VIABLE, comment)
+    player = await lookup_player_for_websocket(websocket)
+    if player:
+        game = await lookup_game(player=player)
+        await player.mark_disconnected()
+        if game:
+            comment = "Player %s disconnected" % player.handle
+            await game.mark_quit(player.handle)
+            await handle_game_player_change_event(game, comment)
+            if not await game.is_viable():
+                await handle_game_cancelled_event(game, CancelledReason.NOT_VIABLE, comment)
 
 
-async def handle_player_idle_event(player_id: str) -> None:
+async def handle_player_idle_event(player: TrackedPlayer) -> None:
     """Handle the Player Idle event."""
     log.info("EVENT[Player Idle]")
     message = Message(MessageType.PLAYER_IDLE)
-    await send_message(message, player_ids=[player_id])
-    await mark_player_idle(player_id)
+    await send_message(message, players=[player])
+    await player.mark_idle()
 
 
-async def handle_player_inactive_event(player_id: str) -> None:
+async def handle_player_inactive_event(player: TrackedPlayer) -> None:
     """Handle the Player Inactive event."""
     log.info("EVENT[Player Inactive]")
     message = Message(MessageType.PLAYER_INACTIVE)
-    await send_message(message, player_ids=[player_id])
-    await disconnect_player(player_id)
-    await handle_player_unregistered_event(player_id)
+    game = await lookup_game(player=player)
+    await send_message(message, players=[player])
+    await player.disconnect()
+    await handle_player_unregistered_event(player, game)
 
 
-async def handle_player_message_received_event(player_id: str, recipient_handles: List[str], sender_message: str) -> None:
+async def handle_player_message_received_event(sender_handle: str, recipient_handles: List[str], sender_message: str) -> None:
     """Handle the Player Message Received event."""
     log.info("EVENT[Player Message Received]")
-    sender_handle = await lookup_player_handle(player_id)
-    if sender_handle:
-        context = PlayerMessageReceivedContext(sender_handle, recipient_handles, sender_message)
-        message = Message(MessageType.PLAYER_MESSAGE_RECEIVED, context)
-        await send_message(message, handles=recipient_handles)
+    context = PlayerMessageReceivedContext(sender_handle, recipient_handles, sender_message)
+    message = Message(MessageType.PLAYER_MESSAGE_RECEIVED, context)
+    await send_message(message, handles=recipient_handles)
 
 
-async def handle_game_advertised_event(player_id: str, advertised: AdvertiseGameContext) -> None:
+async def handle_game_advertised_event(player: TrackedPlayer, advertised: AdvertiseGameContext) -> None:
     """Handle the Game Advertised event."""
     log.info("EVENT[Game Advertised]")
-    game = await track_game(player_id, advertised)
-    available = await game.to_available_game()
-    context = GameAdvertisedContext(game=available)
+    game = await track_game(player, advertised)
+    context = GameAdvertisedContext(game=await game.to_advertised_game())
     message = Message(MessageType.GAME_ADVERTISED, context)
-    await send_message(message, player_ids=[player_id])
+    await send_message(message, players=[player])
 
 
-async def handle_game_invitation_event(player_id: str, game_id: str) -> None:
+async def handle_game_invitation_event(game: TrackedGame, player: Optional[TrackedPlayer] = None) -> None:
     """Handle the Game Invitation event."""
     log.info("EVENT[Game Invitation]")
-    game = await lookup_game(game_id)
-    if not game:
-        raise ProcessingError(FailureReason.INTERNAL_ERROR)
-    available = await game.to_available_game()
-    context = GameInvitationContext(game=available)
+    context = GameInvitationContext(game=await game.to_advertised_game())
     message = Message(MessageType.GAME_INVITATION, context)
-    await send_message(message, player_ids=[player_id])
+    if player:
+        await send_message(message, players=[player])
+    else:
+        await send_message(message, handles=game.invited_handles)  # safe to reference invited_handles since it does not change
 
 
-async def handle_game_joined_event(player_id: str, game_id: str) -> None:
+async def handle_game_joined_event(player: TrackedPlayer, game_id: str) -> None:
     """Handle the Game Joined event."""
     log.info("EVENT[Game Joined]")
+    game = await lookup_game(player=player)
+    if not game:
+        raise ProcessingError(FailureReason.UNKNOWN_GAME)
+    await player.mark_joined(game_id)
+    await game.mark_joined(player.handle)
     context = GameJoinedContext(game_id=game_id)
     message = Message(MessageType.GAME_JOINED, context)
-    await mark_player_joined(player_id, game_id)
-    await send_message(message, player_ids=[player_id])
+    await send_message(message, players=[player])
 
 
-async def handle_game_started_event(game_id: str) -> None:
+async def handle_game_started_event(game: TrackedGame) -> None:
     """Handle the Game Started event."""
     log.info("EVENT[Game Started]")
     message = Message(MessageType.GAME_STARTED)
-    handles = await mark_game_started(game_id)
-    await send_message(message, handles=handles)
+    await game.mark_started()
+    players = await lookup_game_players(game)
+    for player in players:
+        await player.mark_playing()
+    await send_message(message, players=players)
 
 
-async def handle_game_cancelled_event(game_id: str, reason: CancelledReason, comment: Optional[str] = None) -> None:
+async def handle_game_cancelled_event(game: TrackedGame, reason: CancelledReason, comment: Optional[str] = None) -> None:
     """Handle the Game Cancelled event."""
     log.info("EVENT[Game Cancelled]")
     context = GameCancelledContext(reason=reason, comment=comment)
     message = Message(MessageType.GAME_CANCELLED, context)
-    handles = await mark_game_cancelled(game_id, reason, comment)
-    await send_message(message, handles=handles)
+    players = await lookup_game_players(game)
+    for player in players:
+        await player.mark_quit()
+    await game.mark_cancelled(CancelledReason.CANCELLED, comment)
+    await send_message(message, players=players)
 
 
-async def handle_game_completed_event(game_id: str, comment: Optional[str] = None) -> None:
+async def handle_game_completed_event(game: TrackedGame, comment: Optional[str] = None) -> None:
     """Handle the Game Completed event."""
     log.info("EVENT[Game Completed]")
     context = GameCompletedContext(comment=comment)
     message = Message(MessageType.GAME_COMPLETED, context)
-    handles = await mark_game_completed(game_id, comment)
-    await send_message(message, handles=handles)
+    players = await lookup_game_players(game)
+    for player in players:
+        await player.mark_quit()
+    await game.mark_completed(comment)
+    await send_message(message, players=players)
 
 
-async def handle_game_idle_event(game_id: str) -> None:
+async def handle_game_idle_event(game: TrackedGame) -> None:
     """Handle the Game Idle event."""
     log.info("EVENT[Game Idle]")
     message = Message(MessageType.GAME_IDLE)
-    handles = await mark_game_idle(game_id)
-    await send_message(message, handles=handles)
+    players = await lookup_game_players(game)
+    await send_message(message, players=players)
 
 
-async def handle_game_inactive_event(game_id: str) -> None:
+async def handle_game_inactive_event(game: TrackedGame) -> None:
     """Handle the Game Inactive event."""
     log.info("EVENT[Game Inactive]")
-    message = Message(MessageType.GAME_CANCELLED)
-    handles = await mark_game_cancelled(game_id, CancelledReason.INACTIVE)
-    await send_message(message, handles=handles)
+    await handle_game_cancelled_event(game, CancelledReason.INACTIVE)
 
 
-async def handle_game_obsolete_event(game_id: str) -> None:
+async def handle_game_obsolete_event(game: TrackedGame) -> None:
     """Handle the Game Obsolete event."""
     log.info("EVENT[Game Obsolete]")
-    await delete_game(game_id)
+    await delete_game(game)
 
 
-async def handle_game_player_quit_event(player_id: str) -> None:
+async def handle_game_player_quit_event(player: TrackedPlayer, game: TrackedGame) -> None:
     """Handle the Player Unregistered event."""
     log.info("EVENT[Game Player Quit]")
-    handle, game_id, viable = await mark_player_quit(player_id)
-    if game_id:
-        comment = "Player %s quit" % handle
-        await handle_game_player_change_event(game_id, comment)
-        if not viable:
-            await handle_game_cancelled_event(game_id, CancelledReason.NOT_VIABLE, comment)
-    await delete_player(player_id)
+    comment = "Player %s quit" % player.handle
+    await player.mark_quit()
+    await game.mark_quit(player.handle)
+    await handle_game_player_change_event(game, comment)
+    if not await game.is_viable():
+        await handle_game_cancelled_event(game, CancelledReason.NOT_VIABLE, comment)
 
 
-async def handle_game_player_change_event(game_id: str, comment: str) -> None:
+async def handle_game_player_change_event(game: TrackedGame, comment: str) -> None:
     """Handle the Game Player Change event."""
     log.info("EVENT[Game Player Change]")
-    players = await lookup_game_players(game_id)
-    handles = [player.handle for player in players.values() if player.handle is not None]
-    context = GamePlayerChangeContext(comment=comment, players=players)
-    message = Message(MessageType.GAME_PLAYER_CHANGE, context)
-    await send_message(message, handles=handles)
+    # TODO: this needs some additional stuff that we're not tracking yet, to create the returned GamePlayer
 
 
-async def handle_game_state_change_event(game_id: str, requester_handle: Optional[str] = None) -> None:
+async def handle_game_state_change_event(game: TrackedGame, player: Optional[TrackedPlayer] = None) -> None:
     """Handle the Game State Change event."""
     log.info("EVENT[Game State Change]")
-    state = await lookup_game_state(game_id)
-    for handle, view in state.items():
-        if not requester_handle or handle == requester_handle:
-            context = GameStateChangeContext.for_view(view)
-            message = Message(MessageType.GAME_STATE_CHANGE, context)
-            await send_message(message, handles=[handle])
+    # TODO: I'm not really sure how this is going to work; it needs a new method on TrackedGame, I think
+    #       Then I need to notify either the passed-in player or all of the players on the game
 
 
-async def handle_game_player_turn_event(player_id: str, moves: List[Move]) -> None:
+async def handle_game_execute_move_event(player: TrackedPlayer, game: TrackedGame, move_id: str) -> None:
+    """Handle the Execute Move event."""
+    log.info("EVENT[Execute Move]")
+    # TODO: I'm not really sure how this is going to work; it needs a new method on TrackedGame, I think
+    #       Then I need to invoke the handle_game_state_change_event() to notify players of the current state
+
+
+async def handle_game_player_turn_event(game: TrackedGame, player: TrackedPlayer, moves: List[Move]) -> None:
     """Handle the Game Player Turn event."""
     log.info("EVENT[Game Player Turn]")
     context = GamePlayerTurnContext.for_moves(moves)
     message = Message(MessageType.GAME_PLAYER_TURN, context)
-    await send_message(message, player_ids=[player_id])
+    await send_message(message, players=[player])
