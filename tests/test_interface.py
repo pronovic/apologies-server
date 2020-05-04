@@ -860,9 +860,9 @@ class TestEvent:
         roundtrip(message)
 
     def test_game_player_change_roundtrip(self) -> None:
-        red = GamePlayer("leela", PlayerType.HUMAN, PlayerState.QUIT)
-        yellow = GamePlayer(None, PlayerType.PROGRAMMATIC, PlayerState.PLAYING)
-        players = {PlayerColor.RED: red, PlayerColor.YELLOW: yellow}
+        red = GamePlayer("leela", PlayerColor.RED, PlayerType.HUMAN, PlayerState.QUIT)
+        yellow = GamePlayer("Legolas", PlayerColor.YELLOW, PlayerType.PROGRAMMATIC, PlayerState.PLAYING)
+        players = [red, yellow]
         context = GamePlayerChangeContext("YELLOW player (leela) quit", players)
         message = Message(MessageType.GAME_PLAYER_CHANGE, context)
         roundtrip(message)

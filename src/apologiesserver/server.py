@@ -2,7 +2,6 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
 
 # TODO: should be ok to start unit testing this, I think the structure is final
-# TODO: need to raise an exception if the player is not found
 
 import asyncio
 import logging

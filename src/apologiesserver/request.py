@@ -2,9 +2,11 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=wildcard-import
 
+# TODO: need to review these events vs. my docs in API.md to see whether I've missed anything obvious
 # TODO: should be ok to start unit testing this, I think the structure is final
 # TODO: every request that requires a game needs to check that it's passed-in and raise and exception otherwise
 # TODO: similarly, if there are requests where a game can't be started (like advertise) we also need to validate that
+# TODO: in other words, all business rules about state need to be here (for instance, a player can't join a game if they're in one)
 
 """Coroutines to requests received via Websocket connections."""
 

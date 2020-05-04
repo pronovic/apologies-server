@@ -2,6 +2,8 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=unsubscriptable-object
 
+# TODO: update all examples in API.md (and maybe expand list of events?) based on final implementation
+
 """
 Definition of the public interface for the server.
 
@@ -35,23 +37,29 @@ from .validator import enum, length, notempty, string, stringlist
 
 __all__ = [
     "Visibility",
-    "FailureReason",
     "CancelledReason",
     "PlayerType",
     "PlayerState",
     "ConnectionState",
     "ActivityState",
     "GameState",
+    "FailureReason",
+    "MessageType",
     "ProcessingError",
+    "GamePlayer",
+    "RegisteredPlayer",
+    "AdvertisedGame",
+    "GameStatePawn",
+    "GameStatePlayer",
+    "GameAction",
+    "GameMove",
     "RegisterPlayerContext",
     "AdvertiseGameContext",
     "JoinGameContext",
     "ExecuteMoveContext",
     "SendMessageContext",
     "RequestFailedContext",
-    "RegisteredPlayer",
     "RegisteredPlayersContext",
-    "AdvertisedGame",
     "AvailableGamesContext",
     "PlayerRegisteredContext",
     "PlayerMessageReceivedContext",
@@ -60,13 +68,9 @@ __all__ = [
     "GameJoinedContext",
     "GameCancelledContext",
     "GameCompletedContext",
-    "GamePlayer",
     "GamePlayerChangeContext",
-    "GameStatePawn",
-    "GameStatePlayer",
     "GameStateChangeContext",
     "GamePlayerTurnContext",
-    "MessageType",
     "Message",
 ]
 
@@ -76,19 +80,6 @@ class Visibility(Enum):
 
     PUBLIC = "Public"
     PRIVATE = "Private"
-
-
-class FailureReason(Enum):
-    """Failure reasons advertised to clients."""
-
-    INVALID_REQUEST = "Invalid request"
-    DUPLICATE_USER = "Handle is already in use"
-    MISSING_AUTH = "Missing or invalid authorization header"
-    USER_LIMIT = "User limit reached"
-    UNKNOWN_PLAYER = "Unknown player"
-    UNKNOWN_GAME = "Unknown game"
-    NO_GAME = "There is no game available in this context"
-    INTERNAL_ERROR = "Internal error"
 
 
 class CancelledReason(Enum):
@@ -107,11 +98,12 @@ class PlayerType(Enum):
 
 
 class PlayerState(Enum):
-    """State of a player within a game."""
+    """A player's game state."""
 
     WAITING = "Waiting"
     JOINED = "Joined"
     PLAYING = "Playing"
+    FINISHED = "Finished"
     QUIT = "Quit"
     DISCONNECTED = "Disconnected"
 
@@ -132,7 +124,7 @@ class ActivityState(Enum):
 
 
 class GameState(Enum):
-    """States that a game can be in."""
+    """A game's state."""
 
     ADVERTISED = "Advertised"
     PLAYING = "Playing"
@@ -140,12 +132,204 @@ class GameState(Enum):
     CANCELLED = "Cancelled"
 
 
-@attr.s
+class FailureReason(Enum):
+    """Failure reasons advertised to clients."""
+
+    INVALID_REQUEST = "Invalid request"
+    DUPLICATE_USER = "Handle is already in use"
+    MISSING_AUTH = "Missing or invalid authorization header"
+    USER_LIMIT = "User limit reached"
+    UNKNOWN_PLAYER = "Unknown player"
+    UNKNOWN_GAME = "Unknown game"
+    NO_GAME = "There is no game available in this context"
+    INTERNAL_ERROR = "Internal error"
+
+
+class MessageType(Enum):
+    """Enumeration of all message types, including received events and published requests."""
+
+    # Requests sent from client to server
+    REGISTER_PLAYER = "Register Player"
+    REREGISTER_PLAYER = "Reregister Player"
+    UNREGISTER_PLAYER = "Unregister Player"
+    LIST_PLAYERS = "List Players"
+    ADVERTISE_GAME = "Advertise Game"
+    LIST_AVAILABLE_GAMES = "List Available"
+    JOIN_GAME = "Join Game"
+    QUIT_GAME = "Quit Game"
+    START_GAME = "Start Game"
+    CANCEL_GAME = "Cancel Game"
+    EXECUTE_MOVE = "Execute Move"
+    RETRIEVE_GAME_STATE = "Retrieve Game State"
+    SEND_MESSAGE = "Send Message"
+
+    # Events published from server to one or more clients
+    SERVER_SHUTDOWN = "Server Shutdown"
+    REQUEST_FAILED = "Request Failed"
+    REGISTERED_PLAYERS = "Registered Players"
+    AVAILABLE_GAMES = "Available Games"
+    PLAYER_REGISTERED = "Player Registered"
+    PLAYER_DISCONNECTED = "Player Disconnected"
+    PLAYER_IDLE = "Player Idle"
+    PLAYER_INACTIVE = "Player Inactive"
+    PLAYER_MESSAGE_RECEIVED = "Player Message Received"
+    GAME_ADVERTISED = "Game Advertise"
+    GAME_INVITATION = "Game Invitation"
+    GAME_JOINED = "Game Joined"
+    GAME_STARTED = "Game Started"
+    GAME_CANCELLED = "Game Cancelled"
+    GAME_COMPLETED = "Game Completed"
+    GAME_IDLE = "Game Idle"
+    GAME_INACTIVE = "Game Inactive"
+    GAME_OBSOLETE = "Game Obsolete"
+    GAME_PLAYER_CHANGE = "Game Player Change"
+    GAME_STATE_CHANGE = "Game State Change"
+    GAME_PLAYER_TURN = "Game Player Turn"
+
+
+@attr.s(frozen=True)
 class ProcessingError(RuntimeError):
     """Exception thrown when there is a general processing error."""
 
     reason = attr.ib(type=FailureReason)
     comment = attr.ib(type=Optional[str], default=None)
+
+
+@attr.s(frozen=True)
+class GamePlayer:
+    """The public definition of a player within a game."""
+
+    handle = attr.ib(type=str)
+    player_color = attr.ib(type=PlayerColor)
+    player_type = attr.ib(type=PlayerType)
+    player_state = attr.ib(type=PlayerState)
+
+    # TODO: needs a unit test
+    def is_available(self) -> bool:
+        """Whether the player is considered to be available to play a turn."""
+        return self.player_state not in (PlayerState.QUIT, PlayerState.DISCONNECTED)
+
+
+@attr.s(frozen=True)
+class RegisteredPlayer:
+    """The public definition of a player registered with the system."""
+
+    handle = attr.ib(type=str)
+    registration_date = attr.ib(type=DateTime)
+    last_active_date = attr.ib(type=DateTime)
+    connection_state = attr.ib(type=ConnectionState)
+    activity_state = attr.ib(type=ActivityState)
+    player_state = attr.ib(type=PlayerState)
+    game_id = attr.ib(type=Optional[str])
+
+
+@attr.s(frozen=True)
+class AdvertisedGame:
+    """A game that has been advertised in the system."""
+
+    game_id = attr.ib(type=str)
+    name = attr.ib(type=str)
+    mode = attr.ib(type=GameMode)
+    advertiser_handle = attr.ib(type=str)
+    players = attr.ib(type=int)
+    available = attr.ib(type=int)
+    visibility = attr.ib(type=Visibility)
+    invited_handles = attr.ib(type=List[str])
+
+
+@attr.s(frozen=True)
+class GameStatePawn:
+    """State of a pawn in a game."""
+
+    color = attr.ib(type=PlayerColor)
+    id = attr.ib(type=str)
+    start = attr.ib(type=bool)
+    home = attr.ib(type=bool)
+    safe = attr.ib(type=Optional[int])
+    square = attr.ib(type=Optional[int])
+
+    @staticmethod
+    def for_pawn(pawn: Pawn) -> GameStatePawn:
+        """Create a GameStatePawn based on apologies.game.Pawn."""
+        color = pawn.color
+        index = "%s" % pawn.index
+        start = pawn.position.start
+        home = pawn.position.home
+        safe = pawn.position.safe
+        square = pawn.position.square
+        return GameStatePawn(color, index, start, home, safe, square)
+
+    @staticmethod
+    def for_position(pawn: Pawn, position: Position) -> GameStatePawn:
+        """Create a GameStatePawn based on apologies.game.Pawn and apologies.gamePosition."""
+        color = pawn.color
+        index = "%s" % pawn.index
+        start = position.start
+        home = position.home
+        safe = position.safe
+        square = position.square
+        return GameStatePawn(color, index, start, home, safe, square)
+
+
+@attr.s(frozen=True)
+class GameStatePlayer:
+    """Player in a game, when describing the state of the board."""
+
+    color = attr.ib(type=PlayerColor)
+    turns = attr.ib(type=int)
+    hand = attr.ib(type=List[CardType])
+    pawns = attr.ib(type=List[GameStatePawn])
+
+    @staticmethod
+    def for_player(player: Player) -> GameStatePlayer:
+        """Create a GameStatePlayer based on apologies.game.Player."""
+        color = player.color
+        turns = player.turns
+        hand = [card.cardtype for card in player.hand]
+        pawns = [GameStatePawn.for_pawn(pawn) for pawn in player.pawns]
+        return GameStatePlayer(color, turns, hand, pawns)
+
+
+@attr.s(frozen=True)
+class GameAction:
+    """An action applied to a pawn in a game."""
+
+    start = attr.ib(type=GameStatePawn)
+    end = attr.ib(type=GameStatePawn)
+
+    @staticmethod
+    def for_action(action: Action) -> GameAction:
+        """Create a GamePlayerAction based on apologies.rules.Action."""
+        if action.actiontype == ActionType.MOVE_TO_START:
+            # We normalize a MOVE_TO_START action to just a position change, to simplify what the client sees
+            start = GameStatePawn.for_pawn(action.pawn)
+            end = GameStatePawn.for_position(action.pawn, Position().move_to_start())
+            return GameAction(start, end)
+        elif action.actiontype == ActionType.MOVE_TO_POSITION:
+            start = GameStatePawn.for_pawn(action.pawn)
+            end = GameStatePawn.for_position(action.pawn, action.position)
+            return GameAction(start, end)
+        else:
+            raise RuntimeError("Can't handle actiontype %s" % action.actiontype)
+
+
+@attr.s(frozen=True)
+class GameMove:
+    """A move that may be executed as a result of a player's turn."""
+
+    move_id = attr.ib(type=str)
+    card = attr.ib(type=CardType)
+    actions = attr.ib(type=List[GameAction])
+    side_effects = attr.ib(type=List[GameAction])
+
+    @staticmethod
+    def for_move(move: Move) -> GameMove:
+        """Create a GameMove based on apologies.rules.Move."""
+        move_id = move.id
+        card = move.card.cardtype
+        actions = [GameAction.for_action(action) for action in move.actions]
+        side_effects = [GameAction.for_action(side_effect) for side_effect in move.side_effects]
+        return GameMove(move_id, card, actions, side_effects)
 
 
 class Context(ABC):
@@ -205,37 +389,10 @@ class RequestFailedContext(Context):
 
 
 @attr.s(frozen=True)
-class RegisteredPlayer:
-    """A registered player within a RegisteredPlayersContext."""
-
-    handle = attr.ib(type=str)
-    registration_date = attr.ib(type=DateTime)
-    last_active_date = attr.ib(type=DateTime)
-    connection_state = attr.ib(type=ConnectionState)
-    activity_state = attr.ib(type=ActivityState)
-    player_state = attr.ib(type=PlayerState)
-    game_id = attr.ib(type=Optional[str])
-
-
-@attr.s(frozen=True)
 class RegisteredPlayersContext(Context):
     """Context for a REGISTERED_PLAYERS event."""
 
     players = attr.ib(type=List[RegisteredPlayer])
-
-
-@attr.s(frozen=True)
-class AdvertisedGame:
-    """A game that has been advertised in the system."""
-
-    game_id = attr.ib(type=str)
-    name = attr.ib(type=str)
-    mode = attr.ib(type=GameMode)
-    advertiser_handle = attr.ib(type=str)
-    players = attr.ib(type=int)
-    available = attr.ib(type=int)
-    visibility = attr.ib(type=Visibility)
-    invited_handles = attr.ib(type=List[str])
 
 
 @attr.s(frozen=True)
@@ -265,14 +422,14 @@ class PlayerMessageReceivedContext(Context):
 class GameAdvertisedContext(Context):
     """Context for an GAME_ADVERTISED event."""
 
-    game = attr.ib(type=AdvertisedGame)  # TODO: update example in API.md, for new structure
+    game = attr.ib(type=AdvertisedGame)
 
 
 @attr.s(frozen=True)
 class GameInvitationContext(Context):
     """Context for an GAME_INVITATION event."""
 
-    game = attr.ib(type=AdvertisedGame)  # TODO: update example in API.md, for new structure
+    game = attr.ib(type=AdvertisedGame)
 
 
 @attr.s(frozen=True)
@@ -298,73 +455,11 @@ class GameCompletedContext(Context):
 
 
 @attr.s(frozen=True)
-class GamePlayer:
-    """A game player within a GamePlayerChangeContext."""
-
-    handle = attr.ib(type=Optional[str])
-    player_type = attr.ib(type=PlayerType)
-    player_state = attr.ib(type=PlayerState)
-
-
-@attr.s(frozen=True)
 class GamePlayerChangeContext(Context):
     """Context for an GAME_PLAYER_CHANGE event."""
 
     comment = attr.ib(type=Optional[str])
-    players = attr.ib(type=Dict[PlayerColor, GamePlayer])
-
-
-@attr.s(frozen=True)
-class GameStatePawn:
-    """State of a pawn in a game."""
-
-    color = attr.ib(type=PlayerColor)
-    id = attr.ib(type=str)
-    start = attr.ib(type=bool)
-    home = attr.ib(type=bool)
-    safe = attr.ib(type=Optional[int])
-    square = attr.ib(type=Optional[int])
-
-    @staticmethod
-    def for_pawn(pawn: Pawn) -> GameStatePawn:
-        """Create a GameStatePawn based on apologies.game.Pawn."""
-        color = pawn.color
-        index = "%s" % pawn.index
-        start = pawn.position.start
-        home = pawn.position.home
-        safe = pawn.position.safe
-        square = pawn.position.square
-        return GameStatePawn(color, index, start, home, safe, square)
-
-    @staticmethod
-    def for_position(pawn: Pawn, position: Position) -> GameStatePawn:
-        """Create a GameStatePawn based on apologies.game.Pawn and apologies.gamePosition."""
-        color = pawn.color
-        index = "%s" % pawn.index
-        start = position.start
-        home = position.home
-        safe = position.safe
-        square = position.square
-        return GameStatePawn(color, index, start, home, safe, square)
-
-
-@attr.s(frozen=True)
-class GameStatePlayer:
-    """State of a player in a game."""
-
-    color = attr.ib(type=PlayerColor)
-    turns = attr.ib(type=int)
-    hand = attr.ib(type=List[CardType])
-    pawns = attr.ib(type=List[GameStatePawn])
-
-    @staticmethod
-    def for_player(player: Player) -> GameStatePlayer:
-        """Create a GameStatePlayer based on apologies.game.Player."""
-        color = player.color
-        turns = player.turns
-        hand = [card.cardtype for card in player.hand]
-        pawns = [GameStatePawn.for_pawn(pawn) for pawn in player.pawns]
-        return GameStatePlayer(color, turns, hand, pawns)
+    players = attr.ib(type=List[GamePlayer])
 
 
 @attr.s(frozen=True)
@@ -383,103 +478,19 @@ class GameStateChangeContext(Context):
 
 
 @attr.s(frozen=True)
-class GamePlayerAction:
-    """An action applied to a pawn in a game."""
-
-    start = attr.ib(type=GameStatePawn)
-    end = attr.ib(type=GameStatePawn)
-
-    @staticmethod
-    def for_action(action: Action) -> GamePlayerAction:
-        """Create a GamePlayerAction based on apologies.rules.Action."""
-        if action.actiontype == ActionType.MOVE_TO_START:
-            # We normalize a MOVE_TO_START action to just a position change, to simplify what the client sees
-            start = GameStatePawn.for_pawn(action.pawn)
-            end = GameStatePawn.for_position(action.pawn, Position().move_to_start())
-            return GamePlayerAction(start, end)
-        elif action.actiontype == ActionType.MOVE_TO_POSITION:
-            start = GameStatePawn.for_pawn(action.pawn)
-            end = GameStatePawn.for_position(action.pawn, action.position)
-            return GamePlayerAction(start, end)
-        else:
-            raise RuntimeError("Can't handle actiontype %s" % action.actiontype)
-
-
-@attr.s(frozen=True)
-class GamePlayerMove:
-    """A move that may be executed as a result of a player's turn."""
-
-    move_id = attr.ib(type=str)
-    card = attr.ib(type=CardType)
-    actions = attr.ib(type=List[GamePlayerAction])
-    side_effects = attr.ib(type=List[GamePlayerAction])
-
-    @staticmethod
-    def for_move(move: Move) -> GamePlayerMove:
-        """Create a GamePlayerMove based on apologies.rules.Move."""
-        move_id = move.id
-        card = move.card.cardtype
-        actions = [GamePlayerAction.for_action(action) for action in move.actions]
-        side_effects = [GamePlayerAction.for_action(side_effect) for side_effect in move.side_effects]
-        return GamePlayerMove(move_id, card, actions, side_effects)
-
-
-@attr.s(frozen=True)
 class GamePlayerTurnContext(Context):
     """Context for an GAME_PLAYER_TURN event."""
 
     drawn_card = attr.ib(type=Optional[CardType])
-    moves = attr.ib(type=Dict[str, GamePlayerMove])
+    moves = attr.ib(type=Dict[str, GameMove])
 
     @staticmethod
     def for_moves(moves: List[Move]) -> GamePlayerTurnContext:
         """Create a GamePlayerTurnContext based on a sequence of apologies.rules.Move."""
         cards = {move.card.cardtype for move in moves}
         drawn_card = None if len(cards) > 1 else next(iter(cards))  # if there's only one card, it's the one they drew from the deck
-        converted = {move.id: GamePlayerMove.for_move(move) for move in moves}
+        converted = {move.id: GameMove.for_move(move) for move in moves}
         return GamePlayerTurnContext(drawn_card, converted)
-
-
-class MessageType(Enum):
-    """Enumeration of all message types, mapped to the associated context (if any)."""
-
-    # Requests sent from client to server
-    REGISTER_PLAYER = "Register Player"
-    REREGISTER_PLAYER = "Reregister Player"
-    UNREGISTER_PLAYER = "Unregister Player"
-    LIST_PLAYERS = "List Players"
-    ADVERTISE_GAME = "Advertise Game"
-    LIST_AVAILABLE_GAMES = "List Available"
-    JOIN_GAME = "Join Game"
-    QUIT_GAME = "Quit Game"
-    START_GAME = "Start Game"
-    CANCEL_GAME = "Cancel Game"
-    EXECUTE_MOVE = "Execute Move"
-    RETRIEVE_GAME_STATE = "Retrieve Game State"
-    SEND_MESSAGE = "Send Message"
-
-    # Events published from server to one or more clients
-    SERVER_SHUTDOWN = "Server Shutdown"
-    REQUEST_FAILED = "Request Failed"
-    REGISTERED_PLAYERS = "Registered Players"
-    AVAILABLE_GAMES = "Available Games"
-    PLAYER_REGISTERED = "Player Registered"
-    PLAYER_DISCONNECTED = "Player Disconnected"
-    PLAYER_IDLE = "Player Idle"
-    PLAYER_INACTIVE = "Player Inactive"
-    PLAYER_MESSAGE_RECEIVED = "Player Message Received"
-    GAME_ADVERTISED = "Game Advertise"
-    GAME_INVITATION = "Game Invitation"
-    GAME_JOINED = "Game Joined"
-    GAME_STARTED = "Game Started"
-    GAME_CANCELLED = "Game Cancelled"
-    GAME_COMPLETED = "Game Completed"
-    GAME_IDLE = "Game Idle"
-    GAME_INACTIVE = "Game Inactive"
-    GAME_OBSOLETE = "Game Obsolete"
-    GAME_PLAYER_CHANGE = "Game Player Change"
-    GAME_STATE_CHANGE = "Game State Change"
-    GAME_PLAYER_TURN = "Game Player Turn"
 
 
 # Map from MessageType to context

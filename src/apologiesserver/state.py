@@ -2,13 +2,8 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=wildcard-import
 
-# TODO: this needs unit tests, but only once the code is better understood and cleaned up
-# TODO: need to go through and make sure all methods and functions are used and have a non-duplicitive purpose
-# TODO: I feel like there is way too much business logic in here.  I think a lot of the functions
-#       are really only used one place, and that business logic can be pulled out into the associated
-#       event function instead.  It's still ok for TrackedPlayer and TrackedGame to have things like
-#       mark_started() or whatever, but composing which combinations of things... that feels like it's
-#       in the wrong place.
+# TODO: this needs unit tests, but probably after the other code is done
+# TODO: this does not actually include any way to manage game state or engine yet (that's the next big design step)
 
 """
 Code to manage application state.
@@ -17,12 +12,13 @@ Code to manage application state.
 from __future__ import annotations  # see: https://stackoverflow.com/a/33533514/2907667
 
 import asyncio
+import random
 from typing import Dict, List, Optional
 from uuid import uuid4
 
 import attr
 import pendulum
-from apologies.game import GameMode
+from apologies.game import GameMode, Player, PlayerColor, PlayerView
 from pendulum.datetime import DateTime
 from websockets import WebSocketServerProtocol
 
@@ -47,7 +43,36 @@ __all__ = [
     "lookup_player_for_websocket",
 ]
 
+# These are names we can assign to programmatic players.
+_NAMES = [
+    "Aragorn",
+    "Arwen",
+    "Bilbo",
+    "Boromir",
+    "Elrond",
+    "Éomer",
+    "Éowyn",
+    "Faramir",
+    "Frodo",
+    "Galadriel",
+    "Gandalf",
+    "Gimli",
+    "Gollum",
+    "Isildur",
+    "Legolas",
+    "Merry",
+    "Pippen",
+    "Radagast",
+    "Samwise",
+    "Saruman",
+    "Sauron",
+    "Shelob",
+    "Théoden",
+    "Treebeard",
+]
 
+
+# pylint: disable=too-many-instance-attributes
 @attr.s
 class TrackedPlayer:
     """
@@ -88,6 +113,19 @@ class TrackedPlayer:
         """Create a tracked player based on provided context."""
         return TrackedPlayer(player_id=player_id, websocket=websocket, handle=handle)
 
+    async def to_registered_player(self) -> RegisteredPlayer:
+        """Convert this TrackedPlayer to a RegisteredPlayer."""
+        async with self.lock:
+            return RegisteredPlayer(
+                handle=self.handle,
+                registration_date=self.registration_date,
+                last_active_date=self.last_active_date,
+                connection_state=self.connection_state,
+                activity_state=self.activity_state,
+                player_state=self.player_state,
+                game_id=self.game_id,
+            )
+
     async def is_connected(self) -> bool:
         """Whether the player is connected."""
         async with self.lock:
@@ -119,18 +157,10 @@ class TrackedPlayer:
         async with self.lock:
             self.activity_state = ActivityState.INACTIVE
 
-    async def mark_disconnected(self) -> None:
-        """Mark the player as disconnected."""
-        async with self.lock:
-            self.websocket = None
-            self.game_id = None  # if they disconnect, it's like quitting
-            self.activity_state = ActivityState.IDLE
-            self.connection_state = ConnectionState.DISCONNECTED
-
-    async def mark_joined(self, game_id: str) -> None:
+    async def mark_joined(self, game: TrackedGame) -> None:
         """Mark that the player has joined a game."""
         async with self.lock:
-            self.game_id = game_id
+            self.game_id = game.game_id
             self.player_state = PlayerState.JOINED
 
     async def mark_playing(self) -> None:
@@ -144,18 +174,13 @@ class TrackedPlayer:
             self.game_id = None
             self.player_state = PlayerState.WAITING  # they go right through QUIT and back to WAITING
 
-    async def to_registered_player(self) -> RegisteredPlayer:
-        """Convert this TrackedPlayer to a RegisteredPlayer."""
+    async def mark_disconnected(self) -> None:
+        """Mark the player as disconnected."""
+        await self.mark_quit()
         async with self.lock:
-            return RegisteredPlayer(
-                handle=self.handle,
-                registration_date=self.registration_date,
-                last_active_date=self.last_active_date,
-                connection_state=self.connection_state,
-                activity_state=self.activity_state,
-                player_state=self.player_state,
-                game_id=self.game_id,
-            )
+            self.websocket = None
+            self.activity_state = ActivityState.IDLE
+            self.connection_state = ConnectionState.DISCONNECTED
 
 
 # pylint: disable=too-many-instance-attributes
@@ -175,10 +200,10 @@ class TrackedGame:
     game_id = attr.ib(type=str)  # treat as read-only
     advertiser_handle = attr.ib(type=str)  # treat as read-only
     name = attr.ib(type=str)  # treat as read-only
-    mode = attr.ib(type=GameMode)
-    players = attr.ib(type=int)
-    visibility = attr.ib(type=Visibility)
-    invited_handles = attr.ib(type=List[str])
+    mode = attr.ib(type=GameMode)  # treat as read-only
+    players = attr.ib(type=int)  # treat as read-only
+    visibility = attr.ib(type=Visibility)  # treat as read-only
+    invited_handles = attr.ib(type=List[str])  # treat as read-only
     advertised_date = attr.ib(type=DateTime)
     last_active_date = attr.ib(type=DateTime)
     started_date = attr.ib(type=Optional[DateTime], default=None)
@@ -187,7 +212,7 @@ class TrackedGame:
     activity_state = attr.ib(type=ActivityState, default=ActivityState.ACTIVE)
     cancelled_reason = attr.ib(type=Optional[CancelledReason], default=None)
     completed_comment = attr.ib(type=Optional[str], default=None)
-    joined_handles = attr.ib(type=List[str])
+    game_players = attr.ib(type=Dict[str, GamePlayer])
     lock = attr.ib(type=asyncio.Lock)
 
     @advertised_date.default
@@ -202,8 +227,8 @@ class TrackedGame:
     def _default_lock(self) -> asyncio.Lock:
         return asyncio.Lock()
 
-    @joined_handles.default
-    def _default_joined_handles(self) -> List[str]:
+    @game_players.default
+    def _default_game_players(self) -> List[GamePlayer]:
         return []
 
     @staticmethod
@@ -219,6 +244,20 @@ class TrackedGame:
             invited_handles=context.invited_handles[:],
         )
 
+    async def to_advertised_game(self) -> AdvertisedGame:
+        """Convert this tracked game to an AdvertisedGame."""
+        async with self.lock:
+            return AdvertisedGame(
+                game_id=self.game_id,
+                name=self.name,
+                mode=self.mode,
+                advertiser_handle=self.advertiser_handle,
+                players=self.players,
+                available=self.players - len(self.game_players),
+                visibility=self.visibility,
+                invited_handles=self.invited_handles,
+            )
+
     async def is_available(self, player: TrackedPlayer) -> bool:
         """Whether the game is available to be joined by the passed-in player."""
         async with self.lock:
@@ -228,9 +267,14 @@ class TrackedGame:
 
     async def is_viable(self) -> bool:
         """Whether the game is viable."""
-        # TODO: I have no idea how I am going to do this; it has something to do with number of remaining human players
-        #       I think there's some additional logic or state somewhere to track human vs. programmatic players?
-        return True
+        async with self.lock:
+            available = len([player for player in self.game_players.values() if player.is_available()])
+            return self.players - available > 2  # game is only viable if at least 2 players remain to play turns
+
+    async def is_fully_joined(self) -> bool:
+        """Whether the number of requested players have joined the game."""
+        async with self.lock:
+            return self.players == len(self.game_players)
 
     async def mark_active(self) -> None:
         """Mark the game as active."""
@@ -248,55 +292,86 @@ class TrackedGame:
         async with self.lock:
             self.activity_state = ActivityState.INACTIVE
 
-    async def mark_joined(self, handle: str) -> None:
-        """Mark that the player has joined a game."""
-        async with self.lock:
-            self.joined_handles.append(handle)
-
-    async def mark_quit(self, handle: str) -> None:
-        """Mark that the player has quit a game."""
-        async with self.lock:
-            if handle in self.joined_handles:
-                self.joined_handles.remove(handle)
-
     async def mark_started(self) -> None:
         """Mark the game as started."""
-        # TODO: something has to happen here to assign programmatic players to any empty slots
         async with self.lock:
             self.game_state = GameState.PLAYING
             self.last_active_date = pendulum.now()
             self.started_date = pendulum.now()
+            for _ in range(0, self.players - len(self.game_players)):
+                self._mark_joined_programmatic()  # fill in remaining players as necessary
+            for handle in self.game_players:
+                self.game_players[handle] = attr.evolve(self.game_players[handle], state=PlayerState.PLAYING)
 
     async def mark_completed(self, comment: Optional[str]) -> None:
         """Mark the game as completed."""
         async with self.lock:
-            self.joined_handles = []
             self.completed_date = pendulum.now()
             self.game_state = GameState.COMPLETED
             self.completed_comment = comment
+            for handle in self.game_players:
+                self.game_players[handle] = attr.evolve(self.game_players[handle], state=PlayerState.FINISHED)
 
     async def mark_cancelled(self, reason: CancelledReason, comment: Optional[str] = None) -> None:
         """Mark the game as cancelled."""
         async with self.lock:
-            self.joined_handles = []
             self.completed_date = pendulum.now()
             self.game_state = GameState.CANCELLED
             self.cancelled_reason = reason
             self.completed_comment = comment
+            for handle in self.game_players:
+                self.game_players[handle] = attr.evolve(self.game_players[handle], state=PlayerState.FINISHED)
 
-    async def to_advertised_game(self) -> AdvertisedGame:
-        """Convert this TrackedGame to an AdvertisedGame."""
+    async def mark_joined(self, player: TrackedPlayer) -> None:
+        """Mark that a player has joined a game."""
         async with self.lock:
-            return AdvertisedGame(
-                game_id=self.game_id,
-                name=self.name,
-                mode=self.mode,
-                advertiser_handle=self.advertiser_handle,
-                players=self.players,
-                available=self.players - len(self.joined_handles),
-                visibility=self.visibility,
-                invited_handles=self.invited_handles,
-            )
+            player_type = PlayerType.HUMAN
+            player_state = PlayerState.JOINED
+            player_color = self._assign_color()
+            self.game_players[player.handle] = GamePlayer(player.handle, player_color, player_type, player_state)
+
+    async def mark_quit(self, player: TrackedPlayer) -> None:
+        """Mark that the player has quit a game."""
+        async with self.lock:
+            if self.game_state == GameState.ADVERTISED:
+                del self.game_players[player.handle]  # if the game hasn't started, just remove them
+            else:
+                self.game_players[player.handle] = attr.evolve(self.game_players[player.handle], state=PlayerState.QUIT)
+
+    # pylint: disable=unused-argument
+    async def get_player_view(self, player: TrackedPlayer) -> PlayerView:
+        """Get the player's view of the game state."""
+        # TODO: remove pylint unused-argument once this is implemented
+        # TODO: implement get_player_view() once we have a way to manage game state (within a lock, presumably)
+        return PlayerView(player=Player(PlayerColor.RED, [], []), opponents={})
+
+    # pylint: disable=unused-argument
+    async def execute_move(self, player: TrackedPlayer, move_id: str) -> None:
+        """Execute a player's move."""
+        # TODO: remove pylint unused-argument once this is implemented
+        # TODO: implement execute_move() once we have a way to manage game state (within a lock, presumably)
+
+    def _mark_joined_programmatic(self) -> None:
+        """Create an join a programmatic player, assumed to be called from within a lock."""
+        handle = self._assign_handle()
+        player_color = self._assign_color()
+        player_type = PlayerType.PROGRAMMATIC
+        player_state = PlayerState.JOINED
+        self.game_players[handle] = GamePlayer(handle, player_color, player_type, player_state)
+
+    def _assign_color(self) -> PlayerColor:
+        """Randomly assign a color to a newly-joined player. assumed to be called from within a lock."""
+        all_colors = set(list(PlayerColor)[: self.players])
+        used_colors = {player.player_color for player in self.game_players.values()}
+        available_colors = all_colors - used_colors
+        return random.choice(list(available_colors))
+
+    def _assign_handle(self) -> str:
+        """Assign a handle to the newly-joined programmatic player, assumed to be called from within a lock."""
+        all_handles = set(_NAMES)
+        used_handles = {player.handle for player in self.game_players.values()}
+        available_handles = all_handles - used_handles
+        return random.choice(list(available_handles))
 
 
 _LOCK = asyncio.Lock()
@@ -341,10 +416,8 @@ async def lookup_all_games() -> List[TrackedGame]:
 
 async def lookup_game_players(game: TrackedGame) -> List[TrackedPlayer]:
     """Lookup the players that are currently playing a game."""
-    # TODO: need to ensure that joined_handles only includes human players, connected to a websocket
-    #       not sure where/how I'm going to track the programmatic players.  needs some more state?
     async with game.lock:
-        handles = game.joined_handles[:]
+        handles = [player.handle for player in game.game_players.values() if player.player_type == PlayerType.HUMAN]
     players = [await lookup_player(handle=handle) for handle in handles]
     return [player for player in players if player is not None]
 

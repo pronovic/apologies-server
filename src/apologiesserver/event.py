@@ -2,11 +2,9 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=wildcard-import,unused-argument
 
-# TODO: remove unused-argument once these are implemented
-# TODO: needs unit test, but more code needs to be written/understood/cleaned up first
-# TODO: there are race conditions here - like, what if a player quits at the same time we're starting a game?
-#       there probably need to be some boundary conditions so we throw an exception or ignore a change where
-#       initial state doens't seem right.
+# TODO: need to review these events vs. my docs in API.md to see whether I've missed anything obvious
+# TODO: this needs unit tests, but probably after the other code is done
+# TODO: there are race conditions in here, which I have not fully explored (i.e. player quits game as we're starting it)
 
 """Coroutines to events, most of which publish data to Websocket connections."""
 
@@ -135,7 +133,7 @@ async def handle_player_unregistered_event(player: TrackedPlayer, game: Optional
     await player.mark_quit()
     if game:
         comment = "Player %s unregistered" % player.handle
-        await game.mark_quit(player.handle)
+        await game.mark_quit(player)
         await handle_game_player_change_event(game, comment)
         if not await game.is_viable():
             await handle_game_cancelled_event(game, CancelledReason.NOT_VIABLE, comment)
@@ -151,7 +149,7 @@ async def handle_player_disconnected_event(websocket: WebSocketServerProtocol) -
         await player.mark_disconnected()
         if game:
             comment = "Player %s disconnected" % player.handle
-            await game.mark_quit(player.handle)
+            await game.mark_quit(player)
             await handle_game_player_change_event(game, comment)
             if not await game.is_viable():
                 await handle_game_cancelled_event(game, CancelledReason.NOT_VIABLE, comment)
@@ -209,11 +207,13 @@ async def handle_game_joined_event(player: TrackedPlayer, game_id: str) -> None:
     game = await lookup_game(player=player)
     if not game:
         raise ProcessingError(FailureReason.UNKNOWN_GAME)
-    await player.mark_joined(game_id)
-    await game.mark_joined(player.handle)
+    await player.mark_joined(game)
+    await game.mark_joined(player)
     context = GameJoinedContext(game_id=game_id)
     message = Message(MessageType.GAME_JOINED, context)
     await send_message(message, players=[player])
+    if game.is_fully_joined():
+        await handle_game_started_event(game)
 
 
 async def handle_game_started_event(game: TrackedGame) -> None:
@@ -276,7 +276,7 @@ async def handle_game_player_quit_event(player: TrackedPlayer, game: TrackedGame
     log.info("EVENT[Game Player Quit]")
     comment = "Player %s quit" % player.handle
     await player.mark_quit()
-    await game.mark_quit(player.handle)
+    await game.mark_quit(player)
     await handle_game_player_change_event(game, comment)
     if not await game.is_viable():
         await handle_game_cancelled_event(game, CancelledReason.NOT_VIABLE, comment)
@@ -285,21 +285,30 @@ async def handle_game_player_quit_event(player: TrackedPlayer, game: TrackedGame
 async def handle_game_player_change_event(game: TrackedGame, comment: str) -> None:
     """Handle the Game Player Change event."""
     log.info("EVENT[Game Player Change]")
-    # TODO: this needs some additional stuff that we're not tracking yet, to create the returned GamePlayer
+    async with game.lock:
+        players = list(game.game_players.values())
+    context = GamePlayerChangeContext(comment=comment, players=players)
+    message = Message(MessageType.GAME_PLAYER_CHANGE, context=context)
+    await send_message(message, handles=[player.handle for player in players])
 
 
+# pylint: disable=redefined-argument-from-local
 async def handle_game_state_change_event(game: TrackedGame, player: Optional[TrackedPlayer] = None) -> None:
     """Handle the Game State Change event."""
     log.info("EVENT[Game State Change]")
-    # TODO: I'm not really sure how this is going to work; it needs a new method on TrackedGame, I think
-    #       Then I need to notify either the passed-in player or all of the players on the game
+    players = [player] if player else await lookup_game_players(game)
+    for player in players:
+        view = await game.get_player_view(player)
+        context = GameStateChangeContext.for_view(view)
+        message = Message(MessageType.GAME_STATE_CHANGE, context=context)
+        await send_message(message, players=[player])
 
 
 async def handle_game_execute_move_event(player: TrackedPlayer, game: TrackedGame, move_id: str) -> None:
     """Handle the Execute Move event."""
     log.info("EVENT[Execute Move]")
-    # TODO: I'm not really sure how this is going to work; it needs a new method on TrackedGame, I think
-    #       Then I need to invoke the handle_game_state_change_event() to notify players of the current state
+    await game.execute_move(player, move_id)
+    await handle_game_state_change_event(game)
 
 
 async def handle_game_player_turn_event(game: TrackedGame, player: TrackedPlayer, moves: List[Move]) -> None:
