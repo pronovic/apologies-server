@@ -204,7 +204,7 @@ async def handle_game_invitation_event(game: TrackedGame, player: Optional[Track
 async def handle_game_joined_event(player: TrackedPlayer, game_id: str) -> None:
     """Handle the Game Joined event."""
     log.info("EVENT[Game Joined]")
-    game = await lookup_game(player=player)
+    game = await lookup_game(game_id=game_id)
     if not game:
         raise ProcessingError(FailureReason.UNKNOWN_GAME)
     await player.mark_joined(game)

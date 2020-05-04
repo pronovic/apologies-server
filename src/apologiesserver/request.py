@@ -2,11 +2,8 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=wildcard-import
 
-# TODO: need to review these events vs. my docs in API.md to see whether I've missed anything obvious
 # TODO: should be ok to start unit testing this, I think the structure is final
-# TODO: every request that requires a game needs to check that it's passed-in and raise and exception otherwise
-# TODO: similarly, if there are requests where a game can't be started (like advertise) we also need to validate that
-# TODO: in other words, all business rules about state need to be here (for instance, a player can't join a game if they're in one)
+# TODO: need to review these events vs. my docs in API.md to see whether I've missed anything obvious
 
 """Coroutines to requests received via Websocket connections."""
 
@@ -61,6 +58,8 @@ async def handle_list_players_request(request: RequestContext) -> None:
 async def handle_advertise_game_request(request: RequestContext) -> None:
     """Handle the Advertise Game request."""
     log.info("REQUEST[Advertise Game]")
+    if request.game:
+        raise ProcessingError(FailureReason.ALREADY_PLAYING)
     context = cast(AdvertiseGameContext, request.message.context)
     await handle_game_advertised_event(request.player, context)
 
@@ -74,6 +73,8 @@ async def handle_list_available_games_request(request: RequestContext) -> None:
 async def handle_join_game_request(request: RequestContext) -> None:
     """Handle the Join Game request."""
     log.info("REQUEST[Join Game]")
+    if request.game:
+        raise ProcessingError(FailureReason.ALREADY_PLAYING)
     context = cast(JoinGameContext, request.message.context)
     await handle_game_joined_event(request.player, context.game_id)
 
@@ -82,7 +83,7 @@ async def handle_quit_game_request(request: RequestContext) -> None:
     """Handle the Quit Game request."""
     log.info("REQUEST[Quit Game]")
     if not request.game:
-        raise ProcessingError(FailureReason.NO_GAME)
+        raise ProcessingError(FailureReason.NOT_PLAYING)
     await handle_game_player_quit_event(request.player, request.game)
 
 
@@ -90,7 +91,7 @@ async def handle_start_game_request(request: RequestContext) -> None:
     """Handle the Start Game request."""
     log.info("REQUEST[Start Game]")
     if not request.game:
-        raise ProcessingError(FailureReason.NO_GAME)
+        raise ProcessingError(FailureReason.NOT_PLAYING)
     await handle_game_started_event(request.game)
 
 
@@ -98,7 +99,7 @@ async def handle_cancel_game_request(request: RequestContext) -> None:
     """Handle the Cancel Game request."""
     log.info("REQUEST[Cancel Game]")
     if not request.game:
-        raise ProcessingError(FailureReason.NO_GAME)
+        raise ProcessingError(FailureReason.NOT_PLAYING)
     await handle_game_cancelled_event(request.game, CancelledReason.CANCELLED)
 
 
@@ -106,7 +107,7 @@ async def handle_execute_move_request(request: RequestContext) -> None:
     """Handle the Execute Move request."""
     log.info("REQUEST[Execute Move]")
     if not request.game:
-        raise ProcessingError(FailureReason.NO_GAME)
+        raise ProcessingError(FailureReason.NOT_PLAYING)
     context = cast(ExecuteMoveContext, request.message.context)
     await handle_game_execute_move_event(request.player, request.game, context.move_id)
 
@@ -115,7 +116,7 @@ async def handle_retrieve_game_state_request(request: RequestContext) -> None:
     """Handle the Retrieve Game State request."""
     log.info("REQUEST[Retrieve Game]")
     if not request.game:
-        raise ProcessingError(FailureReason.NO_GAME)
+        raise ProcessingError(FailureReason.NOT_PLAYING)
     await handle_game_state_change_event(request.game, request.player)
 
 

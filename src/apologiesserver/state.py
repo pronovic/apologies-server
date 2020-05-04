@@ -255,7 +255,7 @@ class TrackedGame:
                 players=self.players,
                 available=self.players - len(self.game_players),
                 visibility=self.visibility,
-                invited_handles=self.invited_handles,
+                invited_handles=self.invited_handles[:],
             )
 
     async def is_available(self, player: TrackedPlayer) -> bool:

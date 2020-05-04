@@ -141,7 +141,8 @@ class FailureReason(Enum):
     USER_LIMIT = "User limit reached"
     UNKNOWN_PLAYER = "Unknown player"
     UNKNOWN_GAME = "Unknown game"
-    NO_GAME = "There is no game available in this context"
+    NOT_PLAYING = "Player is not playing a game."
+    ALREADY_PLAYING = "Player is already playing a game"
     INTERNAL_ERROR = "Internal error"
 
 
