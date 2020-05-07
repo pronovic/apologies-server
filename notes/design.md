@@ -11,7 +11,7 @@ server can periodically refresh configuration from disk, if necessary.
 - player inactive threshold
 - game idle threshold
 - game inactive threshold
-- game history retension threshold
+- game history retention threshold
 
 # State
 

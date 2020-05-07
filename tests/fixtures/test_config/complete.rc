@@ -1,0 +1,18 @@
+[Server]
+logfile_path = /var/logs/apologies.log
+server_host = example.com
+server_port = 10
+total_game_limit = 20
+in_progress_game_limit = 30
+registered_player_limit = 40
+player_idle_thresh_min = 50
+player_inactive_thresh_min = 60
+game_idle_thresh_min = 70
+game_inactive_thresh_min = 80
+game_retention_thresh_min = 90
+idle_player_check_period_sec = 100
+idle_player_check_delay_sec = 110
+idle_game_check_period_sec = 120
+idle_game_check_delay_sec = 130
+obsolete_game_check_period_sec = 140
+obsolete_game_check_delay_sec = 150

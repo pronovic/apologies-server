@@ -93,7 +93,7 @@ async def handle_obsolete_game_check_task() -> None:
     now = pendulum.now()
     for (game, completed_date) in await _lookup_game_completion():
         if completed_date:
-            if now.diff(completed_date).in_minutes > config().game_retension_thresh_min:
+            if now.diff(completed_date).in_minutes > config().game_retention_thresh_min:
                 obsolete += 1
                 await handle_game_obsolete_event(game)
     log.debug("Obsolete game check completed, found %d obsolete games", obsolete)

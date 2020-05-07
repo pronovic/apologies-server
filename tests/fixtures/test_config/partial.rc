@@ -1,0 +1,6 @@
+[Server]
+logfile_path = /var/logs/apologies.log
+server_host = example.com
+game_idle_thresh_min = 600
+game_inactive_thresh_min = 700
+obsolete_game_check_delay_sec = 1400
