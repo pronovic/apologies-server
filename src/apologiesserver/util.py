@@ -13,13 +13,12 @@ from pathlib import Path
 from typing import Optional
 
 
-# TODO: unit test needed
 def homedir() -> str:
     """Get the current user's home directory."""
     return str(Path.home())
 
 
-def setup_logging(quiet: bool, verbose: bool, debug: bool, logfile_path: Optional[str]) -> None:
+def setup_logging(quiet: bool, verbose: bool, debug: bool, logfile_path: Optional[str] = None) -> None:
     """Set up Python logging."""
     logger = logging.getLogger("apologies")
     logger.setLevel(logging.DEBUG)
