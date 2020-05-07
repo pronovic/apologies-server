@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 # vim: set ft=python ts=4 sw=4 expandtab:
 
-# TODO: should be ok to start unit testing this, I think the structure is final
-
 import argparse
 import sys
 from typing import Any, List
@@ -32,11 +30,11 @@ def run_server(argv: List[str]) -> None:
     parser.add_argument("--logfile", type=str, help="path to logfile on disk (default is stdout)")
     parser.add_argument("--override", type=str, action="append", help='override a config parameter as "param:value"')
 
-    args = parser.parse_args(args=argv[2:])
+    args = parser.parse_args(args=argv)
 
     overrides = {} if not args.override else {token[0]: token[1] for token in [override.split(":") for override in args.override]}
     if args.logfile:
-        overrides["logfilePath"] = args.logfile  # we want to expose this a little more explicitly in the argument list
+        overrides["logfile_path"] = args.logfile  # we want to expose this a little more explicitly in the argument list
 
     load_config(args.config, overrides)
     setup_logging(args.quiet, args.verbose, args.debug, config().logfile_path)
@@ -46,7 +44,7 @@ def run_server(argv: List[str]) -> None:
 
 def _example(argv: List[str]) -> List[str]:
     """Example method."""
-    return argv
+    return argv[:]
 
 
 def _lookup_method(method: str) -> Any:
@@ -62,4 +60,4 @@ def cli(script: str) -> Any:
     Args:
         script(str): Name of the script to execute
     """
-    return _lookup_method(script)(sys.argv)
+    return _lookup_method(script)(argv=sys.argv[2:])
