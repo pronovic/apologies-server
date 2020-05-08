@@ -137,7 +137,7 @@ class FailureReason(Enum):
 
     INVALID_REQUEST = "Invalid request"
     DUPLICATE_USER = "Handle is already in use"
-    MISSING_AUTH = "Missing or invalid authorization header"
+    INVALID_AUTH = "Missing or invalid authorization header"
     USER_LIMIT = "User limit reached"
     UNKNOWN_PLAYER = "Unknown player"
     UNKNOWN_GAME = "Unknown game"
@@ -188,12 +188,18 @@ class MessageType(Enum):
     GAME_PLAYER_TURN = "Game Player Turn"
 
 
-@attr.s(frozen=True)
+@attr.s(frozen=True, repr=False)
 class ProcessingError(RuntimeError):
     """Exception thrown when there is a general processing error."""
 
     reason = attr.ib(type=FailureReason)
     comment = attr.ib(type=Optional[str], default=None)
+
+    def __repr__(self) -> str:
+        return self.comment if self.comment else self.reason.value  # type: ignore
+
+    def __str__(self) -> str:
+        return self.__repr__()
 
 
 @attr.s(frozen=True)

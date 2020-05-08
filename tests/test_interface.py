@@ -93,6 +93,20 @@ def create_moves_complex() -> List[Move]:
     return [move1, move2]
 
 
+class TestProcessingError:
+    def test_no_comment(self) -> None:
+        error = ProcessingError(FailureReason.UNKNOWN_PLAYER)
+        assert error.reason == FailureReason.UNKNOWN_PLAYER
+        assert error.comment is None
+        assert "%s" % error == FailureReason.UNKNOWN_PLAYER.value
+
+    def test_comment(self) -> None:
+        error = ProcessingError(FailureReason.UNKNOWN_PLAYER, "comment")
+        assert error.reason == FailureReason.UNKNOWN_PLAYER
+        assert error.comment == "comment"
+        assert "%s" % error == "comment"
+
+
 class TestGameStateChangeContext:
     def test_for_view(self) -> None:
         view = create_view()
