@@ -5,8 +5,8 @@ import asyncio
 import logging
 import re
 import signal
-from asyncio import Future  # pylint: disable=unused-import
-from typing import Any, Union  # pylint: disable=unused-import
+from asyncio import AbstractEventLoop, Future  # pylint: disable=unused-import
+from typing import Any, Coroutine, Union  # pylint: disable=unused-import
 
 import websockets
 from websockets import WebSocketServerProtocol
@@ -15,7 +15,7 @@ from .config import config
 from .event import handle_player_disconnected_event, handle_request_failed_event, handle_server_shutdown_event
 from .interface import FailureReason, Message, MessageType, ProcessingError
 from .request import RequestContext, handle_register_player_request, lookup_handler
-from .scheduled import SCHEDULED_TASKS
+from .scheduled import scheduled_tasks
 from .state import lookup_game, lookup_player
 
 log = logging.getLogger("apologies.server")
@@ -87,25 +87,36 @@ async def _websocket_server(stop: "Future[Any]", host: str = "localhost", port: 
         await handle_server_shutdown_event()
 
 
-def server() -> None:
-    """The main processing loop for the websockets server."""
-    log.info("Apologies server started")
-    log.info("Configuration: %s", config().to_json())
-
-    loop = asyncio.get_event_loop()
-
+def _add_signal_handlers(loop: AbstractEventLoop) -> "Future[Any]":
+    """Add signal handlers so shutdown can be handled normally, returning the stop future."""
     log.info("Adding signal handlers...")
     stop = loop.create_future()
     for sig in SHUTDOWN_SIGNALS:
         loop.add_signal_handler(sig, stop.set_result, None)
+    return stop
 
+
+def _schedule_tasks(loop: AbstractEventLoop) -> None:
+    """Schedule all of the scheduled tasks."""
     log.info("Scheduling tasks...")
-    for task in SCHEDULED_TASKS:
+    for task in scheduled_tasks():
         loop.create_task(task())
 
+
+def _run_server(loop: AbstractEventLoop, stop: "Future[Any]") -> None:
+    """Run the websocket server, stopping and closing the event loop when the server completes."""
     log.info("Starting websocket server...")
     loop.run_until_complete(_websocket_server(stop))
     loop.stop()
     loop.close()
 
+
+def server() -> None:
+    """The main processing loop for the websockets server."""
+    log.info("Apologies server started")
+    log.info("Configuration: %s", config().to_json())
+    loop = asyncio.get_event_loop()
+    stop = _add_signal_handlers(loop)
+    _schedule_tasks(loop)
+    _run_server(loop, stop)
     log.info("Apologies server finished")

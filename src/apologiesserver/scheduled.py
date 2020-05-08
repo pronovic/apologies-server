@@ -7,7 +7,7 @@
 """Coroutines to handle scheduled tasks, executed on a periodic basis."""
 
 import logging
-from typing import List, Optional, Tuple
+from typing import Any, Callable, Coroutine, List, Optional, Tuple
 
 import pendulum
 from pendulum.datetime import DateTime
@@ -126,4 +126,6 @@ async def schedule_obsolete_game_check() -> None:
     log.debug("Completed scheduling obsolete game check with period %d and delay %d", period, delay)
 
 
-SCHEDULED_TASKS = [schedule_idle_player_check, schedule_idle_game_check, schedule_obsolete_game_check]
+def scheduled_tasks() -> List[Callable[[], Coroutine[Any, Any, None]]]:
+    """Get a list of tasks that need to be scheduled."""
+    return [schedule_idle_player_check, schedule_idle_game_check, schedule_obsolete_game_check]

@@ -4,7 +4,8 @@
 
 import asyncio
 import os
-from unittest.mock import MagicMock
+import signal
+from unittest.mock import MagicMock, call
 
 import pytest
 from asynctest import CoroutineMock
@@ -15,11 +16,14 @@ from websockets.http import Headers
 from apologiesserver.interface import FailureReason, Message, MessageType, ProcessingError
 from apologiesserver.request import RequestContext
 from apologiesserver.server import (
+    _add_signal_handlers,
     _dispatch_register_player,
     _dispatch_request,
     _handle_connection,
     _handle_message,
     _parse_authorization,
+    _run_server,
+    _schedule_tasks,
     _websocket_server,
 )
 
@@ -79,6 +83,40 @@ class TestFunctions:
         headers["authorization"] = "  Player    abcde    "
         websocket = MagicMock(request_headers=headers)
         assert _parse_authorization(websocket) == "abcde"
+
+    def test_add_signal_handlers(self):
+        stop = AsyncMock()
+        set_result = AsyncMock()
+        stop.set_result = set_result
+        loop = AsyncMock()
+        loop.create_future.return_value = stop
+        assert _add_signal_handlers(loop) is stop
+        loop.add_signal_handler.assert_has_calls(
+            [call(signal.SIGHUP, set_result, None), call(signal.SIGTERM, set_result, None), call(signal.SIGINT, set_result, None),]
+        )
+
+    # noinspection PyCallingNonCallable
+    @patch("apologiesserver.server.scheduled_tasks")
+    def test_schedule_tasks(self, scheduled_tasks):
+        task = AsyncMock()
+        scheduled_tasks.return_value = [task]
+        loop = AsyncMock()
+        _schedule_tasks(loop)
+        loop.create_task.assert_called_with(task())
+
+    @patch("apologiesserver.server._websocket_server")
+    def test_run_server(self, websocket_server):
+        # I'm not entirely sure I'm testing this properly.
+        # I can't find a good way to prove that _websocket_server(stop) was passed to run_until_complete
+        # But, the function is so short that I can eyeball it, and it will either work or it won't when run by hand
+        stop = asyncio.Future()
+        stop.set_result(None)
+        loop = AsyncMock()
+        _run_server(loop, stop)
+        loop.run_until_complete.assert_called_once()
+        websocket_server.assert_called_once_with(stop)
+        loop.stop.assert_called_once()
+        loop.close.assert_called_once()
 
 
 class TestCoroutines:
