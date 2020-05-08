@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 # vim: set ft=python ts=4 sw=4 expandtab:
 
-# TODO: should be ok to start unit testing this, I think the structure is final
-
 import asyncio
 import logging
 import re
@@ -30,9 +28,9 @@ def _parse_authorization(websocket: WebSocketServerProtocol) -> str:
     try:
         # For most requests, we expect a header like "Authorization: Player d669c200-74aa-4deb-ad91-2f5c27e51d74"
         authorization = websocket.request_headers["Authorization"]
-        return re.fullmatch(r"( *)(Player )([^ ]+)( *)", authorization, flags=re.IGNORECASE).group(3)  # type: ignore
+        return re.fullmatch(r"( *)(Player  *)([^ ]+)( *)", authorization, flags=re.IGNORECASE).group(3)  # type: ignore
     except:
-        raise ProcessingError(FailureReason.MISSING_AUTH)
+        raise ProcessingError(FailureReason.INVALID_AUTH)
 
 
 async def _dispatch_register_player(websocket: WebSocketServerProtocol, message: Message) -> None:
