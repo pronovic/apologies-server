@@ -20,6 +20,7 @@ from apologiesserver.server import (
     _handle_connection,
     _handle_message,
     _parse_authorization,
+    _websocket_server,
 )
 
 FIXTURE_DIR = os.path.join(os.path.dirname(__file__), "fixtures/test_server")
@@ -243,3 +244,14 @@ class TestCoroutines:
         await _handle_connection(websocket, "path")
         handle_message.assert_called_once_with(websocket, data)
         handle_player_disconnected_event.assert_called_once_with(websocket)
+
+    @patch("apologiesserver.server.handle_server_shutdown_event")
+    @patch("apologiesserver.server._handle_connection")
+    @patch("apologiesserver.server.websockets.serve")
+    async def test_websocket_server(self, serve, handle_connection, handle_server_shutdown_event):
+        stop = asyncio.Future()
+        stop.set_result(None)
+        await _websocket_server(stop, "host", 1234)
+        serve.assert_called_with(handle_connection, "host", 1234)
+        handle_server_shutdown_event.assert_awaited()
+        # unfortunately, we can't prove that stop() was awaited, but in this case it's easy to eyeball in the code
