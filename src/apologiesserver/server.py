@@ -6,7 +6,7 @@ import logging
 import re
 import signal
 from asyncio import Future  # pylint: disable=unused-import
-from typing import Any  # pylint: disable=unused-import
+from typing import Any, Union  # pylint: disable=unused-import
 
 import websockets
 from websockets import WebSocketServerProtocol
@@ -56,21 +56,26 @@ async def _dispatch_request(websocket: WebSocketServerProtocol, message: Message
     await handler(request)
 
 
+async def _handle_message(websocket: WebSocketServerProtocol, data: Union[str, bytes]) -> None:
+    """Handle a message received from a websocket."""
+    log.debug("Received raw data for websocket %s: %s", websocket, data)
+    try:
+        message = Message.for_json(str(data))
+        log.debug("Extracted message: %s", message)
+        if message.message == MessageType.REGISTER_PLAYER:
+            await _dispatch_register_player(websocket, message)
+        else:
+            await _dispatch_request(websocket, message)
+    except Exception as e:  # pylint: disable=broad-except
+        log.error("Error handling request: %s", str(e))
+        await handle_request_failed_event(websocket, e)
+
+
 async def _handle_connection(websocket: WebSocketServerProtocol, _path: str) -> None:
     """Client connection handler, invoked once for each client that connects."""
     log.debug("Got new websocket connection: %s", websocket)
     async for data in websocket:
-        log.debug("Received raw data for websocket %s: %s", websocket, data)
-        try:
-            message = Message.for_json(str(data))
-            log.debug("Extracted message: %s", message)
-            if message.message == MessageType.REGISTER_PLAYER:
-                await _dispatch_register_player(websocket, message)
-            else:
-                await _dispatch_request(websocket, message)
-        except Exception as e:  # pylint: disable=broad-except
-            log.error("Error handling request: %s", str(e))
-            await handle_request_failed_event(websocket, e)
+        await _handle_message(websocket, data)
     log.debug("Websocket is disconnected: %s", websocket)
     await handle_player_disconnected_event(websocket)
 

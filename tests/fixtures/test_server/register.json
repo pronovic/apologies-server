@@ -1,0 +1,6 @@
+{
+    "message": "REGISTER_PLAYER",
+    "context": {
+        "handle": "leela"
+    }
+}
