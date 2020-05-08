@@ -2,7 +2,8 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=wildcard-import,unused-argument
 
-# TODO: need to review these events vs. my docs in API.md to see whether I've missed anything obvious
+# TODO: need to review these events vs. my docs in API.md (at request and event level) to see whether I've missed anything obvious
+# TODO: I think that I am probably not appropriately marking the game as active in all the places that I should
 # TODO: this needs unit tests, but probably after the other code is done
 # TODO: there are race conditions in here, which I have not fully explored (i.e. player quits game as we're starting it)
 

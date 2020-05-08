@@ -92,6 +92,8 @@ async def handle_start_game_request(request: RequestContext) -> None:
     log.info("REQUEST[Start Game]")
     if not request.game:
         raise ProcessingError(FailureReason.NOT_PLAYING)
+    if request.game.advertiser_handle != request.player.handle:
+        raise ProcessingError(FailureReason.NOT_ADVERTISER)
     await handle_game_started_event(request.game)
 
 
@@ -100,6 +102,8 @@ async def handle_cancel_game_request(request: RequestContext) -> None:
     log.info("REQUEST[Cancel Game]")
     if not request.game:
         raise ProcessingError(FailureReason.NOT_PLAYING)
+    if request.game.advertiser_handle != request.player.handle:
+        raise ProcessingError(FailureReason.NOT_ADVERTISER)
     await handle_game_cancelled_event(request.game, CancelledReason.CANCELLED)
 
 
@@ -108,6 +112,8 @@ async def handle_execute_move_request(request: RequestContext) -> None:
     log.info("REQUEST[Execute Move]")
     if not request.game:
         raise ProcessingError(FailureReason.NOT_PLAYING)
+    if not request.game.is_move_pending(request.player.handle):
+        raise ProcessingError(FailureReason.NO_MOVE_PENDING)
     context = cast(ExecuteMoveContext, request.message.context)
     await handle_game_execute_move_event(request.player, request.game, context.move_id)
 

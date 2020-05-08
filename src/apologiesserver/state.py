@@ -276,6 +276,13 @@ class TrackedGame:
         async with self.lock:
             return self.players == len(self.game_players)
 
+    # TODO: remove unused-argument when method is implemented
+    # pylint: disable=unused-argument
+    async def is_move_pending(self, handle: str) -> bool:
+        """Whether a move is pending for the player with the passed-in handle."""
+        # TODO: implement is_move_pending() - if we are waiting for the player and the game is not completed or cancelled
+        return True
+
     async def mark_active(self) -> None:
         """Mark the game as active."""
         async with self.lock:

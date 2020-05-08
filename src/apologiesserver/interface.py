@@ -142,7 +142,9 @@ class FailureReason(Enum):
     UNKNOWN_PLAYER = "Unknown or invalid player"
     UNKNOWN_GAME = "Unknown or invalid game"
     NOT_PLAYING = "Player is not playing a game."
+    NOT_ADVERTISER = "Player did not advertise this game."
     ALREADY_PLAYING = "Player is already playing a game"
+    NO_MOVE_PENDING = "No move is pending for this player."
     INTERNAL_ERROR = "Internal error"
 
 
