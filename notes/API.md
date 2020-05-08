@@ -105,9 +105,8 @@ Example request:
 ### List Players
 
 Any registered player may request a list of currently registered players.  This
-triggers the _Registered Players_ event for the sender only.  Receipt of this
-message resets the sender's last active timestamp and marks the sender as
-active.
+triggers the _Registered Players_ event.  Receipt of this message resets the
+sender's last active timestamp and marks the sender as active.
 
 Example request:
 
@@ -168,7 +167,9 @@ _Available Games_ event.  The result will include all public games and any
 private games the player has been invited to (by handle), but will be
 restricted to include only games that have not started yet.  Receipt of this
 message resets the sender's last active timestamp and marks the sender as
-active.
+active.  A player may request a list of available games even if they are 
+already playing another game, although they can only join a game if they
+quit the one they are playing.
 
 Example request:
 
@@ -205,14 +206,16 @@ Example request:
 
 ### Quit game
 
-A registered player that is currently playing a game may quit that game, even
-if the game is not finished.  This will trigger a _Game Player Change_ event for
-the game.  When a player leaves a game, the game might no longer be viable.  In
-that case, the game might be cancelled, triggering a _Game Cancelled_ event.  If
-the game continues to be viable, the player who quit will simply be ignored for
-future turns.  Receipt of this message resets the sender's last active
-timestamp and marks the sender as active, and also resets the game's last
-active timestamp and marks the game as active.
+A registered player that has joined a game may quit that game, even if the game
+has not yet started or finished.  However, the advertising player may not quit.
+The advertising player must cancel the game instead.  Qutting will trigger a
+_Game Player Change_ event for the game.  When a player leaves a game, the game
+might no longer be viable.  In that case, the game might be cancelled,
+triggering a _Game Cancelled_ event.  If the game continues to be viable, the
+player who quit will simply be ignored for future turns.  Receipt of this
+message resets the sender's last active timestamp and marks the sender as
+active, and also resets the game's last active timestamp and marks the game as
+active.
 
 Example request:
 
@@ -228,7 +231,9 @@ The registered player that advertised a game may start it at any time,
 triggering a _Game Started_ event. At the point the game is started, if fewer
 players have joined than were requested when advertising the game, the
 remainder of the player slots will be filled out with a non-user (programmatic)
-player managed by the game engine.  
+player managed by the game engine.  Receipt of this message resets the sender's
+last active timestamp and marks the sender as active, and also resets the
+game's last active timestamp and marks the game as active.
 
 Example request:
 
@@ -261,7 +266,7 @@ event, and request to execute that move by id.  When a move has been completed,
 this triggers one of several other events depending on the state of the game
 (potentially a _Game State Change_ event, a _Game Player Turn_ event, a _Game
 Completed_ event, etc.).  The request will be rejected with a _Request Failed_
-event if the player is not playing the indicated game, if the game has been
+event if the player is not playing a game, if the player's game has been
 cancelled or completed, if it is not currently the player's turn, or if the
 player attempts to execute an illegal move.  Receipt of this message resets the
 sender's last active timestamp and marks the sender as active, and also resets
@@ -285,7 +290,9 @@ with a game whenever the state changes. However, at any time a player may
 request the current game state to be pushed again, triggering a _Game State
 Change_ event for the sender only.  Receipt of this message resets the sender's
 last active timestamp and marks the sender as active, and also resets the
-game's last active timestamp and marks the game as active.
+game's last active timestamp and marks the game as active.  The request will be
+rejected with a _Request Failed Event_ if the player is not currently playing
+game.
 
 Example request:
 
@@ -323,18 +330,6 @@ Each server event is associated with a particular situation on the back end.
 When triggered, some server events generate a message to one or more players.
 Other events only change internal server state, or trigger other events.
 
-### Server Shutdown
-
-At shutdown, the server will send a message to all players, so each player
-knows that the server is going away and can cleanup.  State is not maintained
-across server restarts, so any in-progress game will be interrupted.
-
-```json
-{
-  "message": "SERVER_SHUTDOWN"
-}
-```
-
 ### Request Failed
 
 This event is triggered if a player request is syntactically invalid, if the
@@ -350,6 +345,18 @@ Example message:
     "reason": "USER_LIMIT",
     "comment": "The registered user limit has been reached; please try again later"
   }
+}
+```
+
+### Server Shutdown
+
+At shutdown, the server will send a message to all players, so each player
+knows that the server is going away and can cleanup.  State is not maintained
+across server restarts, so in-progress games will be interrupted.
+
+```json
+{
+  "message": "SERVER_SHUTDOWN"
 }
 ```
 
@@ -442,6 +449,29 @@ Example message:
 }
 ```
 
+### Player Reregistered
+
+This event is triggered when a player successfully re-registers their handle
+using a saved-off player id.   
+
+Example message:
+
+```json
+{
+  "message": "PLAYER_REGISTERED",
+  "context": {
+    "player_id": "8fc4a03b-3e4d-438c-a3fc-b6913e829ab3",
+  }
+}
+```
+
+### Player Unregistered
+
+This event is triggered when a player unregisters.  If the player is currently
+playing a game, unregistering will trigger a _Game Player Change_ event for
+players in that game and might potentially result in a _Game Cancelled_ event
+if the game is no longer viable.
+
 ### Player Disconnected
 
 A player may become disconnected from the server without explicitly
@@ -449,7 +479,6 @@ unregistering.  In this case, the player will be marked as disconnected and
 idle, and a _Game Player Change_ event will be triggered for any game the
 player has joined.  No events will be sent to the player as long as it remains
 in a disconnected state.  
-
 
 ### Player Idle
 
@@ -469,9 +498,8 @@ Example message:
 
 This event is triggered when the _Idle Player Check_ determines that a
 disconnected player has exceeded the idle threshold, or an idle player has
-exceeded the inactive threshold.  The server will immediately unregister the
-player.  If the player is still connected, the server will also notify the
-player that it is inactive before unregistering it.
+exceeded the inactive threshold.  If connected, the player will be
+disconnected, and then the _Player Unregistered_ event will be triggered.
 
 Example message:
 
@@ -504,7 +532,8 @@ Example message:
 ### Game Advertised
 
 This event is triggered when a new game is advertised.  The message is sent to the 
-player that advertised the game.
+player that advertised the game.  If there are any invited handles, then a _Game
+Invitation_ event will be triggered for each invited player.
 
 ```json
 {
@@ -524,7 +553,7 @@ player that advertised the game.
 ### Game Invitation
 
 This event notifies a player about a newly-advertised game that the player has been
-invited to.  
+invited to.  It triggered by the _Game Advertised_ event.
 
 Example message:
 
@@ -546,7 +575,9 @@ Example message:
 
 This event is triggered when a player joins a game.  A player may explicitly
 join a game via the _Join Game_ request, or may implicitly join a game when
-advertising it.
+advertising it.   If this player completes the number of players advertised for
+the game, then the game will be started immediately and a _Game Started_ event
+will be triggered.
 
 ```json
 {
@@ -575,11 +606,12 @@ Example message:
 ### Game Cancelled
 
 When a game is cancelled or must be stopped prior to completion for some other
-reason, the server will trigger this event to notify players.  A game may be
-cancelled explicitly by the player which advertised it, or might be cancelled
-by the server if it is no longer viable, or if it has exceeded the inactive
-timeout.  Cancelled and completed games are tracked for a limited period of
-time after finishing.
+reason, the server will trigger this event.  A game may be cancelled explicitly
+by the player which advertised it, or might be cancelled by the server if it is
+no longer viable, or if it has exceeded the inactive timeout, or during server
+shutdown.  Cancelled and completed games are tracked for a limited period of
+time after finishing.  Games cancelled due to server shutdown do not result in
+a notification message.
 
 Example message:
 
@@ -588,7 +620,7 @@ Example message:
   "message": "GAME_CANCELLED",
   "context": {
     "reason": "NOT_VIABLE",
-    "comment": "Player nibbler (YELLOW) left the game, and it is no longer viable"
+    "comment": "Player nibbler unregistered"
   }
 }
 ```
@@ -636,6 +668,23 @@ This event is triggered when the _Obsolete Game Check_ determines that a
 finished game has exceeded the game history retention threshold.  The server
 will stop tracking the game in the backend data store.  No message is
 generated.
+
+### Game Player Quit
+
+This event is triggered when a player explicitly quits a game.  A player may
+quit a game any time after they join, regardless of whether the game has been
+started.  If the game has been started, quitting will trigger a _Game Player
+Change_ event and might potentially result in a _Game Cancelled_ event if the
+game is no longer viable.  
+
+
+### Execute Move
+
+This event is triggered when a player chooses their move.  The player's move
+is validated and then executed.  If the player has won the game, then a 
+_Game Completed_ event is triggered.  Otherwise a _Game State Change_ event
+is triggered.
+
 
 ### Game Player Change
 

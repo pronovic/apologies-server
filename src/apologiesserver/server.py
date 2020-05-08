@@ -46,7 +46,7 @@ async def _dispatch_request(websocket: WebSocketServerProtocol, message: Message
     player_id = _parse_authorization(websocket)
     player = await lookup_player(player_id=player_id)
     if not player:
-        raise ProcessingError(FailureReason.UNKNOWN_PLAYER)
+        raise ProcessingError(FailureReason.INVALID_PLAYER)
     async with player.lock:
         log.debug("Request is for player: %s", player)
         game_id = player.game_id

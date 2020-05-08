@@ -88,6 +88,7 @@ class CancelledReason(Enum):
     CANCELLED = "Game was cancelled by advertiser"
     NOT_VIABLE = "Game is no longer viable."
     INACTIVE = "The game was idle too long and was marked inactive"
+    SHUTDOWN = "Game was cancelled due to system shutdown"
 
 
 class PlayerType(Enum):
@@ -139,12 +140,14 @@ class FailureReason(Enum):
     DUPLICATE_USER = "Handle is already in use"
     INVALID_AUTH = "Missing or invalid authorization header"
     USER_LIMIT = "User limit reached"
-    UNKNOWN_PLAYER = "Unknown or invalid player"
-    UNKNOWN_GAME = "Unknown or invalid game"
+    INVALID_PLAYER = "Unknown or invalid player"
+    INVALID_GAME = "Unknown or invalid game"
     NOT_PLAYING = "Player is not playing a game."
     NOT_ADVERTISER = "Player did not advertise this game."
     ALREADY_PLAYING = "Player is already playing a game"
     NO_MOVE_PENDING = "No move is pending for this player."
+    ILLEGAL_MOVE = "The chosen move is not legal"
+    ADVERTISER_MAY_NOT_QUIT = "Advertiser may not quit a game (cancel instead)"
     INTERNAL_ERROR = "Internal error"
 
 

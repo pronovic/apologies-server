@@ -169,6 +169,29 @@ class TestCoroutines:
         handle_game_player_quit_event.assert_not_called()
 
     @patch("apologiesserver.request.handle_game_player_quit_event")
+    async def test_handle_quit_game_request_not_in_progress(self, handle_game_player_quit_event):
+        websocket = MagicMock()
+        player = MagicMock()
+        message = Message(MessageType.QUIT_GAME)
+        game = MagicMock()
+        game.is_in_progress.return_value = False
+        request = RequestContext(websocket, message, player, game)
+        with pytest.raises(ProcessingError, match=r"Game is not in progress"):
+            await handle_quit_game_request(request)
+        handle_game_player_quit_event.assert_not_called()
+
+    @patch("apologiesserver.request.handle_game_player_quit_event")
+    async def test_handle_quit_game_request_advertiser(self, handle_game_player_quit_event):
+        websocket = MagicMock()
+        player = MagicMock(handle="leela")
+        message = Message(MessageType.QUIT_GAME)
+        game = MagicMock(advertiser_handle="leela")
+        request = RequestContext(websocket, message, player, game)
+        with pytest.raises(ProcessingError, match=r"Advertiser may not quit a game"):
+            await handle_quit_game_request(request)
+        handle_game_player_quit_event.assert_not_called()
+
+    @patch("apologiesserver.request.handle_game_player_quit_event")
     async def test_handle_quit_game_request(self, handle_game_player_quit_event):
         websocket = MagicMock()
         player = MagicMock()
@@ -190,11 +213,24 @@ class TestCoroutines:
         handle_game_started_event.assert_not_called()
 
     @patch("apologiesserver.request.handle_game_started_event")
+    async def test_handle_start_game_request_already_played(self, handle_game_started_event):
+        websocket = MagicMock()
+        player = MagicMock()
+        message = Message(MessageType.START_GAME)
+        game = MagicMock()
+        game.is_playing.return_value = True
+        request = RequestContext(websocket, message, player, game)
+        with pytest.raises(ProcessingError, match=r"Game is already being played"):
+            await handle_start_game_request(request)
+        handle_game_started_event.assert_not_called()
+
+    @patch("apologiesserver.request.handle_game_started_event")
     async def test_handle_start_game_request_not_advertiser(self, handle_game_started_event):
         websocket = MagicMock()
         player = MagicMock(handle="leela")
         message = Message(MessageType.START_GAME)
         game = MagicMock(advertiser_handle="bender")
+        game.is_playing.return_value = False
         request = RequestContext(websocket, message, player, game)
         with pytest.raises(ProcessingError, match=r"Player did not advertise this game"):
             await handle_start_game_request(request)
@@ -206,6 +242,7 @@ class TestCoroutines:
         player = MagicMock(handle="leela")
         message = Message(MessageType.START_GAME)
         game = MagicMock(advertiser_handle="leela")
+        game.is_playing.return_value = False
         request = RequestContext(websocket, message, player, game)
         await handle_start_game_request(request)
         handle_game_started_event.assert_called_once_with(game)
@@ -218,6 +255,18 @@ class TestCoroutines:
         game = None
         request = RequestContext(websocket, message, player, game)
         with pytest.raises(ProcessingError, match=r"Player is not playing a game"):
+            await handle_cancel_game_request(request)
+        handle_game_cancelled_event.assert_not_called()
+
+    @patch("apologiesserver.request.handle_game_cancelled_event")
+    async def test_handle_cancel_game_request_not_in_progress(self, handle_game_cancelled_event):
+        websocket = MagicMock()
+        player = MagicMock()
+        message = Message(MessageType.CANCEL_GAME)
+        game = MagicMock()
+        game.is_in_progress.return_value = False
+        request = RequestContext(websocket, message, player, game)
+        with pytest.raises(ProcessingError, match=r"Game is not in progress"):
             await handle_cancel_game_request(request)
         handle_game_cancelled_event.assert_not_called()
 
@@ -255,6 +304,19 @@ class TestCoroutines:
         handle_game_execute_move_event.assert_not_called()
 
     @patch("apologiesserver.request.handle_game_execute_move_event")
+    async def test_handle_execute_move_request_not_being_played(self, handle_game_execute_move_event):
+        websocket = MagicMock()
+        player = MagicMock()
+        context = ExecuteMoveContext(move_id="move")
+        message = Message(MessageType.EXECUTE_MOVE, context=context)
+        game = MagicMock()
+        game.is_playing.return_value = False
+        request = RequestContext(websocket, message, player, game)
+        with pytest.raises(ProcessingError, match=r"Game is not being played"):
+            await handle_execute_move_request(request)
+        handle_game_execute_move_event.assert_not_called()
+
+    @patch("apologiesserver.request.handle_game_execute_move_event")
     async def test_handle_execute_move_request_no_move_pending(self, handle_game_execute_move_event):
         websocket = MagicMock()
         player = MagicMock(handle="leela")
@@ -266,6 +328,23 @@ class TestCoroutines:
         with pytest.raises(ProcessingError, match=r"No move is pending for this player"):
             await handle_execute_move_request(request)
         game.is_move_pending.assert_called_once_with("leela")
+        game.is_legal_move.assert_not_called()
+        handle_game_execute_move_event.assert_not_called()
+
+    @patch("apologiesserver.request.handle_game_execute_move_event")
+    async def test_handle_execute_move_request_illegal_move(self, handle_game_execute_move_event):
+        websocket = MagicMock()
+        player = MagicMock(handle="leela")
+        context = ExecuteMoveContext(move_id="move")
+        message = Message(MessageType.EXECUTE_MOVE, context=context)
+        game = MagicMock()
+        game.is_move_pending.return_value = True
+        game.is_legal_move.return_value = False
+        request = RequestContext(websocket, message, player, game)
+        with pytest.raises(ProcessingError, match=r"The chosen move is not legal"):
+            await handle_execute_move_request(request)
+        game.is_move_pending.assert_called_once_with("leela")
+        game.is_legal_move.assert_called_once_with("leela", "move")
         handle_game_execute_move_event.assert_not_called()
 
     @patch("apologiesserver.request.handle_game_execute_move_event")
@@ -293,11 +372,24 @@ class TestCoroutines:
         handle_game_state_change_event.assert_not_called()
 
     @patch("apologiesserver.request.handle_game_state_change_event")
+    async def test_handle_retrieve_game_state_request_not_being_played(self, handle_game_state_change_event):
+        websocket = MagicMock()
+        player = MagicMock()
+        message = Message(MessageType.RETRIEVE_GAME_STATE)
+        game = MagicMock()
+        game.is_playing.return_value = False
+        request = RequestContext(websocket, message, player, game)
+        with pytest.raises(ProcessingError, match=r"Game is not being played"):
+            await handle_retrieve_game_state_request(request)
+        handle_game_state_change_event.called_once_with(game, player)
+
+    @patch("apologiesserver.request.handle_game_state_change_event")
     async def test_handle_retrieve_game_state_request(self, handle_game_state_change_event):
         websocket = MagicMock()
         player = MagicMock()
         message = Message(MessageType.RETRIEVE_GAME_STATE)
         game = MagicMock()
+        game.is_playing.return_value = True
         request = RequestContext(websocket, message, player, game)
         await handle_retrieve_game_state_request(request)
         handle_game_state_change_event.called_once_with(game, player)

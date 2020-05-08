@@ -9,11 +9,24 @@
 Code to manage application state.
 """
 
+# Note: I suspect (but can't yet prove) that there may be some race conditions here that  I am
+#       not handling correctly right now.  Game state and player state are not locked globally
+#       (i.e. we don't do all game updates behind a single lock) and I think that may make it
+#       possible to get into some weird situations under load, when a lot of requests and
+#       events are being processed concurrently.  An example here is someone quitting a game as
+#       it's in the process of being started, or something like that.  I think that all the
+#       actual updates are appropriately properly behind locks, etc.  The problem is more that
+#       individual pieces of data are updated independently, not always behind the same lock.
+#       I think that's where the risk probably is, depending on how Python manages all of these
+#       sorta-concurrent coroutine operations in practice.  However, I don't understand this
+#       software model well enough to know what I'm doing wrong.  I may need to rework the lock
+#       behavior later, but at least it's mostly encapsulated here.
+
 from __future__ import annotations  # see: https://stackoverflow.com/a/33533514/2907667
 
 import asyncio
 import random
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from uuid import uuid4
 
 import attr
@@ -31,6 +44,7 @@ __all__ = [
     "delete_game",
     "lookup_game",
     "lookup_all_games",
+    "lookup_in_progress_games",
     "lookup_game_players",
     "lookup_available_games",
     "track_player",
@@ -126,6 +140,11 @@ class TrackedPlayer:
                 game_id=self.game_id,
             )
 
+    async def set_websocket(self, websocket: WebSocketServerProtocol) -> None:
+        """Set the webhook for this player."""
+        async with self.lock:
+            self.websocket = websocket
+
     async def is_connected(self) -> bool:
         """Whether the player is connected."""
         async with self.lock:
@@ -183,7 +202,7 @@ class TrackedPlayer:
             self.connection_state = ConnectionState.DISCONNECTED
 
 
-# pylint: disable=too-many-instance-attributes
+# pylint: disable=too-many-instance-attributes,too-many-public-methods
 @attr.s
 class TrackedGame:
     """
@@ -258,6 +277,11 @@ class TrackedGame:
                 invited_handles=self.invited_handles[:],
             )
 
+    async def get_game_players(self) -> List[GamePlayer]:
+        """Get a list of game players."""
+        async with self.lock:
+            return list(self.game_players.values())
+
     async def is_available(self, player: TrackedPlayer) -> bool:
         """Whether the game is available to be joined by the passed-in player."""
         async with self.lock:
@@ -265,6 +289,23 @@ class TrackedGame:
                 self.visibility == Visibility.PUBLIC or player.handle in self.invited_handles
             )
 
+    async def is_in_progress(self) -> bool:
+        """Whether a game is in-progress, meaning it is advertised or being played."""
+        return await self.is_advertised() or await self.is_playing()
+
+    async def is_advertised(self) -> bool:
+        """Whether a game is currently being advertised."""
+        async with self.lock:
+            return self.game_state == GameState.ADVERTISED
+
+    async def is_playing(self) -> bool:
+        """Whether a game is being played."""
+        async with self.lock:
+            return self.game_state == GameState.PLAYING
+
+    # TODO: this needs to take into account game state
+    #       if the game has not been started, a player leaving does not impact viability
+    #       if the game has not been started, if the advertising player leaves, that cancels the game
     async def is_viable(self) -> bool:
         """Whether the game is viable."""
         async with self.lock:
@@ -281,6 +322,13 @@ class TrackedGame:
     async def is_move_pending(self, handle: str) -> bool:
         """Whether a move is pending for the player with the passed-in handle."""
         # TODO: implement is_move_pending() - if we are waiting for the player and the game is not completed or cancelled
+        return True
+
+    # TODO: remove unused-argument when method is implemented
+    # pylint: disable=unused-argument
+    async def is_legal_move(self, handle: str, move_id: str) -> bool:
+        """Whether the passed-in move id is a legal move for the player."""
+        # TODO: implement is_legal_move() - this is actually a superset of is_move_pending() but is separate for clarity
         return True
 
     async def mark_active(self) -> None:
@@ -353,10 +401,11 @@ class TrackedGame:
         return PlayerView(player=Player(PlayerColor.RED, [], []), opponents={})
 
     # pylint: disable=unused-argument
-    async def execute_move(self, player: TrackedPlayer, move_id: str) -> None:
-        """Execute a player's move."""
+    async def execute_move(self, player: TrackedPlayer, move_id: str) -> Tuple[bool, Optional[str]]:
+        """Execute a player's move, returning an indication of whether the game was completed (and a comment if so)."""
         # TODO: remove pylint unused-argument once this is implemented
         # TODO: implement execute_move() once we have a way to manage game state (within a lock, presumably)
+        return False, None
 
     def _mark_joined_programmatic(self) -> None:
         """Create an join a programmatic player, assumed to be called from within a lock."""
@@ -386,7 +435,8 @@ _GAME_MAP: Dict[str, TrackedGame] = {}
 _PLAYER_MAP: Dict[str, TrackedPlayer] = {}
 _HANDLE_MAP: Dict[str, str] = {}
 
-
+# TODO: requirements for this function come from the Advertise Game request
+# TODO: decide whether I need to validate arguments (min/max players, etc.) or interface validation is enough
 async def track_game(player: TrackedPlayer, advertised: AdvertiseGameContext) -> TrackedGame:
     """Track a newly-advertised game, returning the tracked game."""
     async with _LOCK:
@@ -421,6 +471,11 @@ async def lookup_all_games() -> List[TrackedGame]:
         return list(_GAME_MAP.values())
 
 
+async def lookup_in_progress_games() -> List[TrackedGame]:
+    """Return a list of all in-progress games."""
+    return [game for game in await lookup_all_games() if game.is_in_progress()]
+
+
 async def lookup_game_players(game: TrackedGame) -> List[TrackedPlayer]:
     """Lookup the players that are currently playing a game."""
     async with game.lock:
@@ -429,12 +484,15 @@ async def lookup_game_players(game: TrackedGame) -> List[TrackedPlayer]:
     return [player for player in players if player is not None]
 
 
+# TODO: requirements for this function come from the List Available Games request and the Available Games event
+# TODO: I don't think we implement everything yet (i.e. should only show games that haven't been started, etc.)
 async def lookup_available_games(player: TrackedPlayer) -> List[TrackedGame]:
     """Return a list of games the passed-in player may join."""
     games = await lookup_all_games()
     return [game for game in games if game.is_available(player)]
 
 
+# TODO: requirements for this function come from the Register Player request
 async def track_player(websocket: WebSocketServerProtocol, handle: str) -> TrackedPlayer:
     """Track a newly-registered player, the tracked player."""
     async with _LOCK:

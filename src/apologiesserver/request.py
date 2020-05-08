@@ -2,9 +2,6 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=wildcard-import
 
-# TODO: should be ok to start unit testing this, I think the structure is final
-# TODO: need to review these events vs. my docs in API.md to see whether I've missed anything obvious
-
 """Coroutines to requests received via Websocket connections."""
 
 import logging
@@ -84,6 +81,10 @@ async def handle_quit_game_request(request: RequestContext) -> None:
     log.info("REQUEST[Quit Game]")
     if not request.game:
         raise ProcessingError(FailureReason.NOT_PLAYING)
+    if not request.game.is_in_progress():
+        raise ProcessingError(FailureReason.INVALID_GAME, "Game is not in progress")
+    if request.player.handle == request.game.advertiser_handle:
+        raise ProcessingError(FailureReason.ADVERTISER_MAY_NOT_QUIT)
     await handle_game_player_quit_event(request.player, request.game)
 
 
@@ -92,6 +93,8 @@ async def handle_start_game_request(request: RequestContext) -> None:
     log.info("REQUEST[Start Game]")
     if not request.game:
         raise ProcessingError(FailureReason.NOT_PLAYING)
+    if request.game.is_playing():
+        raise ProcessingError(FailureReason.INVALID_GAME, "Game is already being played")
     if request.game.advertiser_handle != request.player.handle:
         raise ProcessingError(FailureReason.NOT_ADVERTISER)
     await handle_game_started_event(request.game)
@@ -102,6 +105,8 @@ async def handle_cancel_game_request(request: RequestContext) -> None:
     log.info("REQUEST[Cancel Game]")
     if not request.game:
         raise ProcessingError(FailureReason.NOT_PLAYING)
+    if not request.game.is_in_progress():
+        raise ProcessingError(FailureReason.INVALID_GAME, "Game is not in progress")
     if request.game.advertiser_handle != request.player.handle:
         raise ProcessingError(FailureReason.NOT_ADVERTISER)
     await handle_game_cancelled_event(request.game, CancelledReason.CANCELLED)
@@ -112,9 +117,13 @@ async def handle_execute_move_request(request: RequestContext) -> None:
     log.info("REQUEST[Execute Move]")
     if not request.game:
         raise ProcessingError(FailureReason.NOT_PLAYING)
+    if not request.game.is_playing():
+        raise ProcessingError(FailureReason.INVALID_GAME, "Game is not being played")
     if not request.game.is_move_pending(request.player.handle):
         raise ProcessingError(FailureReason.NO_MOVE_PENDING)
     context = cast(ExecuteMoveContext, request.message.context)
+    if not request.game.is_legal_move(request.player.handle, context.move_id):
+        raise ProcessingError(FailureReason.ILLEGAL_MOVE)
     await handle_game_execute_move_event(request.player, request.game, context.move_id)
 
 
@@ -123,6 +132,8 @@ async def handle_retrieve_game_state_request(request: RequestContext) -> None:
     log.info("REQUEST[Retrieve Game]")
     if not request.game:
         raise ProcessingError(FailureReason.NOT_PLAYING)
+    if not request.game.is_playing():
+        raise ProcessingError(FailureReason.INVALID_GAME, "Game is not being played")
     await handle_game_state_change_event(request.game, request.player)
 
 
@@ -150,6 +161,7 @@ _REQUEST_HANDLERS: Dict[MessageType, Callable[[RequestContext], Coroutine[Any, A
 
 
 def lookup_handler(message_type: MessageType) -> Callable[[RequestContext], Coroutine[Any, Any, None]]:
+    """Lookup the handler coroutine for a message type."""
     if message_type not in _REQUEST_HANDLERS:
         raise ProcessingError(FailureReason.INTERNAL_ERROR)
     return _REQUEST_HANDLERS[message_type]

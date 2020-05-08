@@ -200,7 +200,7 @@ class TestCoroutines:
         parse_authorization.return_value = "player-id"
         lookup_handler.return_value = handler
         lookup_player.return_value = player
-        lookup_game.side_effect = ProcessingError(FailureReason.UNKNOWN_GAME)
+        lookup_game.side_effect = ProcessingError(FailureReason.INVALID_GAME)
         websocket = MagicMock()
         message = MagicMock(message=MessageType.GAME_JOINED)
         with pytest.raises(ProcessingError, match=r"Unknown or invalid game"):
@@ -258,7 +258,7 @@ class TestCoroutines:
     @patch("apologiesserver.server._dispatch_register_player")
     @patch("apologiesserver.server._dispatch_request")
     async def test_handle_message_exception(self, dispatch_request, dispatch_register_player, handle_request_failed_event, data):
-        exception = ProcessingError(FailureReason.UNKNOWN_PLAYER)
+        exception = ProcessingError(FailureReason.INVALID_PLAYER)
         dispatch_register_player.side_effect = exception
         websocket = AsyncMock()
         data = data["register.json"]
