@@ -127,7 +127,7 @@ async def handle_send_message_request(request: RequestContext) -> None:
     await handle_player_message_received_event(request.player.handle, context.recipient_handles, context.message)
 
 
-REQUEST_HANDLERS: Dict[MessageType, Callable[[RequestContext], Coroutine[Any, Any, None]]] = {
+_REQUEST_HANDLERS: Dict[MessageType, Callable[[RequestContext], Coroutine[Any, Any, None]]] = {
     MessageType.REREGISTER_PLAYER: handle_reregister_player_request,
     MessageType.UNREGISTER_PLAYER: handle_unregister_player_request,
     MessageType.LIST_PLAYERS: handle_list_players_request,
@@ -141,3 +141,9 @@ REQUEST_HANDLERS: Dict[MessageType, Callable[[RequestContext], Coroutine[Any, An
     MessageType.RETRIEVE_GAME_STATE: handle_retrieve_game_state_request,
     MessageType.SEND_MESSAGE: handle_send_message_request,
 }
+
+
+def lookup_handler(message_type: MessageType) -> Callable[[RequestContext], Coroutine[Any, Any, None]]:
+    if message_type not in _REQUEST_HANDLERS:
+        raise ProcessingError(FailureReason.INTERNAL_ERROR)
+    return _REQUEST_HANDLERS[message_type]

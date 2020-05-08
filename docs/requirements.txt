@@ -3,6 +3,7 @@ apologies==0.1.14
 appdirs==1.4.3
 astroid==2.4.0
 asyncio-periodic==2019.2
+asynctest==0.13.0
 atomicwrites==1.3.0; sys_platform == "win32"
 attrs==19.3.0
 babel==2.8.0
@@ -41,6 +42,7 @@ pygments==2.6.1
 pylint==2.5.0
 pyparsing==2.4.7
 pytest==5.4.1
+pytest-asyncio==0.12.0
 python-dateutil==2.8.1
 pytz==2020.1
 pytzdata==2019.3

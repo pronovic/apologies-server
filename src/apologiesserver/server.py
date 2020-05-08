@@ -14,7 +14,7 @@ from websockets import WebSocketServerProtocol
 from .config import config
 from .event import handle_player_disconnected_event, handle_request_failed_event, handle_server_shutdown_event
 from .interface import FailureReason, Message, MessageType, ProcessingError
-from .request import REQUEST_HANDLERS, RequestContext, handle_register_player_request
+from .request import RequestContext, handle_register_player_request, lookup_handler
 from .scheduled import SCHEDULED_TASKS
 from .state import lookup_game, lookup_player
 
@@ -41,7 +41,7 @@ async def _dispatch_register_player(websocket: WebSocketServerProtocol, message:
 
 async def _dispatch_request(websocket: WebSocketServerProtocol, message: Message) -> None:
     """Dispatch a websocket request to the right handler function."""
-    handler = REQUEST_HANDLERS[message.message]
+    handler = lookup_handler(message.message)
     log.debug("Handling request %s via mapping to %s", message.message, handler)
     player_id = _parse_authorization(websocket)
     player = await lookup_player(player_id=player_id)
