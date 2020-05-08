@@ -25,6 +25,7 @@ from apologiesserver.server import (
     _run_server,
     _schedule_tasks,
     _websocket_server,
+    server,
 )
 
 FIXTURE_DIR = os.path.join(os.path.dirname(__file__), "fixtures/test_server")
@@ -117,6 +118,24 @@ class TestFunctions:
         websocket_server.assert_called_once_with(stop)
         loop.stop.assert_called_once()
         loop.close.assert_called_once()
+
+    @patch("apologiesserver.server._run_server")
+    @patch("apologiesserver.server._schedule_tasks")
+    @patch("apologiesserver.server._add_signal_handlers")
+    @patch("apologiesserver.server.asyncio.get_event_loop")
+    @patch("apologiesserver.server.config")
+    def test_server(self, config, get_event_loop, add_signal_handlers, schedule_tasks, run_server):
+        stop = MagicMock()
+        loop = MagicMock()
+        system_config = MagicMock()
+        config.return_value = system_config
+        get_event_loop.return_value = loop
+        add_signal_handlers.return_value = stop
+        server()
+        system_config.to_json.assert_called_once()
+        add_signal_handlers.assert_called_once_with(loop)
+        schedule_tasks.assert_called_once_with(loop)
+        run_server.assert_called_once_with(loop, stop)
 
 
 class TestCoroutines:
