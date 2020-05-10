@@ -427,7 +427,7 @@ Example message:
         "players": 4,
         "available": 2,
         "visibility": "PUBLIC",
-        "invited": true
+        "invited_handles": [ "bender", "hermes", ]
       }
     ]
   }
@@ -539,14 +539,17 @@ Invitation_ event will be triggered for each invited player.
 {
   "message": "GAME_ADVERTISED",
   "context": {
-    "game_id": "8fb16554-ca00-4b65-a191-1c52cb0eae37",
-    "name": "Leela's Game",
-    "mode": "STANDARD",
-    "advertiser_handle": "leela",
-    "players": 3,
-    "visibility:": "PUBLIC",
-    "invited_handles": [ "bender", "hermes", ]
-  }
+    "game": {
+      "game_id": "8fb16554-ca00-4b65-a191-1c52cb0eae37",
+      "name": "Planet Express",
+      "mode": "ADULT",
+      "advertiser_handle": "leela",
+      "players": 4,
+      "available": 2,
+      "visibility": "PUBLIC",
+      "invited_handles": [ "bender", "hermes", ]
+    }
+  }  
 }
 ```
 
@@ -561,13 +564,17 @@ Example message:
 {
   "message": "GAME_INVITATION",
   "context": {
-    "game_id": "8fb16554-ca00-4b65-a191-1c52cb0eae37",
-    "name": "Planet Express",
-    "mode": "ADULT",
-    "advertiser_handle": "leela",
-    "players": 4,
-    "visibility": "PUBLIC",
-  }
+    "game": {
+      "game_id": "8fb16554-ca00-4b65-a191-1c52cb0eae37",
+      "name": "Planet Express",
+      "mode": "ADULT",
+      "advertiser_handle": "leela",
+      "players": 4,
+      "available": 2,
+      "visibility": "PUBLIC",
+      "invited_handles": [ "bender", "hermes", ]
+    }
+  }  
 }
 ```
 
@@ -701,28 +708,32 @@ Example message:
   "message": "GAME_PLAYER_CHANGE",
   "context": {
     "comment": "Player nibbler (YELLOW) quit the game."
-    "players": {
-      "RED": {
+    "players": [
+      {
         "handle": "leela",
+        "player_color": "RED",
         "player_type": "HUMAN",
         "player_state": "JOINED"  
       },
-      "YELLOW": {
+      {
         "handle": "nibbler",
+        "player_color": "YELLOW",
         "player_type": "HUMAN",
         "player_state": "QUIT"
       },
-      "BLUE": {
-        "handle": null,
+      {
+        "handle": "Legolas",
+        "player_color": "BLUE",
         "player_type": "PROGRAMMATIC",
         "player_state": "JOINED"
       },
-      "GREEN": {
+      {
         "handle": "bender",
+        "player_color": "GREEN",
         "player_type": "HUMAN",
         "player_state": "DISCONNECTED"
       }
-    }
+    ]
   }
 }
 ```

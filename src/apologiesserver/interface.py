@@ -2,8 +2,6 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=unsubscriptable-object
 
-# TODO: update all examples in API.md (and maybe expand list of events?) based on final implementation
-
 """
 Definition of the public interface for the server.
 
