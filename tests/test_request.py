@@ -2,6 +2,8 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=wildcard-import
 
+# TODO: remove this once requests.py is removed (it's obsolete)
+
 from unittest.mock import MagicMock
 
 import pytest

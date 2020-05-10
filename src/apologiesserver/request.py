@@ -4,6 +4,8 @@
 
 """Coroutines to requests received via Websocket connections."""
 
+# TODO: remove this once manager.py is implemented (it's obsolete)
+
 import logging
 from typing import Any, Callable, Coroutine, Dict, Optional, cast
 

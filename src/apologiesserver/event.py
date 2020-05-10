@@ -4,6 +4,8 @@
 
 # TODO: this needs unit tests
 # TODO: confirm which events are not triggered today
+# TODO: remove this once manager.py is implemented (it's obsolete)
+
 
 """Coroutines to events, most of which publish data to Websocket connections."""
 
