@@ -2,8 +2,6 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=wildcard-import
 
-# TODO: unit tests are broken and need to be fixed
-
 """Coroutines to handle scheduled tasks, executed on a periodic basis."""
 
 import logging

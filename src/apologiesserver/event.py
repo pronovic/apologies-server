@@ -20,7 +20,7 @@ from __future__ import annotations  # see: https://stackoverflow.com/a/33533514/
 
 import asyncio
 import logging
-from typing import Any, Coroutine, List, Optional, Set, Tuple, cast
+from typing import List, Optional, Set, Tuple, cast
 
 import attr
 import pendulum
@@ -78,15 +78,12 @@ class TaskQueue:
         if websocket:
             self.disconnects.add(websocket)
 
-    def tasks(self) -> List[Coroutine[Any, Any, Any]]:
-        """Return the list of tasks to be executed by the task queue."""
-        tasks = [websocket.close() for websocket in self.disconnects]
-        tasks.extend([websocket.send(message) for message, websocket in self.messages if websocket not in self.disconnects])
-        return tasks
-
     async def execute(self) -> None:
         """Execute all tasks in the queue."""
-        await asyncio.wait(self.tasks())
+        tasks = [websocket.close() for websocket in self.disconnects]
+        tasks.extend([websocket.send(message) for message, websocket in self.messages if websocket not in self.disconnects])
+        if tasks:
+            await asyncio.wait(tasks)
 
 
 # pylint: disable=too-many-public-methods
