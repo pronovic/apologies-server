@@ -214,11 +214,6 @@ class GamePlayer:
     player_type = attr.ib(type=PlayerType)
     player_state = attr.ib(type=PlayerState)
 
-    # TODO: needs a unit test
-    def is_available(self) -> bool:
-        """Whether the player is considered to be available to play a turn."""
-        return self.player_state not in (PlayerState.QUIT, PlayerState.DISCONNECTED)
-
 
 @attr.s(frozen=True)
 class RegisteredPlayer:

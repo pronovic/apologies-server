@@ -247,7 +247,13 @@ class TrackedGame:
     #       if the game has not been started, if the advertising player leaves, that cancels the game
     def is_viable(self) -> bool:
         """Whether the game is viable."""
-        available = len([player for player in self.game_players.values() if player.is_available()])
+        available = len(
+            [
+                player
+                for player in self.game_players.values()
+                if player.player_state not in (PlayerState.QUIT, PlayerState.DISCONNECTED)
+            ]
+        )
         return self.players - available > 2  # game is only viable if at least 2 players remain to play turns
 
     def is_fully_joined(self) -> bool:

@@ -2,8 +2,6 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=redefined-outer-name
 
-# TODO: finish unit testing this - I broke the tests with the refactoring
-
 import asyncio
 import os
 import signal
