@@ -87,7 +87,7 @@ async def _handle_data(data: Union[str, bytes], websocket: WebSocketServerProtoc
     message = Message.for_json(str(data))
     log.debug("Extracted message: %s", message)
     with EventHandler(manager()) as handler:
-        with handler.manager.lock:
+        async with handler.manager.lock:
             _handle_message(handler, message, websocket)
         await handler.execute_tasks()
 
@@ -96,7 +96,7 @@ async def _handle_disconnect(websocket: WebSocketServerProtocol) -> None:
     """Handle a disconnected client."""
     log.debug("Websocket is disconnected: %s", websocket)
     with EventHandler(manager()) as handler:
-        with handler.manager.lock:
+        async with handler.manager.lock:
             handler.handle_player_disconnected_event(websocket)
         await handler.execute_tasks()
 
@@ -137,7 +137,7 @@ async def _handle_connection(websocket: WebSocketServerProtocol, _path: str) -> 
 async def _handle_shutdown() -> None:
     """Handle server shutdown."""
     with EventHandler(manager()) as handler:
-        with handler.manager.lock:
+        async with handler.manager.lock:
             handler.handle_server_shutdown_event()
         await handler.execute_tasks()
 

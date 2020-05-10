@@ -26,7 +26,7 @@ async def _execute_idle_player_check() -> None:
     idle_thresh_min = config().player_idle_thresh_min
     inactive_thresh_min = config().player_inactive_thresh_min
     with EventHandler(manager()) as handler:
-        with handler.manager.lock:
+        async with handler.manager.lock:
             handler.handle_idle_player_check_task(idle_thresh_min, inactive_thresh_min)
         await handler.execute_tasks()
 
@@ -37,7 +37,7 @@ async def _execute_idle_game_check() -> None:
     idle_thresh_min = config().game_idle_thresh_min
     inactive_thresh_min = config().game_inactive_thresh_min
     with EventHandler(manager()) as handler:
-        with handler.manager.lock:
+        async with handler.manager.lock:
             handler.handle_idle_game_check_task(idle_thresh_min, inactive_thresh_min)
         await handler.execute_tasks()
 
@@ -47,7 +47,7 @@ async def _execute_obsolete_game_check() -> None:
     log.info("SCHEDULED[Obsolete Game Check]")
     retention_thresh_min = config().game_retention_thresh_min
     with EventHandler(manager()) as handler:
-        with handler.manager.lock:
+        async with handler.manager.lock:
             handler.handle_obsolete_game_check_task(retention_thresh_min)
         await handler.execute_tasks()
 
