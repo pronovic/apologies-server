@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
 # vim: set ft=python ts=4 sw=4 expandtab:
 
-# TODO: unit tests are broken and need to be fixed
-
 import asyncio
 import logging
 import re
 import signal
 from asyncio import AbstractEventLoop, Future  # pylint: disable=unused-import
-from typing import Any, Coroutine, Union  # pylint: disable=unused-import
+from typing import Any, Callable, Coroutine, Union  # pylint: disable=unused-import
 
 import websockets
 from websockets import WebSocketServerProtocol
@@ -34,35 +32,35 @@ def _parse_authorization(websocket: WebSocketServerProtocol) -> str:
         raise ProcessingError(FailureReason.INVALID_AUTH)
 
 
-# pylint: disable=too-many-branches
-def _dispatch_request(handler: EventHandler, request: RequestContext) -> None:
-    """Dispatch a request to the proper handler method based on message type."""
-    if request.message.message == MessageType.REREGISTER_PLAYER:
-        handler.handle_reregister_player_request(request)
-    elif request.message.message == MessageType.UNREGISTER_PLAYER:
-        handler.handle_unregister_player_request(request)
-    elif request.message.message == MessageType.LIST_PLAYERS:
-        handler.handle_list_players_request(request)
-    elif request.message.message == MessageType.ADVERTISE_GAME:
-        handler.handle_advertise_game_request(request)
-    elif request.message.message == MessageType.LIST_AVAILABLE_GAMES:
-        handler.handle_list_available_games_request(request)
-    elif request.message.message == MessageType.JOIN_GAME:
-        handler.handle_join_game_request(request)
-    elif request.message.message == MessageType.QUIT_GAME:
-        handler.handle_quit_game_request(request)
-    elif request.message.message == MessageType.START_GAME:
-        handler.handle_start_game_request(request)
-    elif request.message.message == MessageType.CANCEL_GAME:
-        handler.handle_cancel_game_request(request)
-    elif request.message.message == MessageType.EXECUTE_MOVE:
-        handler.handle_execute_move_request(request)
-    elif request.message.message == MessageType.RETRIEVE_GAME_STATE:
-        handler.handle_retrieve_game_state_request(request)
-    elif request.message.message == MessageType.SEND_MESSAGE:
-        handler.handle_send_message_request(request)
+# pylint: disable=too-many-return-statements,too-many-branches
+def _lookup_method(handler: EventHandler, message: MessageType) -> Callable[[RequestContext], None]:
+    """Lookup the handler method to invoke for a message type."""
+    if message == MessageType.REREGISTER_PLAYER:
+        return handler.handle_reregister_player_request
+    elif message == MessageType.UNREGISTER_PLAYER:
+        return handler.handle_unregister_player_request
+    elif message == MessageType.LIST_PLAYERS:
+        return handler.handle_list_players_request
+    elif message == MessageType.ADVERTISE_GAME:
+        return handler.handle_advertise_game_request
+    elif message == MessageType.LIST_AVAILABLE_GAMES:
+        return handler.handle_list_available_games_request
+    elif message == MessageType.JOIN_GAME:
+        return handler.handle_join_game_request
+    elif message == MessageType.QUIT_GAME:
+        return handler.handle_quit_game_request
+    elif message == MessageType.START_GAME:
+        return handler.handle_start_game_request
+    elif message == MessageType.CANCEL_GAME:
+        return handler.handle_cancel_game_request
+    elif message == MessageType.EXECUTE_MOVE:
+        return handler.handle_execute_move_request
+    elif message == MessageType.RETRIEVE_GAME_STATE:
+        return handler.handle_retrieve_game_state_request
+    elif message == MessageType.SEND_MESSAGE:
+        return handler.handle_send_message_request
     else:
-        raise ProcessingError(FailureReason.INTERNAL_ERROR, "Unable to dispatch request %s" % request.message.message)
+        raise ProcessingError(FailureReason.INTERNAL_ERROR, "Invalid request %s" % message.name)
 
 
 def _handle_message(handler: EventHandler, message: Message, websocket: WebSocketServerProtocol) -> None:
@@ -78,7 +76,8 @@ def _handle_message(handler: EventHandler, message: Message, websocket: WebSocke
         player.mark_active()
         game = handler.manager.lookup_game(game_id=player.game_id)
         request = RequestContext(message, websocket, player, game)
-        _dispatch_request(handler, request)
+        method = _lookup_method(handler, request.message.message)
+        method(request)
 
 
 async def _handle_data(data: Union[str, bytes], websocket: WebSocketServerProtocol) -> None:
@@ -106,18 +105,25 @@ async def _handle_disconnect(websocket: WebSocketServerProtocol) -> None:
 async def _handle_exception(exception: Exception, websocket: WebSocketServerProtocol) -> None:
     """Handle an exception by sending a request failed event."""
     try:
-        log.error("Handling exception: %s", str(exception))
-        raise exception
-    except ProcessingError as e:
-        context = RequestFailedContext(e.reason, e.comment if e.comment else e.reason.value)
-    except ValueError as e:
-        context = RequestFailedContext(FailureReason.INVALID_REQUEST, str(e))
-    except Exception as e:
-        context = RequestFailedContext(FailureReason.INTERNAL_ERROR, FailureReason.INTERNAL_ERROR.value)
-    message = Message(MessageType.REQUEST_FAILED, context)
-    try:
+        try:
+            log.error("Handling exception: %s", str(exception))
+            raise exception
+        except ProcessingError as e:
+            context = RequestFailedContext(e.reason, e.comment if e.comment else e.reason.value)
+        except ValueError as e:
+            context = RequestFailedContext(FailureReason.INVALID_REQUEST, str(e))
+        except Exception as e:
+            # Note: we don't want to expose internal implementation details in the case of an internal error
+            context = RequestFailedContext(FailureReason.INTERNAL_ERROR, FailureReason.INTERNAL_ERROR.value)
+        message = Message(MessageType.REQUEST_FAILED, context)
         await websocket.send(message.to_json())
     except Exception as e:
+        # We don't propogate errors like this to the caller.  We just ignore them and
+        # hope that we can recover for future requests.  If the websocket is dead,
+        # we presume (hope?) that it will eventually get disconnected by the library.
+        # It's not entirely clear what would be a better approach.  The only other
+        # obvious option is to drop the client because we failed to send them an error,
+        # which doesn't seem quite right, either.
         log.error("Failed to handle exception: %s", str(e))
 
 
