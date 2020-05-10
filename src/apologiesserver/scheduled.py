@@ -2,6 +2,8 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=wildcard-import
 
+# TODO: unit tests are broken and need to be fixed
+
 """Coroutines to handle scheduled tasks, executed on a periodic basis."""
 
 import logging
@@ -11,8 +13,9 @@ from periodic import Periodic
 
 from .config import config
 from .event import *
+from .event import EventHandler
 from .interface import ConnectionState, GameState
-from .manager import handle_idle_games, handle_idle_players, handle_obsolete_games
+from .manager import manager
 
 log = logging.getLogger("apologies.scheduled")
 
@@ -20,22 +23,33 @@ log = logging.getLogger("apologies.scheduled")
 async def _execute_idle_player_check() -> None:
     """Execute the Idle Player Check task."""
     log.info("SCHEDULED[Idle Player Check]")
-    queue = await handle_idle_players(config().player_idle_thresh_min, config().player_inactive_thresh_min)
-    await queue.send()
+    idle_thresh_min = config().player_idle_thresh_min
+    inactive_thresh_min = config().player_inactive_thresh_min
+    with EventHandler(manager()) as handler:
+        with handler.manager.lock:
+            handler.handle_idle_player_check_task(idle_thresh_min, inactive_thresh_min)
+        await handler.execute_tasks()
 
 
 async def _execute_idle_game_check() -> None:
     """Execute the Idle Game Check task."""
     log.info("SCHEDULED[Idle Game Check]")
-    queue = await handle_idle_games(config().game_idle_thresh_min, config().game_inactive_thresh_min)
-    await queue.send()
+    idle_thresh_min = config().game_idle_thresh_min
+    inactive_thresh_min = config().game_inactive_thresh_min
+    with EventHandler(manager()) as handler:
+        with handler.manager.lock:
+            handler.handle_idle_game_check_task(idle_thresh_min, inactive_thresh_min)
+        await handler.execute_tasks()
 
 
 async def _execute_obsolete_game_check() -> None:
     """Execute the Obsolete Game Check task."""
     log.info("SCHEDULED[Obsolete Game Check]")
-    queue = await handle_obsolete_games(config().game_retention_thresh_min)
-    await queue.send()
+    retention_thresh_min = config().game_retention_thresh_min
+    with EventHandler(manager()) as handler:
+        with handler.manager.lock:
+            handler.handle_obsolete_game_check_task(retention_thresh_min)
+        await handler.execute_tasks()
 
 
 async def _schedule_idle_player_check() -> None:

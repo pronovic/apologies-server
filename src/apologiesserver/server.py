@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 # vim: set ft=python ts=4 sw=4 expandtab:
 
+# TODO: unit tests are broken and need to be fixed
+
 import asyncio
 import logging
 import re
@@ -12,8 +14,9 @@ import websockets
 from websockets import WebSocketServerProtocol
 
 from .config import config
-from .interface import FailureReason, Message, MessageType, ProcessingError
-from .manager import handle_disconnect, handle_exception, handle_message, handle_register, handle_shutdown
+from .event import EventHandler, RequestContext
+from .interface import FailureReason, Message, MessageType, ProcessingError, RequestFailedContext
+from .manager import manager
 from .scheduled import scheduled_tasks
 
 log = logging.getLogger("apologies.server")
@@ -31,38 +34,119 @@ def _parse_authorization(websocket: WebSocketServerProtocol) -> str:
         raise ProcessingError(FailureReason.INVALID_AUTH)
 
 
-async def _handle_message(data: Union[str, bytes], websocket: WebSocketServerProtocol) -> None:
-    """Handle a message received from a websocket."""
+# pylint: disable=too-many-branches
+def _dispatch_request(handler: EventHandler, request: RequestContext) -> None:
+    """Dispatch a request to the proper handler method based on message type."""
+    if request.message.message == MessageType.REREGISTER_PLAYER:
+        handler.handle_reregister_player_request(request)
+    elif request.message.message == MessageType.UNREGISTER_PLAYER:
+        handler.handle_unregister_player_request(request)
+    elif request.message.message == MessageType.LIST_PLAYERS:
+        handler.handle_list_players_request(request)
+    elif request.message.message == MessageType.ADVERTISE_GAME:
+        handler.handle_advertise_game_request(request)
+    elif request.message.message == MessageType.LIST_AVAILABLE_GAMES:
+        handler.handle_list_available_games_request(request)
+    elif request.message.message == MessageType.JOIN_GAME:
+        handler.handle_join_game_request(request)
+    elif request.message.message == MessageType.QUIT_GAME:
+        handler.handle_quit_game_request(request)
+    elif request.message.message == MessageType.START_GAME:
+        handler.handle_start_game_request(request)
+    elif request.message.message == MessageType.CANCEL_GAME:
+        handler.handle_cancel_game_request(request)
+    elif request.message.message == MessageType.EXECUTE_MOVE:
+        handler.handle_execute_move_request(request)
+    elif request.message.message == MessageType.RETRIEVE_GAME_STATE:
+        handler.handle_retrieve_game_state_request(request)
+    elif request.message.message == MessageType.SEND_MESSAGE:
+        handler.handle_send_message_request(request)
+    else:
+        raise ProcessingError(FailureReason.INTERNAL_ERROR, "Unable to dispatch request %s" % request.message.message)
+
+
+def _handle_message(handler: EventHandler, message: Message, websocket: WebSocketServerProtocol) -> None:
+    """Handle a valid message received from a websocket client."""
+    if message.message == MessageType.REGISTER_PLAYER:
+        handler.handle_register_player_request(message, websocket)
+    else:
+        player_id = _parse_authorization(websocket)
+        player = handler.manager.lookup_player(player_id=player_id)
+        if not player:
+            raise ProcessingError(FailureReason.INVALID_PLAYER)
+        log.debug("Request is for player: %s", player)
+        player.mark_active()
+        game = handler.manager.lookup_game(game_id=player.game_id)
+        request = RequestContext(message, websocket, player, game)
+        _dispatch_request(handler, request)
+
+
+async def _handle_data(data: Union[str, bytes], websocket: WebSocketServerProtocol) -> None:
+    """Handle data received from a websocket client."""
+    log.debug("Received raw data for websocket %s: %s", websocket, data)
+    message = Message.for_json(str(data))
+    log.debug("Extracted message: %s", message)
+    with EventHandler(manager()) as handler:
+        with handler.manager.lock:
+            _handle_message(handler, message, websocket)
+        await handler.execute_tasks()
+
+
+async def _handle_disconnect(websocket: WebSocketServerProtocol) -> None:
+    """Handle a disconnected client."""
+    log.debug("Websocket is disconnected: %s", websocket)
+    with EventHandler(manager()) as handler:
+        with handler.manager.lock:
+            handler.handle_player_disconnected_event(websocket)
+        await handler.execute_tasks()
+
+
+# pylint: disable=broad-except
+# noinspection PyBroadException
+async def _handle_exception(exception: Exception, websocket: WebSocketServerProtocol) -> None:
+    """Handle an exception by sending a request failed event."""
     try:
-        log.debug("Received raw data for websocket %s: %s", websocket, data)
-        message = Message.for_json(str(data))
-        log.debug("Extracted message: %s", message)
-        if message.message == MessageType.REGISTER_PLAYER:
-            queue = await handle_register(message, websocket)
-        else:
-            player_id = _parse_authorization(websocket)
-            queue = await handle_message(player_id, message, websocket)
-        await queue.send()
-    except Exception as e:  # pylint: disable=broad-except
-        await handle_exception(e, websocket)
+        log.error("Handling exception: %s", str(exception))
+        raise exception
+    except ProcessingError as e:
+        context = RequestFailedContext(e.reason, e.comment if e.comment else e.reason.value)
+    except ValueError as e:
+        context = RequestFailedContext(FailureReason.INVALID_REQUEST, str(e))
+    except Exception as e:
+        context = RequestFailedContext(FailureReason.INTERNAL_ERROR, FailureReason.INTERNAL_ERROR.value)
+    message = Message(MessageType.REQUEST_FAILED, context)
+    try:
+        await websocket.send(message.to_json())
+    except Exception as e:
+        log.error("Failed to handle exception: %s", str(e))
 
 
+# pylint: disable=broad-except
+# noinspection PyBroadException
 async def _handle_connection(websocket: WebSocketServerProtocol, _path: str) -> None:
-    """Client connection handler, invoked once for each client that connects."""
+    """Handle a client connection, invoked once for each client that connects to the server."""
     log.debug("Got new websocket connection: %s", websocket)
     async for data in websocket:
-        await _handle_message(data, websocket)
-    log.debug("Websocket is disconnected: %s", websocket)
-    queue = await handle_disconnect(websocket)
-    await queue.send()
+        try:
+            await _handle_data(data, websocket)
+        except Exception as e:
+            await _handle_exception(e, websocket)
+    await _handle_disconnect(websocket)
+
+
+async def _handle_shutdown() -> None:
+    """Handle server shutdown."""
+    with EventHandler(manager()) as handler:
+        with handler.manager.lock:
+            handler.handle_server_shutdown_event()
+        await handler.execute_tasks()
 
 
 async def _websocket_server(stop: "Future[Any]", host: str = "localhost", port: int = 8765) -> None:
     """Websocket server."""
     async with websockets.serve(_handle_connection, host, port):
         await stop
-        queue = await handle_shutdown()
-        await queue.send()
+        await _handle_shutdown()
 
 
 def _add_signal_handlers(loop: AbstractEventLoop) -> "Future[Any]":
