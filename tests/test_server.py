@@ -154,11 +154,10 @@ class TestCoroutines:
         handle_message.assert_not_called()
         handle_exception.assert_called_with(exception, websocket)
 
-    @patch("apologiesserver.server._parse_authorization")
     @patch("apologiesserver.server.handle_exception")
     @patch("apologiesserver.server.handle_message")
     @patch("apologiesserver.server.handle_register")
-    async def test_handle_message_exception(self, handle_register, handle_message, handle_exception, parse_authorization, data):
+    async def test_handle_message_exception(self, handle_register, handle_message, handle_exception, data):
         exception = ProcessingError(FailureReason.INVALID_PLAYER)
         handle_register.side_effect = exception
         websocket = AsyncMock()
