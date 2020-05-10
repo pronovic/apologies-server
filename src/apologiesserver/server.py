@@ -12,8 +12,8 @@ import websockets
 from websockets import WebSocketServerProtocol
 
 from .config import config
-from .interface import FailureReason, Message, ProcessingError
-from .manager import handle_disconnect, handle_exception, handle_message, handle_shutdown
+from .interface import FailureReason, Message, MessageType, ProcessingError
+from .manager import handle_disconnect, handle_exception, handle_message, handle_register, handle_shutdown
 from .scheduled import scheduled_tasks
 
 log = logging.getLogger("apologies.server")
@@ -37,7 +37,11 @@ async def _handle_message(data: Union[str, bytes], websocket: WebSocketServerPro
         log.debug("Received raw data for websocket %s: %s", websocket, data)
         message = Message.for_json(str(data))
         log.debug("Extracted message: %s", message)
-        queue = await handle_message(message, websocket)
+        if message.message == MessageType.REGISTER_PLAYER:
+            queue = await handle_register(message, websocket)
+        else:
+            player_id = _parse_authorization(websocket)
+            queue = await handle_message(player_id, message, websocket)
         await queue.send()
     except Exception as e:  # pylint: disable=broad-except
         await handle_exception(e, websocket)
@@ -49,7 +53,8 @@ async def _handle_connection(websocket: WebSocketServerProtocol, _path: str) -> 
     async for data in websocket:
         await _handle_message(data, websocket)
     log.debug("Websocket is disconnected: %s", websocket)
-    await handle_disconnect(websocket)
+    queue = await handle_disconnect(websocket)
+    await queue.send()
 
 
 async def _websocket_server(stop: "Future[Any]", host: str = "localhost", port: int = 8765) -> None:

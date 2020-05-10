@@ -154,39 +154,69 @@ class TestCoroutines:
         handle_message.assert_not_called()
         handle_exception.assert_called_with(exception, websocket)
 
+    @patch("apologiesserver.server._parse_authorization")
     @patch("apologiesserver.server.handle_exception")
     @patch("apologiesserver.server.handle_message")
-    async def test_handle_message_exception(self, handle_message, handle_exception, data):
+    @patch("apologiesserver.server.handle_register")
+    async def test_handle_message_exception(self, handle_register, handle_message, handle_exception, parse_authorization, data):
         exception = ProcessingError(FailureReason.INVALID_PLAYER)
-        handle_message.side_effect = exception
+        handle_register.side_effect = exception
         websocket = AsyncMock()
         data = data["register.json"]
         message = Message.for_json(data)
         await _handle_message(data, websocket)
-        handle_message.assert_called_once_with(message, websocket)
+        handle_register.assert_called_once_with(message, websocket)
+        handle_message.assert_not_called()
         handle_exception.assert_called_with(exception, websocket)
 
+    @patch("apologiesserver.server._parse_authorization")
     @patch("apologiesserver.server.handle_exception")
     @patch("apologiesserver.server.handle_message")
-    async def test_handle_message_request(self, handle_message, handle_exception, data):
+    @patch("apologiesserver.server.handle_register")
+    async def test_handle_message_register(self, handle_register, handle_message, handle_exception, parse_authorization, data):
+        queue = AsyncMock()
+        queue.send = CoroutineMock()
+        handle_register.return_value = queue
+        websocket = AsyncMock()
+        data = data["register.json"]
+        message = Message.for_json(data)
+        await _handle_message(data, websocket)
+        queue.send.assert_awaited_once()
+        handle_register.assert_called_once_with(message, websocket)
+        handle_message.assert_not_called()
+        handle_exception.assert_not_called()
+        parse_authorization.assert_not_called()
+
+    @patch("apologiesserver.server._parse_authorization")
+    @patch("apologiesserver.server.handle_exception")
+    @patch("apologiesserver.server.handle_message")
+    @patch("apologiesserver.server.handle_register")
+    async def test_handle_message_request(self, handle_register, handle_message, handle_exception, parse_authorization, data):
         queue = AsyncMock()
         queue.send = CoroutineMock()
         handle_message.return_value = queue
+        parse_authorization.return_value = "player_id"
         websocket = AsyncMock()
         data = data["list.json"]
         message = Message.for_json(data)
         await _handle_message(data, websocket)
         queue.send.assert_awaited_once()
-        handle_message.assert_called_once_with(message, websocket)
+        handle_register.assert_not_called()
+        handle_message.assert_called_once_with("player_id", message, websocket)
         handle_exception.assert_not_called()
+        parse_authorization.assert_called_once_with(websocket)
 
     @patch("apologiesserver.server.handle_disconnect")
     @patch("apologiesserver.server._handle_message")
     async def test_handle_connection(self, handle_message, handle_disconnect):
+        queue = AsyncMock()
+        queue.send = CoroutineMock()
+        handle_disconnect.return_value = queue
         data = b"test data"
         websocket = AsyncMock()
         websocket.__aiter__.return_value = [data]
         await _handle_connection(websocket, "path")
+        queue.send.assert_awaited_once()
         handle_message.assert_called_once_with(data, websocket)
         handle_disconnect.assert_called_once_with(websocket)
 
