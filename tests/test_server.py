@@ -13,12 +13,9 @@ from asynctest import MagicMock as AsyncMock
 from asynctest import patch
 from websockets.http import Headers
 
-from apologiesserver.interface import FailureReason, Message, MessageType, ProcessingError
-from apologiesserver.request import RequestContext
+from apologiesserver.interface import FailureReason, Message, ProcessingError
 from apologiesserver.server import (
     _add_signal_handlers,
-    _dispatch_register_player,
-    _dispatch_request,
     _handle_connection,
     _handle_message,
     _parse_authorization,
@@ -145,170 +142,65 @@ class TestCoroutines:
 
     pytestmark = pytest.mark.asyncio
 
-    @patch("apologiesserver.server.handle_register_player_request")
-    async def test_dispatch_register_player(self, handle_register_player_request):
-        websocket = MagicMock()
-        message = MagicMock()
-        await _dispatch_register_player(websocket, message)
-        handle_register_player_request.assert_called_once_with(websocket, message)
+    @patch("apologiesserver.server.handle_exception")
+    @patch("apologiesserver.server.handle_message")
+    @patch("apologiesserver.server.Message")
+    async def test_handle_message_invalid_message(self, message, handle_message, handle_exception, data):
+        exception = ValueError("Invalid message")
+        message.for_json.side_effect = exception
+        websocket = AsyncMock()
+        data = data["register.json"]
+        await _handle_message(data, websocket)
+        handle_message.assert_not_called()
+        handle_exception.assert_called_with(exception, websocket)
 
-    @patch("apologiesserver.server.lookup_handler")
-    async def test_dispatch_request_invalid_message(self, lookup_handler):
-        lookup_handler.side_effect = ProcessingError(FailureReason.INTERNAL_ERROR)
-        websocket = MagicMock()
-        message = MagicMock(message=MessageType.GAME_JOINED)
-        with pytest.raises(ProcessingError, match=r"Internal error"):
-            await _dispatch_request(websocket, message)
-
-    @patch("apologiesserver.server.lookup_handler")
-    @patch("apologiesserver.server._parse_authorization")
-    async def test_dispatch_request_invalid_auth(self, parse_authorization, lookup_handler):
-        handler = MagicMock()
-        parse_authorization.side_effect = ProcessingError(FailureReason.INVALID_AUTH)
-        lookup_handler.return_value = handler
-        websocket = MagicMock()
-        message = MagicMock(message=MessageType.GAME_JOINED)
-        with pytest.raises(ProcessingError, match=r"Missing or invalid authorization header"):
-            await _dispatch_request(websocket, message)
-        parse_authorization.assert_called_once_with(websocket)
-        handler.assert_not_called()
-
-    @patch("apologiesserver.server.lookup_player")
-    @patch("apologiesserver.server.lookup_handler")
-    @patch("apologiesserver.server._parse_authorization")
-    async def test_dispatch_request_invalid_player(self, parse_authorization, lookup_handler, lookup_player):
-        handler = MagicMock()
-        player = None
-        parse_authorization.return_value = "player-id"
-        lookup_handler.return_value = handler
-        lookup_player.return_value = player
-        websocket = MagicMock()
-        message = MagicMock(message=MessageType.GAME_JOINED)
-        with pytest.raises(ProcessingError, match=r"Unknown or invalid player"):
-            await _dispatch_request(websocket, message)
-        parse_authorization.assert_called_once_with(websocket)
-        lookup_player.assert_called_with(player_id="player-id")
-        handler.assert_not_called()
-
-    @patch("apologiesserver.server.lookup_game")
-    @patch("apologiesserver.server.lookup_player")
-    @patch("apologiesserver.server.lookup_handler")
-    @patch("apologiesserver.server._parse_authorization")
-    async def test_dispatch_request_invalid_game(self, parse_authorization, lookup_handler, lookup_player, lookup_game):
-        handler = MagicMock()
-        player = AsyncMock(game_id="game-id", lock=asyncio.Lock())
-        parse_authorization.return_value = "player-id"
-        lookup_handler.return_value = handler
-        lookup_player.return_value = player
-        lookup_game.side_effect = ProcessingError(FailureReason.INVALID_GAME)
-        websocket = MagicMock()
-        message = MagicMock(message=MessageType.GAME_JOINED)
-        with pytest.raises(ProcessingError, match=r"Unknown or invalid game"):
-            await _dispatch_request(websocket, message)
-        parse_authorization.assert_called_once_with(websocket)
-        lookup_player.assert_called_with(player_id="player-id")
-        lookup_game.assert_called_with(game_id="game-id")
-        handler.assert_not_called()
-
-    @patch("apologiesserver.server.lookup_game")
-    @patch("apologiesserver.server.lookup_player")
-    @patch("apologiesserver.server.lookup_handler")
-    @patch("apologiesserver.server._parse_authorization")
-    async def test_dispatch_request_valid_no_game(self, parse_authorization, lookup_handler, lookup_player, lookup_game):
-        handler = CoroutineMock()
-        player = AsyncMock(game_id=None, lock=asyncio.Lock())
-        player.mark_active = CoroutineMock()
-        game = None
-        parse_authorization.return_value = "player-id"
-        lookup_handler.return_value = handler
-        lookup_player.return_value = player
-        lookup_game.return_value = game
-        websocket = MagicMock()
-        message = MagicMock(message=MessageType.GAME_JOINED)
-        await _dispatch_request(websocket, message)
-        parse_authorization.assert_called_once_with(websocket)
-        lookup_player.assert_called_with(player_id="player-id")
-        lookup_game.assert_called_with(game_id=None)
-        player.mark_active.assert_called_once()
-        handler.assert_called_once_with(RequestContext(websocket, message, player, game))
-
-    @patch("apologiesserver.server.lookup_game")
-    @patch("apologiesserver.server.lookup_player")
-    @patch("apologiesserver.server.lookup_handler")
-    @patch("apologiesserver.server._parse_authorization")
-    async def test_dispatch_request_valid_with_game(self, parse_authorization, lookup_handler, lookup_player, lookup_game):
-        handler = CoroutineMock()
-        player = AsyncMock(game_id="game-id", lock=asyncio.Lock())
-        player.mark_active = CoroutineMock()
-        game = AsyncMock()
-        parse_authorization.return_value = "player-id"
-        lookup_handler.return_value = handler
-        lookup_player.return_value = player
-        lookup_game.return_value = game
-        websocket = MagicMock()
-        message = MagicMock(message=MessageType.GAME_JOINED)
-        await _dispatch_request(websocket, message)
-        parse_authorization.assert_called_once_with(websocket)
-        lookup_player.assert_called_with(player_id="player-id")
-        lookup_game.assert_called_with(game_id="game-id")
-        player.mark_active.assert_called_once()
-        handler.assert_called_once_with(RequestContext(websocket, message, player, game))
-
-    @patch("apologiesserver.server.handle_request_failed_event")
-    @patch("apologiesserver.server._dispatch_register_player")
-    @patch("apologiesserver.server._dispatch_request")
-    async def test_handle_message_exception(self, dispatch_request, dispatch_register_player, handle_request_failed_event, data):
+    @patch("apologiesserver.server.handle_exception")
+    @patch("apologiesserver.server.handle_message")
+    async def test_handle_message_exception(self, handle_message, handle_exception, data):
         exception = ProcessingError(FailureReason.INVALID_PLAYER)
-        dispatch_register_player.side_effect = exception
+        handle_message.side_effect = exception
         websocket = AsyncMock()
         data = data["register.json"]
         message = Message.for_json(data)
-        await _handle_message(websocket, data)
-        dispatch_register_player.assert_called_once_with(websocket, message)
-        dispatch_request.assert_not_called()
-        handle_request_failed_event.assert_called_with(websocket, exception)
+        await _handle_message(data, websocket)
+        handle_message.assert_called_once_with(message, websocket)
+        handle_exception.assert_called_with(exception, websocket)
 
-    @patch("apologiesserver.server.handle_request_failed_event")
-    @patch("apologiesserver.server._dispatch_register_player")
-    @patch("apologiesserver.server._dispatch_request")
-    async def test_handle_message_register(self, dispatch_request, dispatch_register_player, handle_request_failed_event, data):
-        websocket = AsyncMock()
-        data = data["register.json"]
-        message = Message.for_json(data)
-        await _handle_message(websocket, data)
-        dispatch_register_player.assert_called_once_with(websocket, message)
-        dispatch_request.assert_not_called()
-        handle_request_failed_event.assert_not_called()
-
-    @patch("apologiesserver.server.handle_request_failed_event")
-    @patch("apologiesserver.server._dispatch_register_player")
-    @patch("apologiesserver.server._dispatch_request")
-    async def test_handle_message_request(self, dispatch_request, dispatch_register_player, handle_request_failed_event, data):
+    @patch("apologiesserver.server.handle_exception")
+    @patch("apologiesserver.server.handle_message")
+    async def test_handle_message_request(self, handle_message, handle_exception, data):
+        queue = AsyncMock()
+        queue.send = CoroutineMock()
+        handle_message.return_value = queue
         websocket = AsyncMock()
         data = data["list.json"]
         message = Message.for_json(data)
-        await _handle_message(websocket, data)
-        dispatch_register_player.assert_not_called()
-        dispatch_request.assert_called_once_with(websocket, message)
-        handle_request_failed_event.assert_not_called()
+        await _handle_message(data, websocket)
+        queue.send.assert_awaited_once()
+        handle_message.assert_called_once_with(message, websocket)
+        handle_exception.assert_not_called()
 
-    @patch("apologiesserver.server.handle_player_disconnected_event")
+    @patch("apologiesserver.server.handle_disconnect")
     @patch("apologiesserver.server._handle_message")
-    async def test_handle_connection(self, handle_message, handle_player_disconnected_event):
+    async def test_handle_connection(self, handle_message, handle_disconnect):
         data = b"test data"
         websocket = AsyncMock()
         websocket.__aiter__.return_value = [data]
         await _handle_connection(websocket, "path")
-        handle_message.assert_called_once_with(websocket, data)
-        handle_player_disconnected_event.assert_called_once_with(websocket)
+        handle_message.assert_called_once_with(data, websocket)
+        handle_disconnect.assert_called_once_with(websocket)
 
-    @patch("apologiesserver.server.handle_server_shutdown_event")
+    @patch("apologiesserver.server.handle_shutdown")
     @patch("apologiesserver.server._handle_connection")
     @patch("apologiesserver.server.websockets.serve")
-    async def test_websocket_server(self, serve, handle_connection, handle_server_shutdown_event):
+    async def test_websocket_server(self, serve, handle_connection, handle_shutdown):
+        queue = AsyncMock()
+        queue.send = CoroutineMock()
+        handle_shutdown.return_value = queue
         stop = asyncio.Future()
         stop.set_result(None)
         await _websocket_server(stop, "host", 1234)
+        queue.send.assert_awaited_once()
         serve.assert_called_with(handle_connection, "host", 1234)
-        handle_server_shutdown_event.assert_awaited()
+        handle_shutdown.assert_awaited()
         # unfortunately, we can't prove that stop() was awaited, but in this case it's easy to eyeball in the code
