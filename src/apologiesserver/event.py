@@ -25,6 +25,7 @@ from typing import List, Optional, Set, Tuple, cast
 import attr
 import pendulum
 from apologies.rules import Move
+from ordered_set import OrderedSet  # this makes expected results easier to articulate in test code
 from websockets import WebSocketServerProtocol
 
 from .config import config
@@ -57,11 +58,12 @@ class TaskQueue:
         return []
 
     @disconnects.default
-    def _disconnects_default(self) -> Set[WebSocketServerProtocol]:
-        return set()
+    def _disconnects_default(self) -> OrderedSet[WebSocketServerProtocol]:
+        return OrderedSet()
 
     def clear(self) -> None:
         del self.messages[:]
+        self.disconnects.clear()
 
     def message(
         self,
@@ -70,7 +72,7 @@ class TaskQueue:
         players: Optional[List[TrackedPlayer]] = None,
     ) -> None:
         """Enqueue a task to send a message to one or more destination websockets."""
-        destinations = set(websockets) if websockets else set()
+        destinations = OrderedSet(websockets) if websockets else OrderedSet()
         destinations.update([player.websocket for player in players if player.websocket] if players else [])
         self.messages.extend([(message.to_json(), destination) for destination in destinations])
 
@@ -109,6 +111,56 @@ class EventHandler:
         """Send all enqueued tasks."""
         # This should not be invoked from within the manager lock!  We want code within the lock to run fast, without blocking.
         await self.queue.execute()
+
+    # noinspection PyTypeChecker
+    def handle_idle_player_check_task(self, idle_thresh_min: int, inactive_thresh_min: int) -> None:
+        """Execute the Idle Player Check task."""
+        log.info("SCHEDULED[Idle Player Check]")
+        idle = 0
+        inactive = 0
+        now = pendulum.now()
+        for (player, last_active_date, connection_state) in self.manager.lookup_player_activity():
+            disconnected = connection_state == ConnectionState.DISCONNECTED
+            if now.diff(last_active_date).in_minutes > inactive_thresh_min:
+                inactive += 1
+                self.handle_player_inactive_event(player)
+            elif now.diff(last_active_date).in_minutes > idle_thresh_min:
+                if disconnected:
+                    inactive += 1
+                    self.handle_player_inactive_event(player)
+                else:
+                    idle += 1
+                    self.handle_player_idle_event(player)
+        log.debug("Idle player check completed, found %d idle and %d inactive players", idle, inactive)
+
+    # noinspection PyTypeChecker
+    def handle_idle_game_check_task(self, idle_thresh_min: int, inactive_thresh_min: int) -> None:
+        """Execute the Idle Game Check task."""
+        log.info("SCHEDULED[Idle Game Check]")
+        idle = 0
+        inactive = 0
+        now = pendulum.now()
+        for (game, last_active_date) in self.manager.lookup_game_activity():
+            if now.diff(last_active_date).in_minutes > inactive_thresh_min:
+                inactive += 1
+                self.handle_game_inactive_event(game)
+            elif now.diff(last_active_date).in_minutes > idle_thresh_min:
+                idle += 1
+                self.handle_game_idle_event(game)
+        log.debug("Idle game check completed, found %d idle and %d inactive games", idle, inactive)
+
+    # noinspection PyTypeChecker
+    def handle_obsolete_game_check_task(self, retention_thresh_min: int) -> None:
+        """Execute the Obsolete Game Check task."""
+        log.info("SCHEDULED[Obsolete Game Check]")
+        obsolete = 0
+        now = pendulum.now()
+        for (game, completed_date) in self.manager.lookup_game_completion():
+            if completed_date:
+                if now.diff(completed_date).in_minutes > retention_thresh_min:
+                    obsolete += 1
+                    self.handle_game_obsolete_event(game)
+        log.debug("Obsolete game check completed, found %d obsolete games", obsolete)
 
     def handle_register_player_request(self, message: Message, websocket: WebSocketServerProtocol) -> None:
         """Handle the Register Player request."""
@@ -219,56 +271,6 @@ class EventHandler:
         log.info("REQUEST[Send Message]")
         context = cast(SendMessageContext, request.message.context)
         self.handle_player_message_received_event(request.player.handle, context.recipient_handles, context.message)
-
-    # noinspection PyTypeChecker
-    def handle_idle_player_check_task(self, idle_thresh_min: int, inactive_thresh_min: int) -> None:
-        """Execute the Idle Player Check task."""
-        log.info("SCHEDULED[Idle Player Check]")
-        idle = 0
-        inactive = 0
-        now = pendulum.now()
-        for (player, last_active_date, connection_state) in self.manager.lookup_player_activity():
-            disconnected = connection_state == ConnectionState.DISCONNECTED
-            if now.diff(last_active_date).in_minutes > inactive_thresh_min:
-                inactive += 1
-                self.handle_player_inactive_event(player)
-            elif now.diff(last_active_date).in_minutes > idle_thresh_min:
-                if disconnected:
-                    inactive += 1
-                    self.handle_player_inactive_event(player)
-                else:
-                    idle += 1
-                    self.handle_player_idle_event(player)
-        log.debug("Idle player check completed, found %d idle and %d inactive players", idle, inactive)
-
-    # noinspection PyTypeChecker
-    def handle_idle_game_check_task(self, idle_thresh_min: int, inactive_thresh_min: int) -> None:
-        """Execute the Idle Game Check task."""
-        log.info("SCHEDULED[Idle Game Check]")
-        idle = 0
-        inactive = 0
-        now = pendulum.now()
-        for (game, last_active_date) in self.manager.lookup_game_activity():
-            if now.diff(last_active_date).in_minutes > inactive_thresh_min:
-                inactive += 1
-                self.handle_game_inactive_event(game)
-            elif now.diff(last_active_date).in_minutes > idle_thresh_min:
-                idle += 1
-                self.handle_game_idle_event(game)
-        log.debug("Idle game check completed, found %d idle and %d inactive games", idle, inactive)
-
-    # noinspection PyTypeChecker
-    def handle_obsolete_game_check_task(self, retention_thresh_min: int) -> None:
-        """Execute the Obsolete Game Check task."""
-        log.info("SCHEDULED[Obsolete Game Check]")
-        obsolete = 0
-        now = pendulum.now()
-        for (game, completed_date) in self.manager.lookup_game_completion():
-            if completed_date:
-                if now.diff(completed_date).in_minutes > retention_thresh_min:
-                    obsolete += 1
-                    self.handle_game_obsolete_event(game)
-        log.debug("Obsolete game check completed, found %d obsolete games", obsolete)
 
     def handle_server_shutdown_event(self) -> None:
         """Handle the Server Shutdown event."""

@@ -342,6 +342,22 @@ version = "1.3.5"
 
 [[package]]
 category = "main"
+description = "A set that remembers its order, and allows looking up its items by their index in that order."
+name = "ordered-set"
+optional = false
+python-versions = ">=3.5"
+version = "4.0.1"
+
+[[package]]
+category = "dev"
+description = "Stubs with type annotations for ordered-set Python library"
+name = "ordered-set-stubs"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*"
+version = "0.1.3"
+
+[[package]]
+category = "main"
 description = "Fast, correct Python JSON library supporting dataclasses, datetimes, and numpy"
 name = "orjson"
 optional = false
@@ -827,7 +843,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [metadata]
-content-hash = "243096ba340bd41b74da6e7b5f309e0e9d91ab363c63b13d340b7dd0b26afac6"
+content-hash = "ae0e2054207113f140f146ff583fb3ce9c0c9359187185d22a96248736259082"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -1051,6 +1067,13 @@ mypy-extensions = [
 ]
 nodeenv = [
     {file = "nodeenv-1.3.5-py2.py3-none-any.whl", hash = "sha256:5b2438f2e42af54ca968dd1b374d14a1194848955187b0e5e4be1f73813a5212"},
+]
+ordered-set = [
+    {file = "ordered-set-4.0.1.tar.gz", hash = "sha256:a31008c57f9c9776b12eb8841b1f61d1e4d70dfbbe8875ccfa2403c54af3d51b"},
+]
+ordered-set-stubs = [
+    {file = "ordered_set-stubs-0.1.3.tar.gz", hash = "sha256:29274ae21ca2cfc127874042461996e748bb3c68ae7618ffd0028309554e2dff"},
+    {file = "ordered_set_stubs-0.1.3-py2.py3-none-any.whl", hash = "sha256:4f76c7470a4e364feb51fe42c4bcd968c8ff9dab520aff9287b394e14da1d1ee"},
 ]
 orjson = [
     {file = "orjson-2.6.6-cp36-cp36m-macosx_10_7_x86_64.whl", hash = "sha256:5ec9fd99a5ea2fcd02e603bf45f59537699eed3c8e80931f4046dbeb3c0b04d0"},
