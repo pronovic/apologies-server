@@ -32,7 +32,3 @@ ignore_missing_imports = True
 # There is no type hinting for asynctest
 [mypy-asynctest]
 ignore_missing_imports = True
-
-# There is no type hinting for periodic
-[mypy-periodic]
-ignore_missing_imports = True

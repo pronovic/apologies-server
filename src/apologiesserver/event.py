@@ -116,18 +116,21 @@ class EventHandler:
         await self.queue.execute()
 
     # noinspection PyTypeChecker
-    def handle_idle_player_check_task(self, idle_thresh_min: int, inactive_thresh_min: int) -> None:
-        """Execute the Idle Player Check task."""
+    def handle_idle_player_check_task(self) -> Tuple[int, int]:
+        """Execute the Idle Player Check task, returning tuple of (idle, inactive)."""
         log.info("SCHEDULED[Idle Player Check]")
         idle = 0
         inactive = 0
         now = pendulum.now()
+        idle_thresh_min = config().player_idle_thresh_min
+        inactive_thresh_min = config().player_inactive_thresh_min
         for (player, last_active_date, connection_state) in self.manager.lookup_player_activity():
             disconnected = connection_state == ConnectionState.DISCONNECTED
-            if now.diff(last_active_date).in_minutes > inactive_thresh_min:
+            since_active = now.diff(last_active_date).in_minutes()
+            if since_active >= inactive_thresh_min:
                 inactive += 1
                 self.handle_player_inactive_event(player)
-            elif now.diff(last_active_date).in_minutes > idle_thresh_min:
+            elif since_active >= idle_thresh_min:
                 if disconnected:
                     inactive += 1
                     self.handle_player_inactive_event(player)
@@ -135,35 +138,43 @@ class EventHandler:
                     idle += 1
                     self.handle_player_idle_event(player)
         log.debug("Idle player check completed, found %d idle and %d inactive players", idle, inactive)
+        return idle, inactive
 
     # noinspection PyTypeChecker
-    def handle_idle_game_check_task(self, idle_thresh_min: int, inactive_thresh_min: int) -> None:
-        """Execute the Idle Game Check task."""
+    def handle_idle_game_check_task(self) -> Tuple[int, int]:
+        """Execute the Idle Game Check task, returning tuple of (idle, inactive)."""
         log.info("SCHEDULED[Idle Game Check]")
         idle = 0
         inactive = 0
         now = pendulum.now()
+        idle_thresh_min = config().game_idle_thresh_min
+        inactive_thresh_min = config().game_inactive_thresh_min
         for (game, last_active_date) in self.manager.lookup_game_activity():
-            if now.diff(last_active_date).in_minutes > inactive_thresh_min:
+            since_active = now.diff(last_active_date).in_minutes()
+            if since_active >= inactive_thresh_min:
                 inactive += 1
                 self.handle_game_inactive_event(game)
-            elif now.diff(last_active_date).in_minutes > idle_thresh_min:
+            elif since_active >= idle_thresh_min:
                 idle += 1
                 self.handle_game_idle_event(game)
         log.debug("Idle game check completed, found %d idle and %d inactive games", idle, inactive)
+        return idle, inactive
 
     # noinspection PyTypeChecker
-    def handle_obsolete_game_check_task(self, retention_thresh_min: int) -> None:
-        """Execute the Obsolete Game Check task."""
+    def handle_obsolete_game_check_task(self) -> int:
+        """Execute the Obsolete Game Check task returning obsolete games."""
         log.info("SCHEDULED[Obsolete Game Check]")
         obsolete = 0
         now = pendulum.now()
+        retention_thresh_min = config().game_retention_thresh_min
         for (game, completed_date) in self.manager.lookup_game_completion():
             if completed_date:
-                if now.diff(completed_date).in_minutes > retention_thresh_min:
+                since_completed = now.diff(completed_date).in_minutes()
+                if since_completed >= retention_thresh_min:
                     obsolete += 1
                     self.handle_game_obsolete_event(game)
         log.debug("Obsolete game check completed, found %d obsolete games", obsolete)
+        return obsolete
 
     def handle_register_player_request(self, message: Message, websocket: WebSocketServerProtocol) -> None:
         """Handle the Register Player request."""

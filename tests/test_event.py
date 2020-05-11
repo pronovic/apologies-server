@@ -4,7 +4,7 @@
 
 # TODO: double-check that all validations (especially game/user limits) are tested completely
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 import pytest
 from apologies.game import GameMode
@@ -14,6 +14,8 @@ from asynctest import patch
 
 from apologiesserver.event import EventHandler, RequestContext, TaskQueue
 from apologiesserver.interface import *
+
+from .util import to_date
 
 
 class TestTaskQueue:
@@ -177,6 +179,106 @@ class TestTaskMethods:
     """
     Test the task-related methods on EventHandler.
     """
+
+    # pylint: disable=too-many-locals,invalid-name
+    @patch("apologiesserver.event.pendulum")
+    @patch("apologiesserver.event.config")
+    def test_handle_idle_player_check_task(self, config, pendulum):
+        config.return_value = MagicMock(player_idle_thresh_min=10, player_inactive_thresh_min=20)
+        pendulum.now.return_value = to_date("2020-05-11T10:22:00,000")
+
+        p1 = MagicMock()
+        p2 = MagicMock()
+        p3 = MagicMock()
+        p4 = MagicMock()
+        p5 = MagicMock()
+        p6 = MagicMock()
+        p7 = MagicMock()
+        p8 = MagicMock()
+
+        # Results: 2 are active (a1, a5), 2 are idle (a2, a3) and 4 are inactive (a4, a6, a7, a8)
+        # A disconnected player is either active or inactive, it can't be idle
+        a1 = (p1, to_date("2020-05-11T10:12:00,001"), ConnectionState.CONNECTED)  # connected and active (9:59.999)
+        a2 = (p2, to_date("2020-05-11T10:12:00,000"), ConnectionState.CONNECTED)  # connected and idle (10:00.000)
+        a3 = (p3, to_date("2020-05-11T10:02:00,001"), ConnectionState.CONNECTED)  # connected and idle (19:59.999)
+        a4 = (p4, to_date("2020-05-11T10:02:00,000"), ConnectionState.CONNECTED)  # connected and inactive (20:00.000)
+        a5 = (p5, to_date("2020-05-11T10:12:00,001"), ConnectionState.DISCONNECTED)  # disconnected and active (9:59.999)
+        a6 = (p6, to_date("2020-05-11T10:12:00,000"), ConnectionState.DISCONNECTED)  # disconnected and idle (10:00.000)
+        a7 = (p7, to_date("2020-05-11T10:12:00,000"), ConnectionState.DISCONNECTED)  # disconnected and idle (19:59.999)
+        a8 = (p8, to_date("2020-05-11T10:02:00,000"), ConnectionState.DISCONNECTED)  # disconnected and inactive (20:00.000)
+        activity = [a1, a2, a3, a4, a5, a6, a7, a8]
+
+        handler = EventHandler(MagicMock())
+        handler.manager.lookup_player_activity.return_value = activity
+        handler.handle_player_idle_event = MagicMock()
+        handler.handle_player_inactive_event = MagicMock()
+
+        assert handler.handle_idle_player_check_task() == (2, 4)
+
+        idle_calls = [call(p2), call(p3)]
+        inactive_calls = [call(p4), call(p6), call(p7), call(p8)]
+
+        handler.handle_player_idle_event.assert_has_calls(idle_calls)
+        handler.handle_player_inactive_event.assert_has_calls(inactive_calls)
+
+    # pylint: disable=invalid-name
+    @patch("apologiesserver.event.pendulum")
+    @patch("apologiesserver.event.config")
+    def test_handle_idle_game_check_task(self, config, pendulum):
+        config.return_value = MagicMock(game_idle_thresh_min=10, game_inactive_thresh_min=20)
+        pendulum.now.return_value = to_date("2020-05-11T10:22:00,000")
+
+        g1 = MagicMock()
+        g2 = MagicMock()
+        g3 = MagicMock()
+        g4 = MagicMock()
+
+        # Results: 1 is active (a1), 2 are idle (a2, a3) and 1 is inactive (a4)
+        a1 = (g1, to_date("2020-05-11T10:12:00,001"))  # active (9:59.999)
+        a2 = (g2, to_date("2020-05-11T10:12:00,000"))  # idle (10:00.000)
+        a3 = (g3, to_date("2020-05-11T10:02:00,001"))  # idle (19:59.999)
+        a4 = (g4, to_date("2020-05-11T10:02:00,000"))  # inactive (20:00.000)
+        activity = [a1, a2, a3, a4]
+
+        handler = EventHandler(MagicMock())
+        handler.manager.lookup_game_activity.return_value = activity
+        handler.handle_game_idle_event = MagicMock()
+        handler.handle_game_inactive_event = MagicMock()
+
+        assert handler.handle_idle_game_check_task() == (2, 1)
+
+        idle_calls = [call(g2), call(g3)]
+        inactive_calls = [call(g4)]
+
+        handler.handle_game_idle_event.assert_has_calls(idle_calls)
+        handler.handle_game_inactive_event.assert_has_calls(inactive_calls)
+
+    # pylint: disable=invalid-name
+    @patch("apologiesserver.event.pendulum")
+    @patch("apologiesserver.event.config")
+    def test_handle_obsolete_game_check_task(self, config, pendulum):
+        config.return_value = MagicMock(game_retention_thresh_min=10)
+        pendulum.now.return_value = to_date("2020-05-11T10:22:00,000")
+
+        g1 = MagicMock()
+        g2 = MagicMock()
+        g3 = MagicMock()
+
+        # Results: 1 is in-progress (a1), 1 is young enough to keep (a2) and 1 is obsolete (a3)
+        a1 = (g1, None)  # in-progress
+        a2 = (g2, to_date("2020-05-11T10:12:00,001"))  # young enough to keep (9:59.999)
+        a3 = (g3, to_date("2020-05-11T10:12:00,000"))  # obsolete (10:00.000)
+        completion = [a1, a2, a3]
+
+        handler = EventHandler(MagicMock())
+        handler.manager.lookup_game_completion.return_value = completion
+        handler.handle_game_obsolete_event = MagicMock()
+
+        assert handler.handle_obsolete_game_check_task() == 1
+
+        obsolete_calls = [call(g3)]
+
+        handler.handle_game_obsolete_event.assert_has_calls(obsolete_calls)
 
 
 # pylint: disable=too-many-public-methods

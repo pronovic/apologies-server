@@ -9,6 +9,14 @@ Shared test utilities.
 from unittest.mock import MagicMock
 
 from asynctest import CoroutineMock
+from pendulum.datetime import DateTime
+from pendulum.parser import parse
+
+
+# noinspection PyTypeChecker
+def to_date(date: str) -> DateTime:
+    # This function seems to have the wrong type hint
+    return parse(date)  # type: ignore
 
 
 def mock_handler() -> MagicMock:

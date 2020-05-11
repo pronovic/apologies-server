@@ -43,44 +43,38 @@ class TestCoroutines:
 
     @patch("apologiesserver.scheduled.EventHandler")
     @patch("apologiesserver.scheduled.manager")
-    @patch("apologiesserver.scheduled.config")
-    async def test_execute_idle_player_check(self, config, manager, event_handler):
+    async def test_execute_idle_player_check(self, manager, event_handler):
         handler = mock_handler()
         manager.return_value = handler.manager
         event_handler.return_value = handler
-        config.return_value = MagicMock(player_idle_thresh_min=1, player_inactive_thresh_min=2)
         await _execute_idle_player_check()
         event_handler.assert_called_once_with(manager.return_value)
         handler.manager.lock.assert_awaited()
-        handler.handle_idle_player_check_task.assert_called_once_with(1, 2)
+        handler.handle_idle_player_check_task.assert_called_once()
         handler.execute_tasks.assert_awaited_once()
 
     @patch("apologiesserver.scheduled.EventHandler")
     @patch("apologiesserver.scheduled.manager")
-    @patch("apologiesserver.scheduled.config")
-    async def test_execute_idle_game_check(self, config, manager, event_handler):
+    async def test_execute_idle_game_check(self, manager, event_handler):
         handler = mock_handler()
         manager.return_value = handler.manager
         event_handler.return_value = handler
-        config.return_value = MagicMock(game_idle_thresh_min=1, game_inactive_thresh_min=2)
         await _execute_idle_game_check()
         event_handler.assert_called_once_with(manager.return_value)
         handler.manager.lock.assert_awaited()
-        handler.handle_idle_game_check_task.assert_called_once_with(1, 2)
+        handler.handle_idle_game_check_task.assert_called_once()
         handler.execute_tasks.assert_awaited_once()
 
     @patch("apologiesserver.scheduled.EventHandler")
     @patch("apologiesserver.scheduled.manager")
-    @patch("apologiesserver.scheduled.config")
-    async def test_execute_obsolete_game_check(self, config, manager, event_handler):
+    async def test_execute_obsolete_game_check(self, manager, event_handler):
         handler = mock_handler()
         manager.return_value = handler.manager
         event_handler.return_value = handler
-        config.return_value = MagicMock(game_retention_thresh_min=1)
         await _execute_obsolete_game_check()
         event_handler.assert_called_once_with(manager.return_value)
         handler.manager.lock.assert_awaited()
-        handler.handle_obsolete_game_check_task.assert_called_once_with(1)
+        handler.handle_obsolete_game_check_task.assert_called_once()
         handler.execute_tasks.assert_awaited_once()
 
     @patch("apologiesserver.scheduled.config")
