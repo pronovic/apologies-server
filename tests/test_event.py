@@ -2,17 +2,15 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=redefined-outer-name,wildcard-import
 
-# TODO: double-check that all validations (especially game/user limits) are tested completely   
+# TODO: double-check that all validations (especially game/user limits) are tested completely
 
 from unittest.mock import MagicMock
 
 import pytest
+from apologies.game import GameMode
 from asynctest import CoroutineMock
 from asynctest import MagicMock as AsyncMock
 from asynctest import patch
-
-from apologies.game import GameMode
-from apologies.rules import Move
 
 from apologiesserver.event import EventHandler, RequestContext, TaskQueue
 from apologiesserver.interface import *
@@ -154,6 +152,26 @@ class TestEventHandler:
     Test the basic EventHandler functionality.
     """
 
+    def test_context_manager(self):
+        manager = MagicMock()
+        queue = MagicMock()
+        queue.clear = MagicMock()
+        handler = EventHandler(manager, queue)
+        with handler as result:
+            assert handler is result  # proves that the right object is returned
+            queue.clear.assert_called_once()  # proves that we clear the queue on entering
+            queue.clear = MagicMock()  # clear it so we can easily check for 2nd call
+        queue.clear.assert_called_once()  # proves that we clear the cache on exiting
+
+    @pytest.mark.asyncio
+    async def test_execute(self):
+        manager = MagicMock()
+        queue = AsyncMock()
+        queue.execute = CoroutineMock()
+        handler = EventHandler(manager, queue)
+        await handler.execute_tasks()
+        queue.execute.assert_awaited_once()
+
 
 class TestTaskMethods:
     """
@@ -161,6 +179,7 @@ class TestTaskMethods:
     """
 
 
+# pylint: disable=too-many-public-methods
 class TestRequestMethods:
     """
     Test the request-related methods on EventHandler.
@@ -203,7 +222,7 @@ class TestRequestMethods:
         request = RequestContext(message, websocket, player, game)
         handler.handle_reregister_player_request(request)
         handler.handle_player_reregistered_event.assert_called_once_with(player, websocket)
-        
+
     def test_handle_unregister_player_request(self):
         handler = EventHandler(MagicMock())
         handler.handle_player_unregistered_event = MagicMock()
@@ -593,7 +612,6 @@ class TestRequestMethods:
         request = RequestContext(message, websocket, player, game)
         handler.handle_send_message_request(request)
         handler.handle_player_message_received_event.called_once_with("handle", ["fry", "bender"], "hello")
-    
 
 
 class TestEventMethods:
