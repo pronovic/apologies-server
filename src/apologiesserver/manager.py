@@ -43,6 +43,7 @@ from uuid import uuid4
 
 import attr
 import pendulum
+from apologies.rules import Move
 from apologies.game import GameMode, Player, PlayerColor, PlayerView
 from pendulum.datetime import DateTime
 from websockets import WebSocketServerProtocol
@@ -274,6 +275,11 @@ class TrackedGame:
         # TODO: implement is_legal_move() - this is actually a superset of is_move_pending() but is separate for clarity
         return True
 
+    # TODO: implement get_next_turn(), once I can figure out how
+    def get_next_turn(self) -> Tuple[TrackedPlayer, List[Move]]:
+        """Get the next turn to be played."""
+        raise NotImplementedError
+
     def mark_active(self) -> None:
         """Mark the game as active."""
         self.last_active_date = pendulum.now()
@@ -395,6 +401,22 @@ class StateManager:
     def _default_handle_map(self) -> Dict[str, str]:
         return {}
 
+    # TODO: requirements for this function come from the Advertise Game request
+    # TODO: decide whether I need to validate arguments (min/max players, etc.) or interface validation is enough
+    def track_game(self, player: TrackedPlayer, advertised: AdvertiseGameContext) -> TrackedGame:
+        """Track a newly-advertised game, returning the tracked game."""
+        game_id = "%s" % uuid4()
+        self._game_map[game_id] = TrackedGame.for_context(player.handle, game_id, advertised)
+        return self._game_map[game_id]
+
+    def total_game_count(self) -> int:
+        """Return the total number of games in the system."""
+        return len(self._game_map)
+
+    def in_progress_game_count(self) -> int:
+        """Return the number of in-progress games in the system."""
+        return len([game for game in self._game_map.values() if game.is_in_progress])
+
     def lookup_game(self, game_id: Optional[str] = None, player: Optional[TrackedPlayer] = None) -> Optional[TrackedGame]:
         """Look up a game by id, returning None if the game is not found."""
         if game_id:
@@ -403,24 +425,6 @@ class StateManager:
             return self.lookup_game(game_id=player.game_id)
         else:
             return None
-
-    def lookup_player(self, player_id: Optional[str] = None, handle: Optional[str] = None) -> Optional[TrackedPlayer]:
-        """Look up a player by either player id or handle."""
-        if player_id:
-            return self._player_map[player_id] if player_id in self._player_map else None
-        elif handle:
-            player_id = self._handle_map[handle] if handle in self._handle_map else None
-            return self.lookup_player(player_id=player_id)
-        else:
-            return None
-
-    # TODO: requirements for this function come from the Advertise Game request
-    # TODO: decide whether I need to validate arguments (min/max players, etc.) or interface validation is enough
-    def track_game(self, player: TrackedPlayer, advertised: AdvertiseGameContext) -> TrackedGame:
-        """Track a newly-advertised game, returning the tracked game."""
-        game_id = "%s" % uuid4()
-        self._game_map[game_id] = TrackedGame.for_context(player.handle, game_id, advertised)
-        return self._game_map[game_id]
 
     def delete_game(self, game: TrackedGame) -> None:
         """Delete a tracked game, so it is no longer tracked."""
@@ -457,6 +461,20 @@ class StateManager:
         self._player_map[player_id] = TrackedPlayer.for_context(player_id, websocket, handle)
         self._handle_map[handle] = player_id
         return self._player_map[player_id]
+
+    def registered_player_count(self) -> int:
+        """Return the number of registered players in the system."""
+        return len(self._player_map)
+
+    def lookup_player(self, player_id: Optional[str] = None, handle: Optional[str] = None) -> Optional[TrackedPlayer]:
+        """Look up a player by either player id or handle."""
+        if player_id:
+            return self._player_map[player_id] if player_id in self._player_map else None
+        elif handle:
+            player_id = self._handle_map[handle] if handle in self._handle_map else None
+            return self.lookup_player(player_id=player_id)
+        else:
+            return None
 
     def delete_player(self, player: TrackedPlayer) -> None:
         """Delete a tracked player, so it is no longer tracked."""

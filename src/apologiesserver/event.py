@@ -27,6 +27,7 @@ import pendulum
 from apologies.rules import Move
 from websockets import WebSocketServerProtocol
 
+from .config import config
 from .interface import *
 from .manager import StateManager, TrackedGame, TrackedPlayer
 
@@ -288,10 +289,11 @@ class EventHandler:
         message = Message(MessageType.AVAILABLE_GAMES, context)
         self.queue.message(message, players=[player])
 
-    # TODO: implement user registration limit based on configuration
     def handle_player_registered_event(self, websocket: WebSocketServerProtocol, handle: str) -> None:
         """Handle the Player Registered event."""
         log.info("EVENT[Player Registered]")
+        if self.manager.registered_player_count() > config().registered_player_limit:
+            raise ProcessingError(FailureReason.USER_LIMIT)
         player = self.manager.track_player(websocket, handle)
         context = PlayerRegisteredContext(player_id=player.player_id)
         message = Message(MessageType.PLAYER_REGISTERED, context)
@@ -355,10 +357,11 @@ class EventHandler:
         players = [self.manager.lookup_player(handle=handle) for handle in recipient_handles]
         self.queue.message(message, players=[player for player in players if player])
 
-    # TODO: implement advertised game limit based on configuration
     def handle_game_advertised_event(self, player: TrackedPlayer, advertised: AdvertiseGameContext) -> None:
         """Handle the Game Advertised event."""
         log.info("EVENT[Game Advertised]")
+        if self.manager.total_game_count() > config().total_game_limit:
+            raise ProcessingError(FailureReason.GAME_LIMIT)
         game = self.manager.track_game(player, advertised)
         context = GameAdvertisedContext(game=game.to_advertised_game())
         message = Message(MessageType.GAME_ADVERTISED, context)
@@ -390,10 +393,11 @@ class EventHandler:
         if game.is_fully_joined():
             self.handle_game_started_event(game)
 
-    # TODO: implement in progress game limit based on configuration
     def handle_game_started_event(self, game: TrackedGame) -> None:
         """Handle the Game Started event."""
         log.info("EVENT[Game Started]")
+        if self.manager.in_progress_game_count() > config().in_progress_game_limit:
+            raise ProcessingError(FailureReason.GAME_LIMIT)
         message = Message(MessageType.GAME_STARTED)
         game.mark_active()
         game.mark_started()
@@ -419,7 +423,6 @@ class EventHandler:
             self.queue.message(message, players=players)
             self.handle_game_state_change_event(game)
 
-    # TODO: as of now, nothing triggers this event
     def handle_game_completed_event(self, game: TrackedGame, comment: Optional[str] = None) -> None:
         """Handle the Game Completed event."""
         log.info("EVENT[Game Completed]")
@@ -460,7 +463,6 @@ class EventHandler:
         if not game.is_viable():
             self.handle_game_cancelled_event(game, CancelledReason.NOT_VIABLE, comment)
 
-    # TODO: this needs to somehow trigger a Game Player Turn event for the next player (not sure how to do that yet)
     def handle_game_execute_move_event(self, player: TrackedPlayer, game: TrackedGame, move_id: str) -> None:
         """Handle the Execute Move event."""
         log.info("EVENT[Execute Move]")
@@ -469,6 +471,8 @@ class EventHandler:
         if completed:
             self.handle_game_completed_event(game, comment)
         else:
+            player, moves = game.get_next_turn()
+            self.handle_game_player_turn_event(player, moves)
             self.handle_game_state_change_event(game)
 
     def handle_game_player_change_event(self, game: TrackedGame, comment: str) -> None:
