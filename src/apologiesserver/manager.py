@@ -43,8 +43,8 @@ from uuid import uuid4
 
 import attr
 import pendulum
-from apologies.rules import Move
 from apologies.game import GameMode, Player, PlayerColor, PlayerView
+from apologies.rules import Move
 from pendulum.datetime import DateTime
 from websockets import WebSocketServerProtocol
 

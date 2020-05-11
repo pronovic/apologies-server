@@ -113,6 +113,8 @@ class EventHandler:
     def handle_register_player_request(self, message: Message, websocket: WebSocketServerProtocol) -> None:
         """Handle the Register Player request."""
         log.info("REQUEST[Register Player]")
+        if self.manager.registered_player_count() > config().registered_player_limit:
+            raise ProcessingError(FailureReason.USER_LIMIT)
         context = cast(RegisterPlayerContext, message.context)
         self.handle_player_registered_event(websocket, context.handle)
 
@@ -136,6 +138,8 @@ class EventHandler:
         log.info("REQUEST[Advertise Game]")
         if request.game:
             raise ProcessingError(FailureReason.ALREADY_PLAYING)
+        if self.manager.total_game_count() > config().total_game_limit:
+            raise ProcessingError(FailureReason.GAME_LIMIT)
         context = cast(AdvertiseGameContext, request.message.context)
         self.handle_game_advertised_event(request.player, context)
 
@@ -172,6 +176,8 @@ class EventHandler:
             raise ProcessingError(FailureReason.INVALID_GAME, "Game is already being played")
         if request.game.advertiser_handle != request.player.handle:
             raise ProcessingError(FailureReason.NOT_ADVERTISER)
+        if self.manager.in_progress_game_count() > config().in_progress_game_limit:
+            raise ProcessingError(FailureReason.GAME_LIMIT)
         self.handle_game_started_event(request.game)
 
     def handle_cancel_game_request(self, request: RequestContext) -> None:
@@ -292,8 +298,6 @@ class EventHandler:
     def handle_player_registered_event(self, websocket: WebSocketServerProtocol, handle: str) -> None:
         """Handle the Player Registered event."""
         log.info("EVENT[Player Registered]")
-        if self.manager.registered_player_count() > config().registered_player_limit:
-            raise ProcessingError(FailureReason.USER_LIMIT)
         player = self.manager.track_player(websocket, handle)
         context = PlayerRegisteredContext(player_id=player.player_id)
         message = Message(MessageType.PLAYER_REGISTERED, context)
@@ -360,8 +364,6 @@ class EventHandler:
     def handle_game_advertised_event(self, player: TrackedPlayer, advertised: AdvertiseGameContext) -> None:
         """Handle the Game Advertised event."""
         log.info("EVENT[Game Advertised]")
-        if self.manager.total_game_count() > config().total_game_limit:
-            raise ProcessingError(FailureReason.GAME_LIMIT)
         game = self.manager.track_game(player, advertised)
         context = GameAdvertisedContext(game=game.to_advertised_game())
         message = Message(MessageType.GAME_ADVERTISED, context)
@@ -391,13 +393,19 @@ class EventHandler:
         message = Message(MessageType.GAME_JOINED, context)
         self.queue.message(message, players=[player])
         if game.is_fully_joined():
-            self.handle_game_started_event(game)
+            if self.manager.in_progress_game_count() > config().in_progress_game_limit:
+                # Rather than giving the caller an error, we just ignore the game and force the
+                # advertiser to manually start it sometime later.  At least then, if the limit
+                # has still been reached, the player receiving the error will be able to make
+                # sense of it.  It doesn't seem right to fail the join operation (which has
+                # completed successfully by this point) because the game can't be started.
+                log.warning("Game limit reached, so game %s will not be auto-started", game.game_id)
+            else:
+                self.handle_game_started_event(game)
 
     def handle_game_started_event(self, game: TrackedGame) -> None:
         """Handle the Game Started event."""
         log.info("EVENT[Game Started]")
-        if self.manager.in_progress_game_count() > config().in_progress_game_limit:
-            raise ProcessingError(FailureReason.GAME_LIMIT)
         message = Message(MessageType.GAME_STARTED)
         game.mark_active()
         game.mark_started()
