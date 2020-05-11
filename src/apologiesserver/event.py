@@ -166,11 +166,10 @@ class EventHandler:
         now = pendulum.now()
         retention_thresh_min = config().game_retention_thresh_min
         for (game, completed_date) in self.manager.lookup_game_completion():
-            if completed_date:
-                since_completed = now.diff(completed_date).in_minutes()
-                if since_completed >= retention_thresh_min:
-                    obsolete += 1
-                    self.handle_game_obsolete_event(game)
+            since_completed = now.diff(completed_date).in_minutes()
+            if since_completed >= retention_thresh_min:
+                obsolete += 1
+                self.handle_game_obsolete_event(game)
         log.debug("Obsolete game check completed, found %d obsolete games", obsolete)
         return obsolete
 

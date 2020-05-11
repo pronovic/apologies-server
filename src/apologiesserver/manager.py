@@ -44,6 +44,7 @@ import attr
 import pendulum
 from apologies.game import GameMode, PlayerColor, PlayerView
 from apologies.rules import Move
+from ordered_set import OrderedSet  # this makes expected results easier to articulate in test code
 from pendulum.datetime import DateTime
 from websockets import WebSocketServerProtocol
 
@@ -400,8 +401,6 @@ class StateManager:
     def _default_handle_map(self) -> Dict[str, str]:
         return {}
 
-    # TODO: requirements for this function come from the Advertise Game request
-    # TODO: decide whether I need to validate arguments (min/max players, etc.) or interface validation is enough
     def track_game(self, player: TrackedPlayer, advertised: AdvertiseGameContext) -> TrackedGame:
         """Track a newly-advertised game, returning the tracked game."""
         game_id = "%s" % uuid4()
@@ -414,7 +413,7 @@ class StateManager:
 
     def in_progress_game_count(self) -> int:
         """Return the number of in-progress games in the system."""
-        return len([game for game in self._game_map.values() if game.is_in_progress])
+        return len([game for game in self._game_map.values() if game.is_in_progress()])
 
     def lookup_game(self, game_id: Optional[str] = None, player: Optional[TrackedPlayer] = None) -> Optional[TrackedGame]:
         """Look up a game by id, returning None if the game is not found."""
@@ -502,10 +501,13 @@ class StateManager:
             return None
 
     def lookup_websockets(
-        self, players: Optional[List[TrackedPlayer]], player_ids: Optional[List[str]] = None, handles: Optional[List[str]] = None
+        self,
+        players: Optional[List[TrackedPlayer]] = None,
+        player_ids: Optional[List[str]] = None,
+        handles: Optional[List[str]] = None,
     ) -> List[WebSocketServerProtocol]:
         """Look up the websockets for a list of players, player ids and/or handles, for players that are connected."""
-        websockets = set()
+        websockets: OrderedSet[Optional[WebSocketServerProtocol]] = OrderedSet()
         if players:
             websockets.update([self.lookup_websocket(player=player) for player in players])
         if player_ids:

@@ -260,13 +260,11 @@ class TestTaskMethods:
 
         g1 = MagicMock()
         g2 = MagicMock()
-        g3 = MagicMock()
 
-        # Results: 1 is in-progress (a1), 1 is young enough to keep (a2) and 1 is obsolete (a3)
-        a1 = (g1, None)  # in-progress
-        a2 = (g2, to_date("2020-05-11T10:12:00,001"))  # young enough to keep (9:59.999)
-        a3 = (g3, to_date("2020-05-11T10:12:00,000"))  # obsolete (10:00.000)
-        completion = [a1, a2, a3]
+        # Results: 1 is young enough to keep (a1) and 1 is obsolete (a2)
+        a1 = (g1, to_date("2020-05-11T10:12:00,001"))  # young enough to keep (9:59.999)
+        a2 = (g2, to_date("2020-05-11T10:12:00,000"))  # obsolete (10:00.000)
+        completion = [a1, a2]
 
         handler = EventHandler(MagicMock())
         handler.manager.lookup_game_completion.return_value = completion
@@ -274,7 +272,7 @@ class TestTaskMethods:
 
         assert handler.handle_obsolete_game_check_task() == 1
 
-        obsolete_calls = [call(g3)]
+        obsolete_calls = [call(g2)]
 
         handler.handle_game_obsolete_event.assert_has_calls(obsolete_calls)
 
