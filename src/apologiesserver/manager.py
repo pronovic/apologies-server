@@ -2,7 +2,6 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=wildcard-import,too-many-lines
 
-# TODO: this needs unit tests, but probably after the other code is done
 # TODO: this does not actually include any way to manage game state or engine yet (that's the next big design step)
 
 """
