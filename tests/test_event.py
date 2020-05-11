@@ -720,3 +720,295 @@ class TestEventMethods:
     """
     Test the event-related methods on EventHandler.
     """
+
+    def test_handle_server_shutdown_event(self):
+        websocket = MagicMock()
+        game = MagicMock()
+        message = Message(MessageType.SERVER_SHUTDOWN)
+        handler = EventHandler(MagicMock())
+        handler.queue.message = MagicMock()
+        handler.manager.lookup_all_websockets.return_value = [ websocket]
+        handler.manager.lookup_in_progress_games.return_value = [ game ]
+        handler.handle_game_cancelled_event = MagicMock()
+        handler.handle_server_shutdown_event()
+        handler.queue.message.assert_called_once_with(message, websockets=[websocket])
+        handler.handle_game_cancelled_event.assert_called_once_with(game, CancelledReason.SHUTDOWN, notify=False)
+
+    def test_handle_registered_players_event(self):
+        player = MagicMock()
+        result = MagicMock()
+        registered = MagicMock()
+        result.to_registered_player.return_value = registered
+        context = RegisteredPlayersContext(players=[registered])
+        message = Message(MessageType.REGISTERED_PLAYERS, context=context)
+        handler = EventHandler(MagicMock())
+        handler.queue.message = MagicMock()
+        handler.manager.lookup_all_players.return_value = [ result ]
+        handler.handle_registered_players_event(player)
+        handler.queue.message.assert_called_once_with(message, players=[player])
+
+    def test_handle_available_games_event(self):
+        player = MagicMock()
+        advertised = MagicMock()
+        game = MagicMock()
+        game.to_advertised_game.return_value = advertised
+        context = AvailableGamesContext(games=[advertised])
+        message = Message(MessageType.AVAILABLE_GAMES, context=context)
+        handler = EventHandler(MagicMock())
+        handler.queue.message = MagicMock()
+        handler.manager.lookup_available_games.return_value = [ game ]
+        handler.handle_available_games_event(player)
+        handler.manager.lookup_available_games.assert_called_once_with(player)
+        handler.queue.message.assert_called_once_with(message, players=[player])
+
+    def test_handle_player_registered_event(self):
+        websocket = MagicMock()
+        player = MagicMock(player_id="player_id")
+        context = PlayerRegisteredContext(player_id="player_id")
+        message = Message(MessageType.PLAYER_REGISTERED, context=context)
+        handler = EventHandler(MagicMock())
+        handler.queue.message = MagicMock()
+        handler.manager.track_player.return_value = player
+        handler.handle_player_registered_event(websocket, "leela")
+        handler.manager.track_player.assert_called_once_with(websocket, "leela")
+        handler.queue.message.assert_called_once_with(message, websockets=[websocket])
+
+    def test_handle_player_reregistered_event(self):
+        websocket = MagicMock()
+        player = MagicMock(player_id="player_id")
+        context = PlayerRegisteredContext(player_id="player_id")
+        message = Message(MessageType.PLAYER_REGISTERED, context=context)
+        handler = EventHandler(MagicMock())
+        handler.queue.message = MagicMock()
+        handler.handle_player_reregistered_event(player, websocket)
+        assert player.websocket is websocket
+        handler.queue.message.assert_called_once_with(message, players=[player])
+        
+    def test_handle_player_unregistered_event_no_game(self):
+        player = MagicMock()
+        handler = EventHandler(MagicMock())
+        handler.handle_game_player_change_event = MagicMock()
+        handler.handle_game_cancelled_event = MagicMock()
+        handler.handle_player_unregistered_event(player)
+        player.mark_quit.assert_called_once()
+        handler.handle_game_player_change_event.assert_not_called()
+        handler.handle_game_cancelled_event.assert_not_called()
+        handler.manager.delete_player.assert_called_once_with(player)
+
+    def test_handle_player_unregistered_event_with_game(self):
+        comment = "Player leela unregistered"
+        player = MagicMock(handle="leela")
+        game = MagicMock()
+        game.is_viable.return_value = True
+        handler = EventHandler(MagicMock())
+        handler.handle_game_player_change_event = MagicMock()
+        handler.handle_game_cancelled_event = MagicMock()
+        handler.handle_player_unregistered_event(player, game)
+        player.mark_quit.assert_called_once()
+        game.mark_quit.assert_called_once_with(player)
+        handler.handle_game_player_change_event.assert_called_once_with(game, comment)
+        handler.handle_game_cancelled_event.assert_not_called()
+        handler.manager.delete_player.assert_called_once_with(player)
+
+    def test_handle_player_unregistered_event_not_viable(self):
+        comment = "Player leela unregistered"
+        player = MagicMock(handle="leela")
+        game = MagicMock()
+        game.is_viable.return_value = False
+        handler = EventHandler(MagicMock())
+        handler.handle_game_player_change_event = MagicMock()
+        handler.handle_game_cancelled_event = MagicMock()
+        handler.handle_player_unregistered_event(player, game)
+        player.mark_quit.assert_called_once()
+        game.mark_quit.assert_called_once_with(player)
+        handler.handle_game_player_change_event.assert_called_once_with(game, comment)
+        handler.handle_game_cancelled_event.assert_called_once_with(game, CancelledReason.NOT_VIABLE, comment)
+        handler.manager.delete_player.assert_called_once_with(player)
+
+    def test_handle_player_disconnected_event_unknown(self):
+        websocket = MagicMock()
+        handler = EventHandler(MagicMock())
+        handler.handle_game_player_change_event = MagicMock()
+        handler.handle_game_cancelled_event = MagicMock()
+        handler.manager.lookup_player_for_websocket.return_value = None  # no player, no-op
+        handler.handle_player_disconnected_event(websocket)
+        handler.manager.lookup_player_for_websocket.assert_called_once_with(websocket)
+        handler.manager.lookup_game.assert_not_called()
+        handler.handle_game_player_change_event.assert_not_called()
+        handler.handle_game_cancelled_event.assert_not_called()
+
+    def test_handle_player_disconnected_event_no_game(self):
+        player = MagicMock()
+        websocket = MagicMock()
+        handler = EventHandler(MagicMock())
+        handler.handle_game_player_change_event = MagicMock()
+        handler.handle_game_cancelled_event = MagicMock()
+        handler.manager.lookup_player_for_websocket.return_value = player
+        handler.manager.lookup_game.return_value = None
+        handler.handle_player_disconnected_event(websocket)
+        handler.manager.lookup_player_for_websocket.assert_called_once_with(websocket)
+        handler.manager.lookup_game.assert_called_once_with(player=player)
+        player.mark_disconnected.assert_called_once()
+        handler.handle_game_player_change_event.assert_not_called()
+        handler.handle_game_cancelled_event.assert_not_called()
+
+    def test_handle_player_disconnected_event_with_game(self):
+        comment = "Player leela disconnected"
+        player = MagicMock(handle="leela")
+        game = MagicMock()
+        game.is_viable.return_value = True
+        websocket = MagicMock()
+        handler = EventHandler(MagicMock())
+        handler.handle_game_player_change_event = MagicMock()
+        handler.handle_game_cancelled_event = MagicMock()
+        handler.manager.lookup_player_for_websocket.return_value = player
+        handler.manager.lookup_game.return_value = game
+        handler.handle_player_disconnected_event(websocket)
+        handler.manager.lookup_player_for_websocket.assert_called_once_with(websocket)
+        handler.manager.lookup_game.assert_called_once_with(player=player)
+        player.mark_disconnected.assert_called_once()
+        handler.handle_game_player_change_event.assert_called_once_with(game, comment)
+        handler.handle_game_cancelled_event.assert_not_called()
+
+    def test_handle_player_disconnected_event_not_viable(self):
+        comment = "Player leela disconnected"
+        player = MagicMock(handle="leela")
+        game = MagicMock()
+        game.is_viable.return_value = False
+        websocket = MagicMock()
+        handler = EventHandler(MagicMock())
+        handler.handle_game_player_change_event = MagicMock()
+        handler.handle_game_cancelled_event = MagicMock()
+        handler.manager.lookup_player_for_websocket.return_value = player
+        handler.manager.lookup_game.return_value = game
+        handler.handle_player_disconnected_event(websocket)
+        handler.manager.lookup_player_for_websocket.assert_called_once_with(websocket)
+        handler.manager.lookup_game.assert_called_once_with(player=player)
+        player.mark_disconnected.assert_called_once()
+        handler.handle_game_player_change_event.assert_called_once_with(game, comment)
+        handler.handle_game_cancelled_event.assert_called_once_with(game, CancelledReason.NOT_VIABLE, comment)
+
+    def test_handle_player_idle_event(self):
+        player = MagicMock()
+        message = Message(MessageType.PLAYER_IDLE)
+        handler = EventHandler(MagicMock())
+        handler.queue.message = MagicMock()
+        handler.handle_player_idle_event(player)
+        handler.queue.message.assert_called_once_with(message, players=[player])
+        player.mark_idle.assert_called_once()
+
+    def test_handle_player_inactive_event(self):
+        websocket = MagicMock()
+        player = MagicMock(websocket=websocket)
+        game = MagicMock()
+        message = Message(MessageType.PLAYER_INACTIVE)
+        handler = EventHandler(MagicMock())
+        handler.handle_player_unregistered_event = MagicMock()
+        handler.queue.message = MagicMock()
+        handler.queue.disconnect = MagicMock()
+        handler.manager.lookup_game.return_value = game
+        handler.handle_player_inactive_event(player)
+        handler.manager.lookup_game.assert_called_once_with(player=player)
+        handler.queue.message.assert_called_once_with(message, players=[player])
+        handler.queue.disconnect(websocket)
+        handler.handle_player_unregistered_event.assert_called_once_with(player, game)
+
+    def test_handle_player_message_received_event(self):
+        fry = MagicMock()
+        bender = MagicMock()
+        context = PlayerMessageReceivedContext("leela", ["fry", "bender"], "hello")
+        message = Message(MessageType.PLAYER_MESSAGE_RECEIVED, context=context)
+        handler = EventHandler(MagicMock())
+        handler.queue.message = MagicMock()
+        handler.manager.lookup_player.side_effect = [ fry, bender ]
+        handler.handle_player_message_received_event("leela", ["fry","bender"], "hello")
+        handler.manager.lookup_player.assert_has_calls([call(handle="fry"), call(handle="bender")])
+        handler.queue.message.assert_called_once_with(message, players=[fry, bender])
+
+    def test_handle_game_advertised_event(self):
+        handler = EventHandler(MagicMock())
+        handler.handle_game_advertised_event(player, advertised)
+
+    def test_handle_game_invitation_event_none_invited(self):
+        handler = EventHandler(MagicMock())
+        handler.handle_game_invitation_event(game)
+
+    def test_handle_game_invitation_event_with_invited(self):
+        handler = EventHandler(MagicMock())
+        handler.handle_game_joined_event(player, "game_id")
+
+    def test_handle_game_joined_event_invalid(self):
+        handler = EventHandler(MagicMock())
+        handler.handle_game_joined_event(player, "game_id")
+
+    def test_handle_game_joined_event_pending(self):
+        handler = EventHandler(MagicMock())
+        handler.handle_game_joined_event(player, "game_id")
+
+    def test_handle_game_joined_event_fully_joined(self):
+        handler = EventHandler(MagicMock())
+        handler.handle_game_joined_event(player, "game_id")
+
+    def test_handle_game_joined_event_game_limit(self):
+        handler = EventHandler(MagicMock())
+        handler.handle_game_joined_event(player, "game_id")
+
+    def test_handle_game_started_event(self):
+        handler = EventHandler(MagicMock())
+        handler.handle_game_started_event(game)
+
+    def test_handle_game_cancelled_event_notify(self):
+        handler = EventHandler(MagicMock())
+        handler.handle_game_cancelled_event(game, CancelledReason.SHUTDOWN, "comment", notify=True)
+
+    def test_handle_game_cancelled_event_no_notify(self):
+        handler = EventHandler(MagicMock())
+        handler.handle_game_cancelled_event(game, CancelledReason.SHUTDOWN, "comment", notify=False)
+
+    def test_handle_game_completed_event(self):
+        handler = EventHandler(MagicMock())
+        handler.handle_game_completed_event(game, "comment")
+
+    def test_handle_game_idle_event(self):
+        handler = EventHandler(MagicMock())
+        handler.handle_game_idle_event(game)
+
+    def test_handle_game_inactive_event(self):
+        handler = EventHandler(MagicMock())
+        handler.handle_game_inactive_event(game)
+
+    def test_handle_game_obsolete_event(self):
+        handler = EventHandler(MagicMock())
+        handler.handle_game_obsolete_event(game)
+
+    def test_handle_game_player_quit_event(self):
+        handler = EventHandler(MagicMock())
+        handler.handle_game_player_quit_event(player, game)
+
+    def test_handle_game_player_quit_event_not_viable(self):
+        handler = EventHandler(MagicMock())
+        handler.handle_game_player_quit_event(player, game)
+
+    def test_handle_game_execute_move_event_not_completed(self):
+        handler = EventHandler(MagicMock())
+        handler.handle_game_execute_move_event(player, game, "move_id")
+
+    def test_handle_game_execute_move_event_completed(self):
+        handler = EventHandler(MagicMock())
+        handler.handle_game_execute_move_event(player, game, "move_id")
+
+    def test_handle_game_player_change_event(self):
+        handler = EventHandler(MagicMock())
+        handler.handle_game_player_change_event(game, "comment")
+
+    def test_handle_game_state_change_event_specific_player(self):
+        handler = EventHandler(MagicMock())
+        handler.handle_game_state_change_event(game, player)
+
+    def test_handle_game_state_change_event_game_players(self):
+        handler = EventHandler(MagicMock())
+        handler.handle_game_state_change_event(game)
+
+    def test_handle_game_player_turn_event(self):
+        handler = EventHandler(MagicMock())
+        handler.handle_game_player_turn_event(player, moves)

@@ -390,7 +390,7 @@ class EventHandler:
     def handle_game_invitation_event(self, game: TrackedGame) -> None:
         """Handle the Game Invitation event."""
         log.info("EVENT[Game Invitation]")
-        if game.invited_handles:  # safe to reference invited_handles since it does not change
+        if game.invited_handles:
             context = GameInvitationContext(game=game.to_advertised_game())
             message = Message(MessageType.GAME_INVITATION, context)
             players = [self.manager.lookup_player(handle=handle) for handle in game.invited_handles]

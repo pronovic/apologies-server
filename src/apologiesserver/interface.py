@@ -514,6 +514,7 @@ _CONTEXT: Dict[MessageType, Optional[Type[Context]]] = {
     MessageType.EXECUTE_MOVE: ExecuteMoveContext,
     MessageType.RETRIEVE_GAME_STATE: None,
     MessageType.SEND_MESSAGE: SendMessageContext,
+    MessageType.SERVER_SHUTDOWN: None,
     MessageType.REQUEST_FAILED: RequestFailedContext,
     MessageType.REGISTERED_PLAYERS: RegisteredPlayersContext,
     MessageType.AVAILABLE_GAMES: AvailableGamesContext,
