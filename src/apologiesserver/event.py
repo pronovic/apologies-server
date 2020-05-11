@@ -2,8 +2,6 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=wildcard-import
 
-# TODO: this needs unit tests
-
 """
 Event handlers.
 
@@ -220,7 +218,7 @@ class EventHandler:
         if request.game:
             raise ProcessingError(FailureReason.ALREADY_PLAYING)
         context = cast(JoinGameContext, request.message.context)
-        self.handle_game_joined_event(request.player, context.game_id)
+        self.handle_game_joined_event(request.player, game_id=context.game_id)
 
     def handle_quit_game_request(self, request: RequestContext) -> None:
         """Handle the Quit Game request."""
@@ -381,11 +379,11 @@ class EventHandler:
         """Handle the Game Advertised event."""
         log.info("EVENT[Game Advertised]")
         game = self.manager.track_game(player, advertised)
-        context = GameAdvertisedContext(game=game.to_advertised_game())
+        self.handle_game_joined_event(player, game=game)
+        self.handle_game_invitation_event(game)
+        context = GameAdvertisedContext(game=game.to_advertised_game())  # get result here so it shows advertiser as joined
         message = Message(MessageType.GAME_ADVERTISED, context)
         self.queue.message(message, players=[player])
-        self.handle_game_invitation_event(game)
-        self.handle_game_joined_event(player, game.game_id)
 
     def handle_game_invitation_event(self, game: TrackedGame) -> None:
         """Handle the Game Invitation event."""
@@ -396,20 +394,25 @@ class EventHandler:
             players = [self.manager.lookup_player(handle=handle) for handle in game.invited_handles]
             self.queue.message(message, players=[player for player in players if player])
 
-    def handle_game_joined_event(self, player: TrackedPlayer, game_id: str) -> None:
+    def handle_game_joined_event(
+        self, player: TrackedPlayer, game_id: Optional[str] = None, game: Optional[TrackedGame] = None
+    ) -> None:
         """Handle the Game Joined event."""
         log.info("EVENT[Game Joined]")
-        game = self.manager.lookup_game(game_id=game_id)
-        if not game or not game.is_available(player):
-            raise ProcessingError(FailureReason.INVALID_GAME)
+        if game_id:
+            game = self.manager.lookup_game(game_id=game_id)
+            if not game or not game.is_available(player):
+                raise ProcessingError(FailureReason.INVALID_GAME)
+        if not game:
+            raise ProcessingError(FailureReason.INTERNAL_ERROR, "Invalid arguments")
         game.mark_active()
         player.mark_joined(game)
         game.mark_joined(player)
-        context = GameJoinedContext(game_id=game_id)
+        context = GameJoinedContext(game_id=game.game_id)
         message = Message(MessageType.GAME_JOINED, context)
         self.queue.message(message, players=[player])
         if game.is_fully_joined():
-            if self.manager.in_progress_game_count() > config().in_progress_game_limit:
+            if self.manager.in_progress_game_count() >= config().in_progress_game_limit:
                 # Rather than giving the caller an error, we just ignore the game and force the
                 # advertiser to manually start it sometime later.  At least then, if the limit
                 # has still been reached, the player receiving the error will be able to make

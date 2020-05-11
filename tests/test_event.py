@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 # vim: set ft=python ts=4 sw=4 expandtab:
-# pylint: disable=redefined-outer-name,wildcard-import
-
-# TODO: double-check that all validations (especially game/user limits) are tested completely
+# pylint: disable=redefined-outer-name,wildcard-import,too-many-lines
 
 from unittest.mock import MagicMock, call
 
@@ -425,7 +423,7 @@ class TestRequestMethods:
         game = None
         request = RequestContext(message, websocket, player, game)
         handler.handle_join_game_request(request)
-        handler.handle_game_joined_event.assert_called_once_with(player, "game")
+        handler.handle_game_joined_event.assert_called_once_with(player, game_id="game")
 
     def test_handle_quit_game_request_not_playing(self):
         handler = EventHandler(MagicMock())
@@ -727,8 +725,8 @@ class TestEventMethods:
         message = Message(MessageType.SERVER_SHUTDOWN)
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
-        handler.manager.lookup_all_websockets.return_value = [ websocket]
-        handler.manager.lookup_in_progress_games.return_value = [ game ]
+        handler.manager.lookup_all_websockets.return_value = [websocket]
+        handler.manager.lookup_in_progress_games.return_value = [game]
         handler.handle_game_cancelled_event = MagicMock()
         handler.handle_server_shutdown_event()
         handler.queue.message.assert_called_once_with(message, websockets=[websocket])
@@ -743,7 +741,7 @@ class TestEventMethods:
         message = Message(MessageType.REGISTERED_PLAYERS, context=context)
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
-        handler.manager.lookup_all_players.return_value = [ result ]
+        handler.manager.lookup_all_players.return_value = [result]
         handler.handle_registered_players_event(player)
         handler.queue.message.assert_called_once_with(message, players=[player])
 
@@ -756,7 +754,7 @@ class TestEventMethods:
         message = Message(MessageType.AVAILABLE_GAMES, context=context)
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
-        handler.manager.lookup_available_games.return_value = [ game ]
+        handler.manager.lookup_available_games.return_value = [game]
         handler.handle_available_games_event(player)
         handler.manager.lookup_available_games.assert_called_once_with(player)
         handler.queue.message.assert_called_once_with(message, players=[player])
@@ -783,7 +781,7 @@ class TestEventMethods:
         handler.handle_player_reregistered_event(player, websocket)
         assert player.websocket is websocket
         handler.queue.message.assert_called_once_with(message, players=[player])
-        
+
     def test_handle_player_unregistered_event_no_game(self):
         player = MagicMock()
         handler = EventHandler(MagicMock())
@@ -920,95 +918,370 @@ class TestEventMethods:
         message = Message(MessageType.PLAYER_MESSAGE_RECEIVED, context=context)
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
-        handler.manager.lookup_player.side_effect = [ fry, bender ]
-        handler.handle_player_message_received_event("leela", ["fry","bender"], "hello")
+        handler.manager.lookup_player.side_effect = [fry, bender]
+        handler.handle_player_message_received_event("leela", ["fry", "bender"], "hello")
         handler.manager.lookup_player.assert_has_calls([call(handle="fry"), call(handle="bender")])
         handler.queue.message.assert_called_once_with(message, players=[fry, bender])
 
     def test_handle_game_advertised_event(self):
+        player = MagicMock()
+        advertised = MagicMock()
+        game = MagicMock()
+        result = MagicMock()
+        game.to_advertised_game.return_value = result
+        context = GameAdvertisedContext(game=result)
+        message = Message(MessageType.GAME_ADVERTISED, context=context)
         handler = EventHandler(MagicMock())
+        handler.manager.track_game.return_value = game
+        handler.handle_game_invitation_event = MagicMock()
+        handler.handle_game_joined_event = MagicMock()
+        handler.queue.message = MagicMock()
         handler.handle_game_advertised_event(player, advertised)
+        handler.manager.track_game.assert_called_once_with(player, advertised)
+        handler.handle_game_joined_event.assert_called_once_with(player, game=game)
+        handler.handle_game_invitation_event.assert_called_once_with(game)
+        handler.queue.message.assert_called_once_with(message, players=[player])
 
     def test_handle_game_invitation_event_none_invited(self):
+        game = MagicMock(invited_handles=[])
         handler = EventHandler(MagicMock())
+        handler.queue.message = MagicMock()
         handler.handle_game_invitation_event(game)
+        handler.manager.lookup_player.assert_not_called()
+        handler.queue.message.assert_not_called()
 
     def test_handle_game_invitation_event_with_invited(self):
+        fry = MagicMock()
+        bender = MagicMock()
+        game = MagicMock(invited_handles=["fry", "bender"])
+        advertised = MagicMock()
+        game.to_advertised_game.return_value = advertised
+        context = GameInvitationContext(advertised)
+        message = Message(MessageType.GAME_INVITATION, context=context)
         handler = EventHandler(MagicMock())
-        handler.handle_game_joined_event(player, "game_id")
+        handler.queue.message = MagicMock()
+        handler.manager.lookup_player.side_effect = [fry, bender]
+        handler.handle_game_invitation_event(game)
+        handler.manager.lookup_player.assert_has_calls([call(handle="fry"), call(handle="bender")])
+        handler.queue.message.assert_called_once_with(message, players=[fry, bender])
 
-    def test_handle_game_joined_event_invalid(self):
+    def test_handle_game_joined_event_bad_call(self):
+        player = MagicMock()
         handler = EventHandler(MagicMock())
-        handler.handle_game_joined_event(player, "game_id")
+        with pytest.raises(ProcessingError, match=r"Invalid arguments"):
+            handler.handle_game_joined_event(player, game_id=None, game=None)  # need to pass either id or game
 
-    def test_handle_game_joined_event_pending(self):
+    def test_handle_game_joined_event_not_found(self):
+        player = MagicMock()
         handler = EventHandler(MagicMock())
-        handler.handle_game_joined_event(player, "game_id")
+        handler.manager.lookup_game.return_value = None
+        with pytest.raises(ProcessingError, match=r"Unknown or invalid game"):
+            handler.handle_game_joined_event(player, game_id="game_id")
+        handler.manager.lookup_game.assert_called_once_with(game_id="game_id")
 
-    def test_handle_game_joined_event_fully_joined(self):
+    def test_handle_game_joined_event_not_available(self):
+        player = MagicMock()
+        game = MagicMock()
+        game.is_available.return_value = False
         handler = EventHandler(MagicMock())
-        handler.handle_game_joined_event(player, "game_id")
+        handler.manager.lookup_game.return_value = game
+        with pytest.raises(ProcessingError, match=r"Unknown or invalid game"):
+            handler.handle_game_joined_event(player, game_id="game_id")
+        handler.manager.lookup_game.assert_called_once_with(game_id="game_id")
+        game.is_available.assert_called_once_with(player)
 
-    def test_handle_game_joined_event_game_limit(self):
+    def test_handle_game_joined_event_pending_by_id(self):
+        player = MagicMock()
+        game = MagicMock(game_id="id")
+        game.is_available.return_value = True
+        game.is_fully_joined.return_value = False
+        context = GameJoinedContext("id")
+        message = Message(MessageType.GAME_JOINED, context=context)
         handler = EventHandler(MagicMock())
-        handler.handle_game_joined_event(player, "game_id")
+        handler.queue.message = MagicMock()
+        handler.manager.lookup_game.return_value = game
+        handler.handle_game_started_event = MagicMock()
+        handler.handle_game_joined_event(player, game_id="game_id")
+        handler.manager.lookup_game.assert_called_once_with(game_id="game_id")
+        game.is_available.assert_called_once_with(player)
+        game.mark_active.assert_called_once()
+        player.mark_joined.assert_called_once_with(game)
+        game.mark_joined.assert_called_once_with(player)
+        handler.queue.message.assert_called_once_with(message, players=[player])
+        handler.handle_game_started_event.assert_not_called()
+
+    def test_handle_game_joined_event_pending_for_game(self):
+        player = MagicMock()
+        game = MagicMock(game_id="id")
+        game.is_available.return_value = True
+        game.is_fully_joined.return_value = False
+        context = GameJoinedContext("id")
+        message = Message(MessageType.GAME_JOINED, context=context)
+        handler = EventHandler(MagicMock())
+        handler.queue.message = MagicMock()
+        handler.manager.lookup_game.return_value = game
+        handler.handle_game_started_event = MagicMock()
+        handler.handle_game_joined_event(player, game=game)
+        handler.manager.lookup_game.assert_not_called()
+        game.is_available.assert_not_called()
+        game.mark_active.assert_called_once()
+        player.mark_joined.assert_called_once_with(game)
+        game.mark_joined.assert_called_once_with(player)
+        handler.queue.message.assert_called_once_with(message, players=[player])
+        handler.handle_game_started_event.assert_not_called()
+
+    @patch("apologiesserver.event.config")
+    def test_handle_game_joined_event_fully_joined(self, config):
+        config.return_value = MagicMock(in_progress_game_limit=5)
+        player = MagicMock()
+        game = MagicMock(game_id="id")
+        game.is_available.return_value = True
+        game.is_fully_joined.return_value = True
+        context = GameJoinedContext("id")
+        message = Message(MessageType.GAME_JOINED, context=context)
+        handler = EventHandler(MagicMock())
+        handler.queue.message = MagicMock()
+        handler.manager.in_progress_game_count.return_value = 4
+        handler.manager.lookup_game.return_value = game
+        handler.handle_game_started_event = MagicMock()
+        handler.handle_game_joined_event(player, game=game)
+        handler.manager.lookup_game.assert_not_called()
+        game.is_available.assert_not_called()
+        game.mark_active.assert_called_once()
+        player.mark_joined.assert_called_once_with(game)
+        game.mark_joined.assert_called_once_with(player)
+        handler.queue.message.assert_called_once_with(message, players=[player])
+        handler.handle_game_started_event.assert_called_once_with(game)
+
+    @patch("apologiesserver.event.config")
+    def test_handle_game_joined_event_game_limit(self, config):
+        config.return_value = MagicMock(in_progress_game_limit=5)
+        player = MagicMock()
+        game = MagicMock(game_id="id")
+        game.is_available.return_value = True
+        game.is_fully_joined.return_value = True
+        context = GameJoinedContext("id")
+        message = Message(MessageType.GAME_JOINED, context=context)
+        handler = EventHandler(MagicMock())
+        handler.queue.message = MagicMock()
+        handler.manager.in_progress_game_count.return_value = 5
+        handler.manager.lookup_game.return_value = game
+        handler.handle_game_started_event = MagicMock()
+        handler.handle_game_joined_event(player, game=game)
+        handler.manager.lookup_game.assert_not_called()
+        game.is_available.assert_not_called()
+        game.mark_active.assert_called_once()
+        player.mark_joined.assert_called_once_with(game)
+        game.mark_joined.assert_called_once_with(player)
+        handler.queue.message.assert_called_once_with(message, players=[player])
+        handler.handle_game_started_event.assert_not_called()  # because in-progress limit was reached
 
     def test_handle_game_started_event(self):
+        player = MagicMock()
+        game = MagicMock()
+        message = Message(MessageType.GAME_STARTED)
         handler = EventHandler(MagicMock())
+        handler.queue.message = MagicMock()
+        handler.handle_game_player_change_event = MagicMock()
+        handler.handle_game_state_change_event = MagicMock()
+        handler.manager.lookup_game_players.return_value = [player]
         handler.handle_game_started_event(game)
+        game.mark_active.assert_called_once()
+        game.mark_started.assert_called_once()
+        player.mark_playing.assert_called_once()
+        handler.manager.lookup_game_players.assert_called_once_with(game)
+        handler.queue.message.assert_called_once_with(message, players=[player])
+        handler.handle_game_player_change_event.assert_called_once_with(game, "Game started")
+        handler.handle_game_state_change_event.assert_called_once_with(game)
 
     def test_handle_game_cancelled_event_notify(self):
+        player = MagicMock()
+        game = MagicMock()
+        context = GameCancelledContext(CancelledReason.SHUTDOWN, "comment")
+        message = Message(MessageType.GAME_CANCELLED, context=context)
         handler = EventHandler(MagicMock())
+        handler.queue.message = MagicMock()
+        handler.handle_game_player_change_event = MagicMock()
+        handler.handle_game_state_change_event = MagicMock()
+        handler.manager.lookup_game_players.return_value = [player]
         handler.handle_game_cancelled_event(game, CancelledReason.SHUTDOWN, "comment", notify=True)
+        player.mark_quit.assert_called_once()
+        game.mark_cancelled.assert_called_once()
+        handler.manager.lookup_game_players.assert_called_once_with(game)
+        handler.queue.message.assert_called_once_with(message, players=[player])
+        handler.handle_game_state_change_event.assert_called_once_with(game)
 
     def test_handle_game_cancelled_event_no_notify(self):
+        player = MagicMock()
+        game = MagicMock()
         handler = EventHandler(MagicMock())
+        handler.queue.message = MagicMock()
+        handler.handle_game_player_change_event = MagicMock()
+        handler.handle_game_state_change_event = MagicMock()
+        handler.manager.lookup_game_players.return_value = [player]
         handler.handle_game_cancelled_event(game, CancelledReason.SHUTDOWN, "comment", notify=False)
+        player.mark_quit.assert_called_once()
+        game.mark_cancelled.assert_called_once()
+        handler.manager.lookup_game_players.assert_called_once_with(game)
+        handler.queue.message.assert_not_called()  # notification disabled
+        handler.handle_game_state_change_event.assert_not_called()  # notification disabled
 
     def test_handle_game_completed_event(self):
+        player = MagicMock()
+        game = MagicMock()
+        context = GameCompletedContext("comment")
+        message = Message(MessageType.GAME_COMPLETED, context=context)
         handler = EventHandler(MagicMock())
+        handler.queue.message = MagicMock()
+        handler.handle_game_player_change_event = MagicMock()
+        handler.handle_game_state_change_event = MagicMock()
+        handler.manager.lookup_game_players.return_value = [player]
         handler.handle_game_completed_event(game, "comment")
+        player.mark_quit.assert_called_once()
+        game.mark_completed.assert_called_once()
+        handler.manager.lookup_game_players.assert_called_once_with(game)
+        handler.queue.message.assert_called_once_with(message, players=[player])
+        handler.handle_game_state_change_event.assert_called_once_with(game)
 
     def test_handle_game_idle_event(self):
+        player = MagicMock()
+        game = MagicMock()
+        message = Message(MessageType.GAME_IDLE)
         handler = EventHandler(MagicMock())
+        handler.queue.message = MagicMock()
+        handler.manager.lookup_game_players.return_value = [player]
         handler.handle_game_idle_event(game)
+        handler.queue.message.assert_called_once_with(message, players=[player])
 
     def test_handle_game_inactive_event(self):
+        game = MagicMock()
         handler = EventHandler(MagicMock())
+        handler.handle_game_cancelled_event = MagicMock()
         handler.handle_game_inactive_event(game)
+        handler.handle_game_cancelled_event.assert_called_once_with(game, CancelledReason.INACTIVE)
 
     def test_handle_game_obsolete_event(self):
+        game = MagicMock()
         handler = EventHandler(MagicMock())
         handler.handle_game_obsolete_event(game)
+        handler.manager.delete_game.assert_called_once_with(game)
 
-    def test_handle_game_player_quit_event(self):
+    def test_handle_game_player_quit_event_viable(self):
+        comment = "Player leela quit"
+        player = MagicMock(handle="leela")
+        game = MagicMock()
+        game.is_viable.return_value = True
         handler = EventHandler(MagicMock())
+        handler.handle_game_player_change_event = MagicMock()
+        handler.handle_game_cancelled_event = MagicMock()
         handler.handle_game_player_quit_event(player, game)
+        game.mark_active.assert_called_once()
+        player.mark_quit.assert_called_once()
+        handler.handle_game_player_change_event.assert_called_once_with(game, comment)
+        handler.handle_game_cancelled_event.assert_not_called()
 
     def test_handle_game_player_quit_event_not_viable(self):
+        comment = "Player leela quit"
+        player = MagicMock(handle="leela")
+        game = MagicMock()
+        game.is_viable.return_value = False
         handler = EventHandler(MagicMock())
+        handler.handle_game_player_change_event = MagicMock()
+        handler.handle_game_cancelled_event = MagicMock()
         handler.handle_game_player_quit_event(player, game)
-
-    def test_handle_game_execute_move_event_not_completed(self):
-        handler = EventHandler(MagicMock())
-        handler.handle_game_execute_move_event(player, game, "move_id")
+        game.mark_active.assert_called_once()
+        player.mark_quit.assert_called_once()
+        handler.handle_game_player_change_event.assert_called_once_with(game, comment)
+        handler.handle_game_cancelled_event.assert_called_once_with(game, CancelledReason.NOT_VIABLE, comment)
 
     def test_handle_game_execute_move_event_completed(self):
+        player = MagicMock()
+        game = MagicMock()
+        game.execute_move.return_value = (True, "comment")
         handler = EventHandler(MagicMock())
+        handler.handle_game_completed_event = MagicMock()
+        handler.handle_game_player_turn_event = MagicMock()
+        handler.handle_game_state_change_event = MagicMock()
         handler.handle_game_execute_move_event(player, game, "move_id")
+        game.mark_active.assert_called_once()
+        game.execute_move.assert_called_once_with(player, "move_id")
+        handler.handle_game_completed_event.assert_called_once_with(game, "comment")
+        game.get_next_turn.assert_not_called()
+        handler.handle_game_player_turn_event.assert_not_called()
+        handler.handle_game_state_change_event.assert_not_called()
+
+    def test_handle_game_execute_move_event_not_completed(self):
+        player = MagicMock()
+        game = MagicMock()
+        moves = [MagicMock()]
+        game.execute_move.return_value = (False, "comment")
+        game.get_next_turn.return_value = (player, moves)
+        handler = EventHandler(MagicMock())
+        handler.handle_game_completed_event = MagicMock()
+        handler.handle_game_player_turn_event = MagicMock()
+        handler.handle_game_state_change_event = MagicMock()
+        handler.handle_game_execute_move_event(player, game, "move_id")
+        game.mark_active.assert_called_once()
+        game.execute_move.assert_called_once_with(player, "move_id")
+        handler.handle_game_completed_event.assert_not_called()
+        game.get_next_turn.assert_called_once()
+        handler.handle_game_player_turn_event.assert_called_once_with(player, moves)
+        handler.handle_game_state_change_event.assert_called_once_with(game)
 
     def test_handle_game_player_change_event(self):
+        game_player = MagicMock()
+        player = MagicMock()
+        game = MagicMock()
+        game.get_game_players.return_value = [game_player]
+        context = GamePlayerChangeContext(comment="comment", players=[game_player])
+        message = Message(MessageType.GAME_PLAYER_CHANGE, context=context)
         handler = EventHandler(MagicMock())
+        handler.queue.message = MagicMock()
+        handler.manager.lookup_game_players.return_value = [player]
         handler.handle_game_player_change_event(game, "comment")
+        handler.queue.message.assert_called_once_with(message, players=[player])
 
-    def test_handle_game_state_change_event_specific_player(self):
+    @patch("apologiesserver.event.GameStateChangeContext")
+    def test_handle_game_state_change_event_specific_player(self, game_state_change_context):
+        context = GameStateChangeContext(player=None, opponents=None)
+        player = MagicMock()
+        view = MagicMock()
+        game = MagicMock()
+        game.get_player_view.return_value = view
+        game_state_change_context.for_view.return_value = context
+        message = Message(MessageType.GAME_STATE_CHANGE, context=context)
         handler = EventHandler(MagicMock())
+        handler.queue.message = MagicMock()
         handler.handle_game_state_change_event(game, player)
+        game.mark_active.assert_called_once()
+        handler.queue.message.assert_called_once_with(message, players=[player])
+        handler.manager.lookup_game_players.assert_not_called()
 
-    def test_handle_game_state_change_event_game_players(self):
+    @patch("apologiesserver.event.GameStateChangeContext")
+    def test_handle_game_state_change_event_game_players(self, game_state_change_context):
+        context = GameStateChangeContext(player=None, opponents=None)
+        player = MagicMock()
+        view = MagicMock()
+        game = MagicMock()
+        game.get_player_view.return_value = view
+        game_state_change_context.for_view.return_value = context
+        message = Message(MessageType.GAME_STATE_CHANGE, context=context)
         handler = EventHandler(MagicMock())
+        handler.manager.lookup_game_players.return_value = [player]
+        handler.queue.message = MagicMock()
         handler.handle_game_state_change_event(game)
+        game.mark_active.assert_called_once()
+        handler.queue.message.assert_called_once_with(message, players=[player])
+        handler.manager.lookup_game_players.assert_called_once_with(game)
 
-    def test_handle_game_player_turn_event(self):
+    @patch("apologiesserver.event.GamePlayerTurnContext")
+    def test_handle_game_player_turn_event(self, game_player_turn_context):
+        context = GamePlayerTurnContext(None, None)
+        player = MagicMock()
+        moves = [MagicMock()]
+        game_player_turn_context.for_moves.return_value = context
+        message = Message(MessageType.GAME_PLAYER_TURN, context=context)
         handler = EventHandler(MagicMock())
+        handler.queue.message = MagicMock()
         handler.handle_game_player_turn_event(player, moves)
+        handler.queue.message.assert_called_once_with(message, players=[player])
