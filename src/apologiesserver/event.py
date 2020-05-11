@@ -361,6 +361,7 @@ class EventHandler:
     def handle_player_inactive_event(self, player: TrackedPlayer) -> None:
         """Handle the Player Inactive event."""
         log.info("EVENT[Player Inactive]")
+        player.mark_inactive()
         message = Message(MessageType.PLAYER_INACTIVE)
         game = self.manager.lookup_game(player=player)
         self.queue.message(message, players=[player])
@@ -472,6 +473,7 @@ class EventHandler:
     def handle_game_inactive_event(self, game: TrackedGame) -> None:
         """Handle the Game Inactive event."""
         log.info("EVENT[Game Inactive]")
+        game.mark_inactive()
         self.handle_game_cancelled_event(game, CancelledReason.INACTIVE)
 
     def handle_game_obsolete_event(self, game: TrackedGame) -> None:

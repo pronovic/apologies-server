@@ -121,10 +121,6 @@ class TrackedPlayer:
             game_id=self.game_id,
         )
 
-    def is_connected(self) -> bool:
-        """Whether the player is connected."""
-        return self.connection_state == ConnectionState.CONNECTED
-
     def mark_active(self) -> None:
         """Mark the player as active."""
         self.last_active_date = pendulum.now()

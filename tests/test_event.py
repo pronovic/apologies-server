@@ -906,6 +906,7 @@ class TestEventMethods:
         handler.queue.disconnect = MagicMock()
         handler.manager.lookup_game.return_value = game
         handler.handle_player_inactive_event(player)
+        player.mark_inactive.assert_called_once()
         handler.manager.lookup_game.assert_called_once_with(player=player)
         handler.queue.message.assert_called_once_with(message, players=[player])
         handler.queue.disconnect(websocket)
@@ -1158,6 +1159,7 @@ class TestEventMethods:
         handler = EventHandler(MagicMock())
         handler.handle_game_cancelled_event = MagicMock()
         handler.handle_game_inactive_event(game)
+        game.mark_inactive.assert_called_once()
         handler.handle_game_cancelled_event.assert_called_once_with(game, CancelledReason.INACTIVE)
 
     def test_handle_game_obsolete_event(self):
