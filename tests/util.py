@@ -6,11 +6,18 @@
 Shared test utilities.
 """
 
+import random
+import string
 from unittest.mock import MagicMock
 
 from asynctest import CoroutineMock
 from pendulum.datetime import DateTime
 from pendulum.parser import parse
+
+
+def random_string(length: int = 10) -> str:
+    chars = string.ascii_uppercase + string.ascii_lowercase + string.digits
+    return "".join([random.choice(chars) for _ in range(0, length)])
 
 
 # noinspection PyTypeChecker

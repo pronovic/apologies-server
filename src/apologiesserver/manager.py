@@ -42,7 +42,7 @@ from uuid import uuid4
 
 import attr
 import pendulum
-from apologies.game import GameMode, Player, PlayerColor, PlayerView
+from apologies.game import GameMode, PlayerColor, PlayerView
 from apologies.rules import Move
 from pendulum.datetime import DateTime
 from websockets import WebSocketServerProtocol
@@ -187,8 +187,8 @@ class TrackedGame:
         return pendulum.now()
 
     @game_players.default
-    def _default_game_players(self) -> List[GamePlayer]:
-        return []
+    def _default_game_players(self) -> Dict[str, GamePlayer]:
+        return {}
 
     @staticmethod
     def for_context(advertiser_handle: str, game_id: str, context: AdvertiseGameContext) -> TrackedGame:
@@ -220,15 +220,21 @@ class TrackedGame:
         """Get a list of game players."""
         return list(self.game_players.values())
 
+    def get_available_players(self) -> List[GamePlayer]:
+        """Get the players that are still available to play the game."""
+        return [
+            player for player in self.get_game_players() if player.player_state not in (PlayerState.QUIT, PlayerState.DISCONNECTED)
+        ]
+
+    def get_available_player_count(self) -> int:
+        """Get the number of players that are still available to play the game."""
+        return len(self.get_available_players())
+
     def is_available(self, player: TrackedPlayer) -> bool:
         """Whether the game is available to be joined by the passed-in player."""
         return self.game_state == GameState.ADVERTISED and (
             self.visibility == Visibility.PUBLIC or player.handle in self.invited_handles
         )
-
-    def is_in_progress(self) -> bool:
-        """Whether a game is in-progress, meaning it is advertised or being played."""
-        return self.is_advertised() or self.is_playing()
 
     def is_advertised(self) -> bool:
         """Whether a game is currently being advertised."""
@@ -238,37 +244,35 @@ class TrackedGame:
         """Whether a game is being played."""
         return self.game_state == GameState.PLAYING
 
-    # TODO: this needs to take into account game state
-    #       if the game has not been started, a player leaving does not impact viability
-    #       if the game has not been started, if the advertising player leaves, that cancels the game
-    def is_viable(self) -> bool:
-        """Whether the game is viable."""
-        available = len(
-            [
-                player
-                for player in self.game_players.values()
-                if player.player_state not in (PlayerState.QUIT, PlayerState.DISCONNECTED)
-            ]
-        )
-        return self.players - available > 2  # game is only viable if at least 2 players remain to play turns
+    def is_in_progress(self) -> bool:
+        """Whether a game is in-progress, meaning it is advertised or being played."""
+        return self.is_advertised() or self.is_playing()
 
     def is_fully_joined(self) -> bool:
         """Whether the number of requested players have joined the game."""
         return self.players == len(self.game_players)
 
+    def is_viable(self) -> bool:
+        """Whether the game is viable."""
+        # Advertised games are always viable. Otherwise, the game is only viable if at least two players remain to play turns.
+        if self.is_advertised():
+            return True
+        else:
+            return self.get_available_player_count() >= 2
+
+    # TODO: implement is_move_pending() - if we are waiting for the player and the game is not completed or cancelled
     # TODO: remove unused-argument when method is implemented
     # pylint: disable=unused-argument
     def is_move_pending(self, handle: str) -> bool:
         """Whether a move is pending for the player with the passed-in handle."""
-        # TODO: implement is_move_pending() - if we are waiting for the player and the game is not completed or cancelled
-        return True
+        raise NotImplementedError
 
+    # TODO: implement is_legal_move() - this is actually a superset of is_move_pending() but is separate for clarity
     # TODO: remove unused-argument when method is implemented
     # pylint: disable=unused-argument
     def is_legal_move(self, handle: str, move_id: str) -> bool:
         """Whether the passed-in move id is a legal move for the player."""
-        # TODO: implement is_legal_move() - this is actually a superset of is_move_pending() but is separate for clarity
-        return True
+        raise NotImplementedError
 
     # TODO: implement get_next_turn(), once I can figure out how
     def get_next_turn(self) -> Tuple[TrackedPlayer, List[Move]]:
@@ -288,6 +292,13 @@ class TrackedGame:
         """Mark the game as inactive."""
         self.activity_state = ActivityState.INACTIVE
 
+    def mark_joined(self, player: TrackedPlayer) -> None:
+        """Mark that a player has joined a game."""
+        player_type = PlayerType.HUMAN
+        player_state = PlayerState.JOINED
+        player_color = self._assign_color()
+        self.game_players[player.handle] = GamePlayer(player.handle, player_color, player_type, player_state)
+
     def mark_started(self) -> None:
         """Mark the game as started."""
         self.game_state = GameState.PLAYING
@@ -296,7 +307,7 @@ class TrackedGame:
         for _ in range(0, self.players - len(self.game_players)):
             self._mark_joined_programmatic()  # fill in remaining players as necessary
         for handle in self.game_players:
-            self.game_players[handle] = attr.evolve(self.game_players[handle], state=PlayerState.PLAYING)
+            self.game_players[handle] = attr.evolve(self.game_players[handle], player_state=PlayerState.PLAYING)
 
     def mark_completed(self, comment: Optional[str]) -> None:
         """Mark the game as completed."""
@@ -304,7 +315,7 @@ class TrackedGame:
         self.game_state = GameState.COMPLETED
         self.completed_comment = comment
         for handle in self.game_players:
-            self.game_players[handle] = attr.evolve(self.game_players[handle], state=PlayerState.FINISHED)
+            self.game_players[handle] = attr.evolve(self.game_players[handle], player_state=PlayerState.FINISHED)
 
     def mark_cancelled(self, reason: CancelledReason, comment: Optional[str] = None) -> None:
         """Mark the game as cancelled."""
@@ -313,36 +324,29 @@ class TrackedGame:
         self.cancelled_reason = reason
         self.completed_comment = comment
         for handle in self.game_players:
-            self.game_players[handle] = attr.evolve(self.game_players[handle], state=PlayerState.FINISHED)
+            self.game_players[handle] = attr.evolve(self.game_players[handle], player_state=PlayerState.FINISHED)
 
-    def mark_joined(self, player: TrackedPlayer) -> None:
-        """Mark that a player has joined a game."""
-        player_type = PlayerType.HUMAN
-        player_state = PlayerState.JOINED
-        player_color = self._assign_color()
-        self.game_players[player.handle] = GamePlayer(player.handle, player_color, player_type, player_state)
-
-    # TODO: what if a player quits during their turn?
+    # TODO: what if a player quits during their turn?  not sure if this needs to be handled here or up in the event
     def mark_quit(self, player: TrackedPlayer) -> None:
         """Mark that the player has quit a game."""
         if self.game_state == GameState.ADVERTISED:
             del self.game_players[player.handle]  # if the game hasn't started, just remove them
         else:
-            self.game_players[player.handle] = attr.evolve(self.game_players[player.handle], state=PlayerState.QUIT)
+            self.game_players[player.handle] = attr.evolve(self.game_players[player.handle], player_state=PlayerState.QUIT)
 
+    # TODO: implement get_player_view() once we have a way to manage game state
+    # TODO: remove pylint unused-argument once this is implemented
     # pylint: disable=unused-argument
     def get_player_view(self, player: TrackedPlayer) -> PlayerView:
         """Get the player's view of the game state."""
-        # TODO: remove pylint unused-argument once this is implemented
-        # TODO: implement get_player_view() once we have a way to manage game state (within a lock, presumably)
-        return PlayerView(player=Player(PlayerColor.RED, [], []), opponents={})
+        raise NotImplementedError
 
+    # TODO: implement execute_move() once we have a way to manage game state
+    # TODO: remove pylint unused-argument once this is implemented
     # pylint: disable=unused-argument
     def execute_move(self, player: TrackedPlayer, move_id: str) -> Tuple[bool, Optional[str]]:
         """Execute a player's move, returning an indication of whether the game was completed (and a comment if so)."""
-        # TODO: remove pylint unused-argument once this is implemented
-        # TODO: implement execute_move() once we have a way to manage game state (within a lock, presumably)
-        return False, None
+        raise NotImplementedError
 
     def _mark_joined_programmatic(self) -> None:
         """Create an join a programmatic player, assumed to be called from within a lock."""
