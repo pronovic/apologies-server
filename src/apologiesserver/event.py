@@ -350,17 +350,19 @@ class EventHandler:
     def handle_websocket_idle_event(self, websocket: TrackedWebsocket) -> None:
         """Handle the Websocket Idle event."""
         log.info("EVENT[Websocket Idle]")
-        message = Message(MessageType.WEBSOCKET_IDLE)
-        self.queue.message(message, websockets=[websocket.websocket])
-        websocket.mark_idle()
+        if websocket.activity_state != ActivityState.IDLE:
+            message = Message(MessageType.WEBSOCKET_IDLE)
+            self.queue.message(message, websockets=[websocket.websocket])
+            websocket.mark_idle()
 
     def handle_websocket_inactive_event(self, websocket: TrackedWebsocket) -> None:
         """Handle the Websocket Inactive event."""
         log.info("EVENT[Websocket Inactive]")
-        websocket.mark_inactive()
-        message = Message(MessageType.WEBSOCKET_INACTIVE)
-        self.queue.message(message, websockets=[websocket.websocket])
-        self.queue.disconnect(websocket.websocket)  # will eventually trigger handle_websocket_disconnected_event()
+        if websocket.activity_state != ActivityState.INACTIVE:
+            websocket.mark_inactive()
+            message = Message(MessageType.WEBSOCKET_INACTIVE)
+            self.queue.message(message, websockets=[websocket.websocket])
+            self.queue.disconnect(websocket.websocket)  # will eventually trigger handle_websocket_disconnected_event()
 
     def handle_registered_players_event(self, player: TrackedPlayer) -> None:
         """Handle the Registered Players event."""
@@ -421,19 +423,21 @@ class EventHandler:
     def handle_player_idle_event(self, player: TrackedPlayer) -> None:
         """Handle the Player Idle event."""
         log.info("EVENT[Player Idle]")
-        message = Message(MessageType.PLAYER_IDLE)
-        self.queue.message(message, players=[player])
-        player.mark_idle()
+        if player.activity_state != ActivityState.IDLE:
+            message = Message(MessageType.PLAYER_IDLE)
+            self.queue.message(message, players=[player])
+            player.mark_idle()
 
     def handle_player_inactive_event(self, player: TrackedPlayer) -> None:
         """Handle the Player Inactive event."""
         log.info("EVENT[Player Inactive]")
-        player.mark_inactive()
-        message = Message(MessageType.PLAYER_INACTIVE)
-        game = self.manager.lookup_game(player=player)
-        self.queue.message(message, players=[player])
-        self.queue.disconnect(player.websocket)
-        self.handle_player_unregistered_event(player, game)
+        if player.activity_state != ActivityState.INACTIVE:
+            player.mark_inactive()
+            message = Message(MessageType.PLAYER_INACTIVE)
+            game = self.manager.lookup_game(player=player)
+            self.queue.message(message, players=[player])
+            self.queue.disconnect(player.websocket)
+            self.handle_player_unregistered_event(player, game)
 
     def handle_player_message_received_event(self, sender_handle: str, recipient_handles: List[str], sender_message: str) -> None:
         """Handle the Player Message Received event."""
@@ -533,15 +537,17 @@ class EventHandler:
     def handle_game_idle_event(self, game: TrackedGame) -> None:
         """Handle the Game Idle event."""
         log.info("EVENT[Game Idle]")
-        message = Message(MessageType.GAME_IDLE)
-        players = self.manager.lookup_game_players(game)
-        self.queue.message(message, players=players)
+        if game.activity_state != ActivityState.IDLE:
+            message = Message(MessageType.GAME_IDLE)
+            players = self.manager.lookup_game_players(game)
+            self.queue.message(message, players=players)
 
     def handle_game_inactive_event(self, game: TrackedGame) -> None:
         """Handle the Game Inactive event."""
         log.info("EVENT[Game Inactive]")
-        game.mark_inactive()
-        self.handle_game_cancelled_event(game, CancelledReason.INACTIVE)
+        if game.activity_state != ActivityState.INACTIVE:
+            game.mark_inactive()
+            self.handle_game_cancelled_event(game, CancelledReason.INACTIVE)
 
     def handle_game_obsolete_event(self, game: TrackedGame) -> None:
         """Handle the Game Obsolete event."""

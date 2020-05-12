@@ -815,8 +815,16 @@ class TestEventMethods:
         handler.handle_player_disconnected_event.assert_called_once_with(player)
         handler.manager.delete_websocket.assert_called_once_with(websocket)
 
-    def test_handle_websocket_idle_event(self):
-        websocket = MagicMock(websocket=MagicMock())
+    def test_handle_websocket_idle_event_no_change(self):
+        websocket = MagicMock(websocket=MagicMock(), activity_state=ActivityState.IDLE)
+        handler = EventHandler(MagicMock())
+        handler.queue.message = MagicMock()
+        handler.handle_websocket_idle_event(websocket)
+        websocket.mark_idle.assert_not_called()
+        handler.queue.message.assert_not_called()
+
+    def test_handle_websocket_idle_event_change(self):
+        websocket = MagicMock(websocket=MagicMock(), activity_state=None)
         message = Message(MessageType.WEBSOCKET_IDLE)
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
@@ -824,8 +832,18 @@ class TestEventMethods:
         websocket.mark_idle.assert_called_once()
         handler.queue.message.assert_called_once_with(message, websockets=[websocket.websocket])
 
-    def test_handle_websocket_inactive_event(self):
-        websocket = MagicMock(websocket=MagicMock())
+    def test_handle_websocket_inactive_event_no_change(self):
+        websocket = MagicMock(websocket=MagicMock(), activity_state=ActivityState.INACTIVE)
+        handler = EventHandler(MagicMock())
+        handler.queue.message = MagicMock()
+        handler.queue.disconnect = MagicMock()
+        handler.handle_websocket_inactive_event(websocket)
+        websocket.mark_inactive.assert_not_called()
+        handler.queue.message.assert_not_called()
+        handler.queue.disconnect.assert_not_called()
+
+    def test_handle_websocket_inactive_event_change(self):
+        websocket = MagicMock(websocket=MagicMock(), activity_state=None)
         message = Message(MessageType.WEBSOCKET_INACTIVE)
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
@@ -968,8 +986,16 @@ class TestEventMethods:
         handler.handle_game_player_change_event.assert_called_once_with(game, comment)
         handler.handle_game_cancelled_event.assert_called_once_with(game, CancelledReason.NOT_VIABLE, comment)
 
-    def test_handle_player_idle_event(self):
-        player = MagicMock()
+    def test_handle_player_idle_event_no_change(self):
+        player = MagicMock(activity_state=ActivityState.IDLE)
+        handler = EventHandler(MagicMock())
+        handler.queue.message = MagicMock()
+        handler.handle_player_idle_event(player)
+        handler.queue.message.assert_not_called()
+        player.mark_idle.assert_not_called()
+
+    def test_handle_player_idle_event_change(self):
+        player = MagicMock(activity_state=None)
         message = Message(MessageType.PLAYER_IDLE)
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
@@ -977,9 +1003,22 @@ class TestEventMethods:
         handler.queue.message.assert_called_once_with(message, players=[player])
         player.mark_idle.assert_called_once()
 
-    def test_handle_player_inactive_event(self):
+    def test_handle_player_inactive_event_no_change(self):
         websocket = MagicMock()
-        player = MagicMock(websocket=websocket)
+        player = MagicMock(websocket=websocket, activity_state=ActivityState.INACTIVE)
+        handler = EventHandler(MagicMock())
+        handler.handle_player_unregistered_event = MagicMock()
+        handler.queue.message = MagicMock()
+        handler.queue.disconnect = MagicMock()
+        handler.handle_player_inactive_event(player)
+        player.mark_inactive.assert_not_called()
+        handler.queue.message.assert_not_called()
+        handler.queue.disconnect.assert_not_called()
+        handler.handle_player_unregistered_event.assert_not_called()
+
+    def test_handle_player_inactive_event_change(self):
+        websocket = MagicMock()
+        player = MagicMock(websocket=websocket, activity_state=None)
         game = MagicMock()
         message = Message(MessageType.PLAYER_INACTIVE)
         handler = EventHandler(MagicMock())
@@ -991,7 +1030,7 @@ class TestEventMethods:
         player.mark_inactive.assert_called_once()
         handler.manager.lookup_game.assert_called_once_with(player=player)
         handler.queue.message.assert_called_once_with(message, players=[player])
-        handler.queue.disconnect(websocket)
+        handler.queue.disconnect.assert_called_once_with(websocket)
         handler.handle_player_unregistered_event.assert_called_once_with(player, game)
 
     def test_handle_player_message_received_event(self):
@@ -1226,9 +1265,16 @@ class TestEventMethods:
         handler.queue.message.assert_called_once_with(message, players=[player])
         handler.handle_game_state_change_event.assert_called_once_with(game)
 
-    def test_handle_game_idle_event(self):
+    def test_handle_game_idle_event_no_change(self):
+        game = MagicMock(activity_state=ActivityState.IDLE)
+        handler = EventHandler(MagicMock())
+        handler.queue.message = MagicMock()
+        handler.handle_game_idle_event(game)
+        handler.queue.message.assert_not_called()
+
+    def test_handle_game_idle_event_change(self):
         player = MagicMock()
-        game = MagicMock()
+        game = MagicMock(activity_state=None)
         message = Message(MessageType.GAME_IDLE)
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
@@ -1237,7 +1283,15 @@ class TestEventMethods:
         handler.queue.message.assert_called_once_with(message, players=[player])
 
     def test_handle_game_inactive_event(self):
-        game = MagicMock()
+        game = MagicMock(activity_state=ActivityState.INACTIVE)
+        handler = EventHandler(MagicMock())
+        handler.handle_game_cancelled_event = MagicMock()
+        handler.handle_game_inactive_event(game)
+        game.mark_inactive.assert_not_called()
+        handler.handle_game_cancelled_event.assert_not_called()
+
+    def test_handle_game_inactive_event_change(self):
+        game = MagicMock(activity_state=None)
         handler = EventHandler(MagicMock())
         handler.handle_game_cancelled_event = MagicMock()
         handler.handle_game_inactive_event(game)
