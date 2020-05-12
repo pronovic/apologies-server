@@ -17,6 +17,7 @@ from apologiesserver.event import EventHandler, RequestContext
 from apologiesserver.interface import FailureReason, Message, MessageType, ProcessingError, RequestFailedContext
 from apologiesserver.server import (
     _add_signal_handlers,
+    _handle_connect,
     _handle_connection,
     _handle_data,
     _handle_disconnect,
@@ -222,53 +223,75 @@ class TestCoroutines:
         exception = ProcessingError(FailureReason.INVALID_PLAYER)
         websocket = AsyncMock()
         websocket.send = CoroutineMock()
+        websocket.close = CoroutineMock()
         context = RequestFailedContext(FailureReason.INVALID_PLAYER, FailureReason.INVALID_PLAYER.value)
         message = Message(MessageType.REQUEST_FAILED, context)
         json = message.to_json()
         await _handle_exception(exception, websocket)
         websocket.send.assert_awaited_once_with(json)
+        websocket.close.assert_not_awaited()
+
+    async def test_handle_exception_processing_error_websocket_limit(self):
+        exception = ProcessingError(FailureReason.WEBSOCKET_LIMIT)
+        websocket = AsyncMock()
+        websocket.send = CoroutineMock()
+        websocket.close = CoroutineMock()
+        context = RequestFailedContext(FailureReason.WEBSOCKET_LIMIT, FailureReason.WEBSOCKET_LIMIT.value)
+        message = Message(MessageType.REQUEST_FAILED, context)
+        json = message.to_json()
+        await _handle_exception(exception, websocket)
+        websocket.send.assert_awaited_once_with(json)
+        websocket.close.assert_awaited_once()
 
     async def test_handle_exception_processing_error_comment(self):
         exception = ProcessingError(FailureReason.INVALID_PLAYER, "comment")
         websocket = AsyncMock()
         websocket.send = CoroutineMock()
+        websocket.close = CoroutineMock()
         context = RequestFailedContext(FailureReason.INVALID_PLAYER, "comment")
         message = Message(MessageType.REQUEST_FAILED, context)
         json = message.to_json()
         await _handle_exception(exception, websocket)
         websocket.send.assert_awaited_once_with(json)
+        websocket.close.assert_not_awaited()
 
     async def test_handle_exception_value_error(self):
         exception = ValueError("Hello!")
         websocket = AsyncMock()
         websocket.send = CoroutineMock()
+        websocket.close = CoroutineMock()
         context = RequestFailedContext(FailureReason.INVALID_REQUEST, "Hello!")
         message = Message(MessageType.REQUEST_FAILED, context)
         json = message.to_json()
         await _handle_exception(exception, websocket)
         websocket.send.assert_awaited_once_with(json)
+        websocket.close.assert_not_awaited()
 
     async def test_handle_exception_exception(self):
         exception = Exception("Hello!")
         websocket = AsyncMock()
         websocket.send = CoroutineMock()
+        websocket.close = CoroutineMock()
         context = RequestFailedContext(FailureReason.INTERNAL_ERROR, FailureReason.INTERNAL_ERROR.value)
         message = Message(MessageType.REQUEST_FAILED, context)
         json = message.to_json()
         await _handle_exception(exception, websocket)
         websocket.send.assert_awaited_once_with(json)
+        websocket.close.assert_not_awaited()
 
     async def test_handle_exception_fail(self):
         # this just confirms that send failures aren't propogated to the caller (we intentionally ignore them)
         exception = ProcessingError(FailureReason.INVALID_PLAYER)
         websocket = AsyncMock()
         websocket.send = CoroutineMock()
+        websocket.close = CoroutineMock()
         websocket.send.side_effect = Exception("Send failed!")
         context = RequestFailedContext(FailureReason.INVALID_PLAYER, FailureReason.INVALID_PLAYER.value)
         message = Message(MessageType.REQUEST_FAILED, context)
         json = message.to_json()
         await _handle_exception(exception, websocket)
         websocket.send.assert_awaited_once_with(json)
+        websocket.close.assert_not_awaited()
 
     @patch("apologiesserver.server._handle_message")
     @patch("apologiesserver.server.EventHandler")
@@ -288,6 +311,19 @@ class TestCoroutines:
 
     @patch("apologiesserver.server.EventHandler")
     @patch("apologiesserver.server.manager")
+    async def test_handle_connect(self, manager, event_handler):
+        handler = mock_handler()
+        manager.return_value = handler.manager
+        event_handler.return_value = handler
+        websocket = AsyncMock()
+        await _handle_connect(websocket)
+        event_handler.assert_called_once_with(manager.return_value)
+        handler.manager.lock.assert_awaited()
+        handler.handle_websocket_connected_event.assert_called_once_with(websocket)
+        handler.execute_tasks.assert_awaited_once()
+
+    @patch("apologiesserver.server.EventHandler")
+    @patch("apologiesserver.server.manager")
     async def test_handle_disconnect(self, manager, event_handler):
         handler = mock_handler()
         manager.return_value = handler.manager
@@ -296,25 +332,28 @@ class TestCoroutines:
         await _handle_disconnect(websocket)
         event_handler.assert_called_once_with(manager.return_value)
         handler.manager.lock.assert_awaited()
-        handler.handle_player_disconnected_event.assert_called_once_with(websocket)
+        handler.handle_websocket_disconnected_event.assert_called_once_with(websocket)
         handler.execute_tasks.assert_awaited_once()
 
     @patch("apologiesserver.server._handle_disconnect")
+    @patch("apologiesserver.server._handle_connect")
     @patch("apologiesserver.server._handle_exception")
     @patch("apologiesserver.server._handle_data")
-    async def test_handle_connection(self, handle_data, handle_exception, handle_disconnect):
+    async def test_handle_connection(self, handle_data, handle_exception, handle_connect, handle_disconnect):
         data = b"test data"
         websocket = AsyncMock()
         websocket.__aiter__.return_value = [data]
         await _handle_connection(websocket, "path")  # path is unused
         handle_data.assert_called_once_with(data, websocket)
+        handle_connect.assert_called_once_with(websocket)
         handle_disconnect.assert_called_once_with(websocket)
         handle_exception.assert_not_called()
 
     @patch("apologiesserver.server._handle_disconnect")
+    @patch("apologiesserver.server._handle_connect")
     @patch("apologiesserver.server._handle_exception")
     @patch("apologiesserver.server._handle_data")
-    async def test_handle_connection_exception(self, handle_data, handle_exception, handle_disconnect):
+    async def test_handle_connection_exception(self, handle_data, handle_exception, handle_connect, handle_disconnect):
         data = b"test data"
         websocket = AsyncMock()
         websocket.__aiter__.return_value = [data]
@@ -322,6 +361,7 @@ class TestCoroutines:
         handle_data.side_effect = exception
         await _handle_connection(websocket, "path")  # path is unused
         handle_data.assert_called_once_with(data, websocket)
+        handle_connect.assert_called_once_with(websocket)
         handle_disconnect.assert_called_once_with(websocket)
         handle_exception.assert_called_once_with(exception, websocket)
 
