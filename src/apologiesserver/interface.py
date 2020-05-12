@@ -2,8 +2,6 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=unsubscriptable-object
 
-# TODO: update all examples in API.md (and maybe expand list of events?) based on final implementation
-
 """
 Definition of the public interface for the server.
 
@@ -139,7 +137,8 @@ class FailureReason(Enum):
     INVALID_REQUEST = "Invalid request"
     DUPLICATE_USER = "Handle is already in use"
     INVALID_AUTH = "Missing or invalid authorization header"
-    USER_LIMIT = "User limit reached"
+    USER_LIMIT = "System user limit reached; try again later"
+    GAME_LIMIT = "System game limit reached; try again later"
     INVALID_PLAYER = "Unknown or invalid player"
     INVALID_GAME = "Unknown or invalid game"
     NOT_PLAYING = "Player is not playing a game."
@@ -215,11 +214,6 @@ class GamePlayer:
     player_color = attr.ib(type=PlayerColor)
     player_type = attr.ib(type=PlayerType)
     player_state = attr.ib(type=PlayerState)
-
-    # TODO: needs a unit test
-    def is_available(self) -> bool:
-        """Whether the player is considered to be available to play a turn."""
-        return self.player_state not in (PlayerState.QUIT, PlayerState.DISCONNECTED)
 
 
 @attr.s(frozen=True)
@@ -317,12 +311,10 @@ class GameAction:
             start = GameStatePawn.for_pawn(action.pawn)
             end = GameStatePawn.for_position(action.pawn, Position().move_to_start())
             return GameAction(start, end)
-        elif action.actiontype == ActionType.MOVE_TO_POSITION:
+        else:  # action.actiontype == ActionType.MOVE_TO_POSITION
             start = GameStatePawn.for_pawn(action.pawn)
             end = GameStatePawn.for_position(action.pawn, action.position)
             return GameAction(start, end)
-        else:
-            raise RuntimeError("Can't handle actiontype %s" % action.actiontype)
 
 
 @attr.s(frozen=True)
@@ -520,6 +512,7 @@ _CONTEXT: Dict[MessageType, Optional[Type[Context]]] = {
     MessageType.EXECUTE_MOVE: ExecuteMoveContext,
     MessageType.RETRIEVE_GAME_STATE: None,
     MessageType.SEND_MESSAGE: SendMessageContext,
+    MessageType.SERVER_SHUTDOWN: None,
     MessageType.REQUEST_FAILED: RequestFailedContext,
     MessageType.REGISTERED_PLAYERS: RegisteredPlayersContext,
     MessageType.AVAILABLE_GAMES: AvailableGamesContext,

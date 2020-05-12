@@ -7,16 +7,10 @@ from typing import List
 import pytest
 from apologies.game import Card, CardType, GameMode, Pawn, Player, PlayerColor, PlayerView, Position
 from apologies.rules import Action, ActionType, Move
-from pendulum.datetime import DateTime
-from pendulum.parser import parse
 
 from apologiesserver.interface import *
 
-
-# noinspection PyTypeChecker
-def to_date(date: str) -> DateTime:
-    # This function seems to have the wrong type hint
-    return parse(date)  # type: ignore
+from .util import to_date
 
 
 def roundtrip(message: Message) -> None:
