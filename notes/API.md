@@ -402,8 +402,8 @@ Example message:
 ### Websocket Inactive
 
 This event is triggered when the _Idle Websocket Check_ determines that a
-websocket has exceeded the inactive threshold and will be disconnected
-and a _Websocket Disconnected_ event will be triggered.
+websocket has exceeded the inactive threshold.  We websocket and will be
+disconnected and a _Websocket Disconnected_ event will be triggered.
 
 Example message:
 
