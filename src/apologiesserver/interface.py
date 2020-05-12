@@ -9,8 +9,8 @@ Both requests (message sent from a client to the server) and events (published
 from the server to one or more clients) can be serialized and deserialized to 
 and from JSON.  However, we apply much tighter validation rules on the context
 associated with requests, since the input is untrusted.  We assume that the
-Python type validations imposed by MyPy give us everything we need for events
-that are only built internally.
+unit tests and the Python type validations imposed by MyPy give us everything
+we need for events that are only built internally.
 
 The file notes/API.md includes a detailed discussion of each request and event.
 """
@@ -147,10 +147,10 @@ class FailureReason(Enum):
     GAME_LIMIT = "System game limit reached; try again later"
     INVALID_PLAYER = "Unknown or invalid player"
     INVALID_GAME = "Unknown or invalid game"
-    NOT_PLAYING = "Player is not playing a game."
-    NOT_ADVERTISER = "Player did not advertise this game."
+    NOT_PLAYING = "Player is not playing a game"
+    NOT_ADVERTISER = "Player did not advertise this game"
     ALREADY_PLAYING = "Player is already playing a game"
-    NO_MOVE_PENDING = "No move is pending for this player."
+    NO_MOVE_PENDING = "No move is pending for this player"
     ILLEGAL_MOVE = "The chosen move is not legal"
     ADVERTISER_MAY_NOT_QUIT = "Advertiser may not quit a game (cancel instead)"
     INTERNAL_ERROR = "Internal error"
