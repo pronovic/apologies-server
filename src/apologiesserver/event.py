@@ -14,6 +14,8 @@ boundary.  Any tasks that might block (such as network requests) should be added
 task queue, to be executed by the execute() method once state updates have been completed.  
 """
 
+# TODO: event logging sucks.  I need a better way to make the logs more legible
+
 from __future__ import annotations  # see: https://stackoverflow.com/a/33533514/2907667
 
 import asyncio
@@ -29,7 +31,7 @@ from websockets import WebSocketServerProtocol
 
 from .config import config
 from .interface import *
-from .manager import StateManager, TrackedGame, TrackedPlayer
+from .manager import StateManager, TrackedGame, TrackedPlayer, TrackedWebsocket
 
 log = logging.getLogger("apologies.event")
 
@@ -129,6 +131,27 @@ class EventHandler:
         """Send all enqueued tasks."""
         # This should not be invoked from within the manager lock!  We want code within the lock to run fast, without blocking.
         await self.queue.execute()
+
+    # noinspection PyTypeChecker
+    def handle_idle_websocket_check_task(self) -> Tuple[int, int]:
+        """Execute the Idle Websocket Check task, returning tuple of (idle, inactive)."""
+        log.info("SCHEDULED[Idle Websocket Check]")
+        idle = 0
+        inactive = 0
+        now = pendulum.now()
+        idle_thresh_min = config().websocket_idle_thresh_min
+        inactive_thresh_min = config().websocket_inactive_thresh_min
+        for (websocket, last_active_date, players) in self.manager.lookup_websocket_activity():
+            if players < 1:  # by definition, a websocket is not idle until or unless it has no registered players
+                since_active = now.diff(last_active_date).in_minutes()
+                if since_active >= inactive_thresh_min:
+                    inactive += 1
+                    self.handle_websocket_inactive_event(websocket)
+                elif since_active >= idle_thresh_min:
+                    idle += 1
+                    self.handle_websocket_idle_event(websocket)
+        log.debug("Idle websocket check completed, found %d idle and %d inactive websockets", idle, inactive)
+        return idle, inactive
 
     # noinspection PyTypeChecker
     def handle_idle_player_check_task(self) -> Tuple[int, int]:
@@ -309,6 +332,36 @@ class EventHandler:
         for game in self.manager.lookup_in_progress_games():
             self.handle_game_cancelled_event(game, CancelledReason.SHUTDOWN, notify=False)
 
+    def handle_websocket_connected_event(self, websocket: WebSocketServerProtocol) -> None:
+        """Handle the Websocket Connected event."""
+        log.info("EVENT[Websocket Connected]: %s", websocket)
+        if self.manager.websocket_count() >= config().websocket_limit:
+            raise ProcessingError(FailureReason.WEBSOCKET_LIMIT)
+        self.manager.track_websocket(websocket)
+
+    def handle_websocket_disconnected_event(self, websocket: WebSocketServerProtocol) -> None:
+        """Handle the Websocket Disconnected event."""
+        log.info("EVENT[Websocket Disconnected]: %s", websocket)
+        players = self.manager.lookup_players_for_websocket(websocket)
+        for player in players:
+            self.handle_player_disconnected_event(player)
+        self.manager.delete_websocket(websocket)
+
+    def handle_websocket_idle_event(self, websocket: TrackedWebsocket) -> None:
+        """Handle the Websocket Idle event."""
+        log.info("EVENT[Websocket Idle]")
+        message = Message(MessageType.WEBSOCKET_IDLE)
+        self.queue.message(message, websockets=[websocket.websocket])
+        websocket.mark_idle()
+
+    def handle_websocket_inactive_event(self, websocket: TrackedWebsocket) -> None:
+        """Handle the Websocket Inactive event."""
+        log.info("EVENT[Websocket Inactive]")
+        websocket.mark_inactive()
+        message = Message(MessageType.WEBSOCKET_INACTIVE)
+        self.queue.message(message, websockets=[websocket.websocket])
+        self.queue.disconnect(websocket.websocket)  # will eventually trigger handle_websocket_disconnected_event()
+
     def handle_registered_players_event(self, player: TrackedPlayer) -> None:
         """Handle the Registered Players event."""
         log.info("EVENT[Registered Players]")
@@ -353,19 +406,17 @@ class EventHandler:
                 self.handle_game_cancelled_event(game, CancelledReason.NOT_VIABLE, comment)
         self.manager.delete_player(player)
 
-    def handle_player_disconnected_event(self, websocket: WebSocketServerProtocol) -> None:
+    def handle_player_disconnected_event(self, player: TrackedPlayer) -> None:
         """Handle the Player Disconnected event."""
-        log.info("EVENT[Player Disconnected]: %s", websocket)
-        player = self.manager.lookup_player_for_websocket(websocket)
-        if player:
-            game = self.manager.lookup_game(player=player)
-            player.mark_disconnected()
-            if game:
-                comment = "Player %s disconnected" % player.handle
-                game.mark_quit(player)
-                self.handle_game_player_change_event(game, comment)
-                if not game.is_viable():
-                    self.handle_game_cancelled_event(game, CancelledReason.NOT_VIABLE, comment)
+        log.info("EVENT[Player Disconnected]")
+        game = self.manager.lookup_game(player=player)
+        player.mark_disconnected()
+        if game:
+            comment = "Player %s disconnected" % player.handle
+            game.mark_quit(player)
+            self.handle_game_player_change_event(game, comment)
+            if not game.is_viable():
+                self.handle_game_cancelled_event(game, CancelledReason.NOT_VIABLE, comment)
 
     def handle_player_idle_event(self, player: TrackedPlayer) -> None:
         """Handle the Player Idle event."""

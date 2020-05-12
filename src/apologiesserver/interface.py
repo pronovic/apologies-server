@@ -517,6 +517,8 @@ _CONTEXT: Dict[MessageType, Optional[Type[Context]]] = {
     MessageType.SEND_MESSAGE: SendMessageContext,
     MessageType.SERVER_SHUTDOWN: None,
     MessageType.REQUEST_FAILED: RequestFailedContext,
+    MessageType.WEBSOCKET_IDLE: None,
+    MessageType.WEBSOCKET_INACTIVE: None,
     MessageType.REGISTERED_PLAYERS: RegisteredPlayersContext,
     MessageType.AVAILABLE_GAMES: AvailableGamesContext,
     MessageType.PLAYER_REGISTERED: PlayerRegisteredContext,

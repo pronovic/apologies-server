@@ -782,6 +782,14 @@ class TestEvent:
         message = Message(MessageType.REQUEST_FAILED, context)
         roundtrip(message)
 
+    def test_websocket_idle_roundtrip(self) -> None:
+        message = Message(MessageType.WEBSOCKET_IDLE)
+        roundtrip(message)
+
+    def test_websocket_inactive_roundtrip(self) -> None:
+        message = Message(MessageType.WEBSOCKET_INACTIVE)
+        roundtrip(message)
+
     def test_registered_players_roundtrip(self) -> None:
         player = RegisteredPlayer(
             "handle",

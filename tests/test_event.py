@@ -184,6 +184,55 @@ class TestTaskMethods:
     Test the task-related methods on EventHandler.
     """
 
+    # pylint: disable=invalid-name,too-many-locals
+    @patch("apologiesserver.event.pendulum")
+    @patch("apologiesserver.event.config")
+    def test_handle_idle_websocket_check_task(self, config, pendulum):
+        config.return_value = MagicMock(websocket_idle_thresh_min=10, websocket_inactive_thresh_min=20)
+        pendulum.now.return_value = to_date("2020-05-11T10:22:00,000")
+
+        w1 = MagicMock()
+        w2 = MagicMock()
+        w3 = MagicMock()
+        w4 = MagicMock()
+        w5 = MagicMock()
+        w6 = MagicMock()
+        w7 = MagicMock()
+        w8 = MagicMock()
+
+        # Results: 1 is active (a1), 2 are idle (a2, a3) and 1 is inactive (a4)
+        a1 = (w1, to_date("2020-05-11T10:12:00,001"), 0)  # active (9:59.999), no registered players
+        a2 = (w2, to_date("2020-05-11T10:12:00,000"), 0)  # idle (10:00.000), no registered players
+        a3 = (w3, to_date("2020-05-11T10:02:00,001"), 0)  # idle (19:59.999), no registered players
+        a4 = (w4, to_date("2020-05-11T10:02:00,000"), 0)  # inactive (20:00.000), no registered players
+        a5 = (w5, to_date("2020-05-11T10:12:00,001"), 5)  # active (9:59.999), with registered players
+        a6 = (w6, to_date("2020-05-11T10:12:00,000"), 1)  # idle (10:00.000), with registered players
+        a7 = (w7, to_date("2020-05-11T10:02:00,001"), 2)  # idle (19:59.999), with registered players
+        a8 = (w8, to_date("2020-05-11T10:02:00,000"), 20)  # inactive (20:00.000), with registered players
+        activity = [
+            a1,
+            a2,
+            a3,
+            a4,
+            a5,
+            a6,
+            a7,
+            a8,
+        ]
+
+        handler = EventHandler(MagicMock())
+        handler.manager.lookup_websocket_activity.return_value = activity
+        handler.handle_websocket_idle_event = MagicMock()
+        handler.handle_websocket_inactive_event = MagicMock()
+
+        assert handler.handle_idle_websocket_check_task() == (2, 1)  # anything with a registered player is ignored
+
+        idle_calls = [call(w2), call(w3)]
+        inactive_calls = [call(w4)]
+
+        handler.handle_websocket_idle_event.assert_has_calls(idle_calls)
+        handler.handle_websocket_inactive_event.assert_has_calls(inactive_calls)
+
     # pylint: disable=too-many-locals,invalid-name
     @patch("apologiesserver.event.pendulum")
     @patch("apologiesserver.event.config")
@@ -736,6 +785,56 @@ class TestEventMethods:
         handler.queue.message.assert_called_once_with(message, websockets=[websocket])
         handler.handle_game_cancelled_event.assert_called_once_with(game, CancelledReason.SHUTDOWN, notify=False)
 
+    @patch("apologiesserver.event.config")
+    def test_handle_websocket_connected_event_below_limit(self, config):
+        config.return_value = MagicMock(websocket_limit=5)
+        websocket = MagicMock()
+        handler = EventHandler(MagicMock())
+        handler.manager.websocket_count.return_value = 4
+        handler.handle_websocket_connected_event(websocket)
+        handler.manager.track_websocket.assert_called_once_with(websocket)
+
+    @patch("apologiesserver.event.config")
+    def test_handle_websocket_connected_event_at_limit(self, config):
+        config.return_value = MagicMock(websocket_limit=5)
+        websocket = MagicMock()
+        handler = EventHandler(MagicMock())
+        handler.manager.websocket_count.return_value = 5
+        with pytest.raises(ProcessingError, match=r"Connection limit reached"):
+            handler.handle_websocket_connected_event(websocket)
+        handler.manager.track_websocket.assert_not_called()
+
+    def test_handle_websocket_disconnected_event(self):
+        player = MagicMock()
+        websocket = MagicMock()
+        handler = EventHandler(MagicMock())
+        handler.handle_player_disconnected_event = MagicMock()
+        handler.queue.message = MagicMock()
+        handler.manager.lookup_players_for_websocket.return_value = [player]
+        handler.handle_websocket_disconnected_event(websocket)
+        handler.handle_player_disconnected_event.assert_called_once_with(player)
+        handler.manager.delete_websocket.assert_called_once_with(websocket)
+
+    def test_handle_websocket_idle_event(self):
+        websocket = MagicMock(websocket=MagicMock())
+        message = Message(MessageType.WEBSOCKET_IDLE)
+        handler = EventHandler(MagicMock())
+        handler.queue.message = MagicMock()
+        handler.handle_websocket_idle_event(websocket)
+        websocket.mark_idle.assert_called_once()
+        handler.queue.message.assert_called_once_with(message, websockets=[websocket.websocket])
+
+    def test_handle_websocket_inactive_event(self):
+        websocket = MagicMock(websocket=MagicMock())
+        message = Message(MessageType.WEBSOCKET_INACTIVE)
+        handler = EventHandler(MagicMock())
+        handler.queue.message = MagicMock()
+        handler.queue.disconnect = MagicMock()
+        handler.handle_websocket_inactive_event(websocket)
+        websocket.mark_inactive.assert_called_once()
+        handler.queue.message.assert_called_once_with(message, websockets=[websocket.websocket])
+        handler.queue.disconnect.assert_called_once_with(websocket.websocket)
+
     def test_handle_registered_players_event(self):
         player = MagicMock()
         result = MagicMock()
@@ -827,28 +926,13 @@ class TestEventMethods:
         handler.handle_game_cancelled_event.assert_called_once_with(game, CancelledReason.NOT_VIABLE, comment)
         handler.manager.delete_player.assert_called_once_with(player)
 
-    def test_handle_player_disconnected_event_unknown(self):
-        websocket = MagicMock()
-        handler = EventHandler(MagicMock())
-        handler.handle_game_player_change_event = MagicMock()
-        handler.handle_game_cancelled_event = MagicMock()
-        handler.manager.lookup_player_for_websocket.return_value = None  # no player, no-op
-        handler.handle_player_disconnected_event(websocket)
-        handler.manager.lookup_player_for_websocket.assert_called_once_with(websocket)
-        handler.manager.lookup_game.assert_not_called()
-        handler.handle_game_player_change_event.assert_not_called()
-        handler.handle_game_cancelled_event.assert_not_called()
-
     def test_handle_player_disconnected_event_no_game(self):
         player = MagicMock()
-        websocket = MagicMock()
         handler = EventHandler(MagicMock())
         handler.handle_game_player_change_event = MagicMock()
         handler.handle_game_cancelled_event = MagicMock()
-        handler.manager.lookup_player_for_websocket.return_value = player
         handler.manager.lookup_game.return_value = None
-        handler.handle_player_disconnected_event(websocket)
-        handler.manager.lookup_player_for_websocket.assert_called_once_with(websocket)
+        handler.handle_player_disconnected_event(player)
         handler.manager.lookup_game.assert_called_once_with(player=player)
         player.mark_disconnected.assert_called_once()
         handler.handle_game_player_change_event.assert_not_called()
@@ -859,14 +943,11 @@ class TestEventMethods:
         player = MagicMock(handle="leela")
         game = MagicMock()
         game.is_viable.return_value = True
-        websocket = MagicMock()
         handler = EventHandler(MagicMock())
         handler.handle_game_player_change_event = MagicMock()
         handler.handle_game_cancelled_event = MagicMock()
-        handler.manager.lookup_player_for_websocket.return_value = player
         handler.manager.lookup_game.return_value = game
-        handler.handle_player_disconnected_event(websocket)
-        handler.manager.lookup_player_for_websocket.assert_called_once_with(websocket)
+        handler.handle_player_disconnected_event(player)
         handler.manager.lookup_game.assert_called_once_with(player=player)
         player.mark_disconnected.assert_called_once()
         handler.handle_game_player_change_event.assert_called_once_with(game, comment)
@@ -877,14 +958,11 @@ class TestEventMethods:
         player = MagicMock(handle="leela")
         game = MagicMock()
         game.is_viable.return_value = False
-        websocket = MagicMock()
         handler = EventHandler(MagicMock())
         handler.handle_game_player_change_event = MagicMock()
         handler.handle_game_cancelled_event = MagicMock()
-        handler.manager.lookup_player_for_websocket.return_value = player
         handler.manager.lookup_game.return_value = game
-        handler.handle_player_disconnected_event(websocket)
-        handler.manager.lookup_player_for_websocket.assert_called_once_with(websocket)
+        handler.handle_player_disconnected_event(player)
         handler.manager.lookup_game.assert_called_once_with(player=player)
         player.mark_disconnected.assert_called_once()
         handler.handle_game_player_change_event.assert_called_once_with(game, comment)
