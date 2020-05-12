@@ -81,6 +81,43 @@ _NAMES = [
     "Treebeard",
 ]
 
+
+@attr.s
+class TrackedWebsocket:
+    """The state that is tracked for a websocket within the state manager."""
+
+    websocket = attr.ib(type=WebSocketServerProtocol)
+    registration_date = attr.ib(type=DateTime)
+    last_active_date = attr.ib(type=DateTime)
+    activity_state = attr.ib(type=ActivityState, default=ActivityState.ACTIVE)
+    player_ids = attr.ib(type=OrderedSet[str])
+
+    @registration_date.default
+    def _default_registration_date(self) -> DateTime:
+        return pendulum.now()
+
+    @last_active_date.default
+    def _default_last_active_date(self) -> DateTime:
+        return pendulum.now()
+
+    @player_ids.default
+    def _default_player_ids(self) -> OrderedSet[str]:
+        return OrderedSet()
+
+    def mark_active(self) -> None:
+        """Mark the websocket as active."""
+        self.last_active_date = pendulum.now()
+        self.activity_state = ActivityState.ACTIVE
+
+    def mark_idle(self) -> None:
+        """Mark the websocket as idle."""
+        self.activity_state = ActivityState.IDLE
+
+    def mark_inactive(self) -> None:
+        """Mark the websocket as inactive."""
+        self.activity_state = ActivityState.INACTIVE
+
+
 # pylint: disable=too-many-instance-attributes
 @attr.s
 class TrackedPlayer:
@@ -381,6 +418,7 @@ class StateManager:
     """Manages system state."""
 
     lock = attr.ib(type=asyncio.Lock)
+    _websocket_map = attr.ib(type=Dict[WebSocketServerProtocol, TrackedWebsocket])
     _game_map = attr.ib(type=Dict[str, TrackedGame])
     _player_map = attr.ib(type=Dict[str, TrackedPlayer])
     _handle_map = attr.ib(type=Dict[str, str])
@@ -388,6 +426,10 @@ class StateManager:
     @lock.default
     def _default_lock(self) -> asyncio.Lock:
         return asyncio.Lock()
+
+    @_websocket_map.default
+    def _default_websocket_map(self) -> Dict[WebSocketServerProtocol, TrackedWebsocket]:
+        return {}
 
     @_game_map.default
     def _default_game_map(self) -> Dict[str, TrackedGame]:
@@ -401,17 +443,55 @@ class StateManager:
     def _default_handle_map(self) -> Dict[str, str]:
         return {}
 
+    def mark_active(self, player: TrackedPlayer) -> None:
+        """Mark a player and its associated websocket as active."""
+        websocket = self._websocket_map[player.websocket] if player.websocket else None
+        if not websocket:
+            raise ProcessingError(FailureReason.INTERNAL_ERROR, "Did not find player websocket")
+        player.mark_active()
+
+    def track_websocket(self, websocket: WebSocketServerProtocol) -> None:
+        """Track a connected websocket."""
+        if websocket in self._websocket_map:
+            raise ProcessingError(FailureReason.INTERNAL_ERROR, "Duplicate websocket encountered")
+        self._websocket_map[websocket] = TrackedWebsocket(websocket=websocket)
+
+    def delete_websocket(self, websocket: WebSocketServerProtocol) -> None:
+        """Delete a websocket, so it is no longer tracked."""
+        if websocket in self._websocket_map:
+            del self._websocket_map[websocket]
+
+    def get_websocket_count(self) -> int:
+        """Return the number of connected websockets in the system."""
+        return len(self._websocket_map)
+
+    def lookup_all_websockets(self) -> List[WebSocketServerProtocol]:
+        """Return a list of websockets for all tracked players."""
+        return list(self._websocket_map.keys())
+
+    def lookup_players_for_websocket(self, websocket: WebSocketServerProtocol) -> List[TrackedPlayer]:
+        """Look up the players associated with a websocket, if any."""
+        players = []
+        if websocket in self._websocket_map:
+            players = [self.lookup_player(player_id=player_id) for player_id in self._websocket_map[websocket].player_ids]
+        return [player for player in players if player is not None]
+
     def track_game(self, player: TrackedPlayer, advertised: AdvertiseGameContext) -> TrackedGame:
-        """Track a newly-advertised game, returning the tracked game."""
+        """Track a newly-advertised game."""
         game_id = "%s" % uuid4()
         self._game_map[game_id] = TrackedGame.for_context(player.handle, game_id, advertised)
         return self._game_map[game_id]
 
-    def total_game_count(self) -> int:
+    def delete_game(self, game: TrackedGame) -> None:
+        """Delete a tracked game, so it is no longer tracked."""
+        if game.game_id in self._game_map:
+            del self._game_map[game.game_id]
+
+    def get_total_game_count(self) -> int:
         """Return the total number of games in the system."""
         return len(self._game_map)
 
-    def in_progress_game_count(self) -> int:
+    def get_in_progress_game_count(self) -> int:
         """Return the number of in-progress games in the system."""
         return len([game for game in self._game_map.values() if game.is_in_progress()])
 
@@ -423,11 +503,6 @@ class StateManager:
             return self.lookup_game(game_id=player.game_id)
         else:
             return None
-
-    def delete_game(self, game: TrackedGame) -> None:
-        """Delete a tracked game, so it is no longer tracked."""
-        if game.game_id in self._game_map:
-            del self._game_map[game.game_id]
 
     def lookup_all_games(self) -> List[TrackedGame]:
         """Return a list of all tracked games."""
@@ -450,17 +525,26 @@ class StateManager:
         games = self.lookup_all_games()
         return [game for game in games if game.is_available(player)]
 
-    # TODO: requirements for this function come from the Register Player request
     def track_player(self, websocket: WebSocketServerProtocol, handle: str) -> TrackedPlayer:
-        """Track a newly-registered player, the tracked player."""
+        """Track a newly-registered player."""
         if handle in self._handle_map:
             raise ProcessingError(FailureReason.DUPLICATE_USER)
         player_id = "%s" % uuid4()
+        self._websocket_map[websocket].player_ids.add(player_id)
         self._player_map[player_id] = TrackedPlayer.for_context(player_id, websocket, handle)
         self._handle_map[handle] = player_id
         return self._player_map[player_id]
 
-    def registered_player_count(self) -> int:
+    def delete_player(self, player: TrackedPlayer) -> None:
+        """Delete a tracked player, so it is no longer tracked."""
+        if player.websocket and player.websocket in self._websocket_map:
+            self._websocket_map[player.websocket].player_ids.discard(player.player_id)
+        if player.handle in self._handle_map:
+            del self._handle_map[player.handle]
+        if player.player_id in self._player_map:
+            del self._player_map[player.player_id]
+
+    def get_registered_player_count(self) -> int:
         """Return the number of registered players in the system."""
         return len(self._player_map)
 
@@ -474,78 +558,35 @@ class StateManager:
         else:
             return None
 
-    def delete_player(self, player: TrackedPlayer) -> None:
-        """Delete a tracked player, so it is no longer tracked."""
-        if player.handle in self._handle_map:
-            del self._handle_map[player.handle]
-        if player.player_id in self._player_map:
-            del self._player_map[player.player_id]
-
     def lookup_all_players(self) -> List[TrackedPlayer]:
         """Return a list of all tracked players."""
         return list(self._player_map.values())
 
-    def lookup_websocket(
-        self, player: Optional[TrackedPlayer] = None, player_id: Optional[str] = None, handle: Optional[str] = None
-    ) -> Optional[WebSocketServerProtocol]:
-        """Look up the websocket for a player, player id or handle, returning None for an unknown or disconnected player."""
-        if player:
-            return player.websocket
-        elif player_id:
-            player = self.lookup_player(player_id=player_id)
-            return player.websocket if player else None
-        elif handle:
-            player = self.lookup_player(handle=handle)
-            return player.websocket if player else None
-        else:
-            return None
-
-    def lookup_websockets(
-        self,
-        players: Optional[List[TrackedPlayer]] = None,
-        player_ids: Optional[List[str]] = None,
-        handles: Optional[List[str]] = None,
-    ) -> List[WebSocketServerProtocol]:
-        """Look up the websockets for a list of players, player ids and/or handles, for players that are connected."""
-        websockets: OrderedSet[Optional[WebSocketServerProtocol]] = OrderedSet()
-        if players:
-            websockets.update([self.lookup_websocket(player=player) for player in players])
-        if player_ids:
-            websockets.update([self.lookup_websocket(player_id=player_id) for player_id in player_ids])
-        if handles:
-            websockets.update([self.lookup_websocket(handle=handle) for handle in handles])
-        return list([websocket for websocket in websockets if websocket is not None])
-
-    def lookup_all_websockets(self) -> List[WebSocketServerProtocol]:
-        """Return a list of websockets for all tracked players."""
-        return self.lookup_websockets(players=self.lookup_all_players())
-
-    def lookup_player_for_websocket(self, websocket: WebSocketServerProtocol) -> Optional[TrackedPlayer]:
-        """Look up the player associated with a websocket, if any."""
-        # We can't track this in a map because it's not a constant identifying aspect of a player
-        for player in self.lookup_all_players():
-            if websocket is self.lookup_websocket(player=player):
-                return player
-        return None
+    def lookup_websocket_activity(self) -> List[Tuple[TrackedWebsocket, DateTime, int]]:
+        """Look up the last active date and number of registered players for all websockets."""
+        result: List[Tuple[TrackedWebsocket, DateTime, int]] = []
+        for websocket in self._websocket_map.values():
+            result.append((websocket, websocket.last_active_date, len(websocket.player_ids)))
+        return result
 
     def lookup_player_activity(self) -> List[Tuple[TrackedPlayer, DateTime, ConnectionState]]:
         """Look up the last active date and connection state for all players."""
         result: List[Tuple[TrackedPlayer, DateTime, ConnectionState]] = []
-        for player in self.lookup_all_players():
+        for player in self._player_map.values():
             result.append((player, player.last_active_date, player.connection_state))
         return result
 
     def lookup_game_activity(self) -> List[Tuple[TrackedGame, DateTime]]:
         """Look up the last active date for all games."""
         result: List[Tuple[TrackedGame, DateTime]] = []
-        for game in self.lookup_all_games():
+        for game in self._game_map.values():
             result.append((game, game.last_active_date))
         return result
 
     def lookup_game_completion(self) -> List[Tuple[TrackedGame, Optional[DateTime]]]:
         """Look up the completed date for all completed games."""
         result: List[Tuple[TrackedGame, Optional[DateTime]]] = []
-        for game in self.lookup_all_games():
+        for game in self._game_map.values():
             if game.game_state == GameState.COMPLETED:
                 result.append((game, game.completed_date))
         return result

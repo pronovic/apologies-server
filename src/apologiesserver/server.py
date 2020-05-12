@@ -64,7 +64,7 @@ def _lookup_method(handler: EventHandler, message: MessageType) -> Callable[[Req
 
 
 def _handle_message(handler: EventHandler, message: Message, websocket: WebSocketServerProtocol) -> None:
-    """Handle a valid message received from a websocket client."""
+    """Handle a valid message received from a websocket client, assumed to be within the handler's lock."""
     if message.message == MessageType.REGISTER_PLAYER:
         handler.handle_register_player_request(message, websocket)
     else:
@@ -72,8 +72,8 @@ def _handle_message(handler: EventHandler, message: Message, websocket: WebSocke
         player = handler.manager.lookup_player(player_id=player_id)
         if not player:
             raise ProcessingError(FailureReason.INVALID_PLAYER)
+        handler.manager.mark_active(player)  # marks both the player and its websocket as active
         log.debug("Request is for player: %s", player)
-        player.mark_active()
         game = handler.manager.lookup_game(game_id=player.game_id)
         request = RequestContext(message, websocket, player, game)
         method = _lookup_method(handler, request.message.message)

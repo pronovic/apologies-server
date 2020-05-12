@@ -216,7 +216,7 @@ class EventHandler:
     def handle_register_player_request(self, message: Message, websocket: WebSocketServerProtocol) -> None:
         """Handle the Register Player request."""
         log.info("REQUEST[Register Player]")
-        if self.manager.registered_player_count() >= config().registered_player_limit:
+        if self.manager.get_registered_player_count() >= config().registered_player_limit:
             raise ProcessingError(FailureReason.USER_LIMIT)
         context = cast(RegisterPlayerContext, message.context)
         self.handle_player_registered_event(websocket, context.handle)
@@ -241,7 +241,7 @@ class EventHandler:
         log.info("REQUEST[Advertise Game]")
         if request.game:
             raise ProcessingError(FailureReason.ALREADY_PLAYING)
-        if self.manager.total_game_count() >= config().total_game_limit:
+        if self.manager.get_total_game_count() >= config().total_game_limit:
             raise ProcessingError(FailureReason.GAME_LIMIT)
         context = cast(AdvertiseGameContext, request.message.context)
         self.handle_game_advertised_event(request.player, context)
@@ -279,7 +279,7 @@ class EventHandler:
             raise ProcessingError(FailureReason.INVALID_GAME, "Game is already being played")
         if request.game.advertiser_handle != request.player.handle:
             raise ProcessingError(FailureReason.NOT_ADVERTISER)
-        if self.manager.in_progress_game_count() >= config().in_progress_game_limit:
+        if self.manager.get_in_progress_game_count() >= config().in_progress_game_limit:
             raise ProcessingError(FailureReason.GAME_LIMIT)
         self.handle_game_started_event(request.game)
 
@@ -335,7 +335,7 @@ class EventHandler:
     def handle_websocket_connected_event(self, websocket: WebSocketServerProtocol) -> None:
         """Handle the Websocket Connected event."""
         log.info("EVENT[Websocket Connected]: %s", websocket)
-        if self.manager.websocket_count() >= config().websocket_limit:
+        if self.manager.get_websocket_count() >= config().websocket_limit:
             raise ProcessingError(FailureReason.WEBSOCKET_LIMIT)
         self.manager.track_websocket(websocket)
 
@@ -480,7 +480,7 @@ class EventHandler:
         message = Message(MessageType.GAME_JOINED, context)
         self.queue.message(message, players=[player])
         if game.is_fully_joined():
-            if self.manager.in_progress_game_count() >= config().in_progress_game_limit:
+            if self.manager.get_in_progress_game_count() >= config().in_progress_game_limit:
                 # Rather than giving the caller an error, we just ignore the game and force the
                 # advertiser to manually start it sometime later.  At least then, if the limit
                 # has still been reached, the player receiving the error will be able to make

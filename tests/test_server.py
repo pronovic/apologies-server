@@ -169,7 +169,7 @@ class TestFunctions:
         _handle_message(handler, message, websocket)
         parse_authorization.assert_called_once_with(websocket)
         handler.manager.lookup_player.assert_called_once_with(player_id="player_id")
-        player.mark_active.assert_called_once()
+        handler.manager.mark_active.assert_called_once_with(player)
         handler.manager.lookup_game.assert_called_once_with(game_id="game_id")
         lookup_method.assert_called_once_with(handler, MessageType.LIST_PLAYERS)
         method.assert_called_once_with(request)

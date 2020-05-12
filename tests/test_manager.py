@@ -2,14 +2,15 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=redefined-outer-name,wildcard-import
 
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pendulum
 import pytest
 from apologies.game import GameMode, PlayerColor
+from ordered_set import OrderedSet
 
 from apologiesserver.interface import *
-from apologiesserver.manager import _MANAGER, _NAMES, StateManager, TrackedGame, TrackedPlayer, manager
+from apologiesserver.manager import _MANAGER, _NAMES, StateManager, TrackedGame, TrackedPlayer, TrackedWebsocket, manager
 
 from .util import random_string, to_date
 
@@ -55,6 +56,34 @@ class TestFunctions:
     def test_manager(self):
         assert _MANAGER is not None
         assert manager() is _MANAGER
+
+
+class TestTrackedWebsocket:
+    """
+    Test the TrackedWebsocket class.
+    """
+
+    # noinspection PyTypeChecker
+    def test_mark_active(self):
+        now = pendulum.now()
+        tracked = TrackedWebsocket(MagicMock())
+        tracked.last_active_date = None
+        tracked.activity_state = None
+        tracked.mark_active()
+        assert tracked.last_active_date >= now
+        assert tracked.activity_state == ActivityState.ACTIVE
+
+    def test_mark_idle(self):
+        tracked = TrackedWebsocket(MagicMock())
+        tracked.activity_state = None
+        tracked.mark_idle()
+        assert tracked.activity_state == ActivityState.IDLE
+
+    def test_mark_inactive(self):
+        tracked = TrackedWebsocket(MagicMock())
+        tracked.activity_state = None
+        tracked.mark_inactive()
+        assert tracked.activity_state == ActivityState.INACTIVE
 
 
 class TestTrackedPlayer:
@@ -526,6 +555,87 @@ class TestStateManager:
     Test the StateManager class.
     """
 
+    def test_mark_active_no_websocket(self):
+        player = MagicMock(websocket=None)
+        mgr = StateManager()
+        mgr.mark_active(player)
+        player.mark_active.assert_called_once()
+
+    def test_mark_active_unknown_websocket(self):
+        websocket = MagicMock()
+        player = MagicMock(websocket=websocket)
+        mgr = StateManager()
+        with pytest.raises(ProcessingError, match=r"Did not find player websocket"):
+            mgr.mark_active(player)
+        player.mark_active.assert_not_called()
+
+    def test_mark_active(self):
+        websocket = MagicMock()
+        player = MagicMock(websocket=websocket)
+        mgr = StateManager()
+        mgr._websocket_map[websocket] = MagicMock()
+        mgr.mark_active(player)
+        player.mark_active.assert_called_once()
+        mgr._websocket_map[websocket].mark_active.assert_called_once()
+
+    def test_track_websocket_duplicate(self):
+        original = MagicMock()
+        websocket = MagicMock()
+        mgr = StateManager()
+        mgr._websocket_map[websocket] = original
+        with pytest.raises(ProcessingError, match=r"Duplicate websocket encountered"):
+            mgr.track_websocket(websocket)
+        assert mgr._websocket_map[websocket] is original
+
+    @patch("apologiesserver.manager.pendulum.now")
+    def test_track_websocket(self, now):
+        now.return_value = to_date("2020-05-11T16:57:00,000")
+        websocket = MagicMock()
+        mgr = StateManager()
+        mgr.track_websocket(websocket)
+        assert mgr._websocket_map[websocket] == TrackedWebsocket(websocket)
+
+    def test_delete_websocket_unknown(self):
+        websocket = MagicMock()
+        mgr = StateManager()
+        mgr.delete_websocket(websocket)  # no-op because it's unknown
+
+    def test_delete_websocket(self):
+        websocket = MagicMock()
+        mgr = StateManager()
+        mgr._websocket_map[websocket] = MagicMock()
+        mgr.delete_websocket(websocket)
+        assert websocket not in mgr._websocket_map
+
+    def test_get_websocket_count(self):
+        mgr = StateManager()
+        mgr.track_websocket(MagicMock())
+        mgr.track_websocket(MagicMock())
+        mgr.track_websocket(MagicMock())
+        assert mgr.get_websocket_count() == 3
+
+    def test_lookup_all_websockets(self):
+        websocket1 = MagicMock()
+        websocket2 = MagicMock()
+        websocket3 = MagicMock()
+        mgr = StateManager()
+        mgr.track_websocket(websocket1)
+        mgr.track_websocket(websocket2)
+        mgr.track_websocket(websocket3)
+        assert mgr.lookup_all_websockets() == [websocket1, websocket2, websocket3]
+
+    def test_lookup_players_for_websocket(self):
+        player = MagicMock(player_id="player_id")
+        websocket = MagicMock()
+        mgr = StateManager()
+        mgr.lookup_player = MagicMock()
+        mgr.lookup_player.side_effect = [player, None]
+        mgr.track_websocket(websocket)
+        assert mgr.lookup_players_for_websocket(websocket) == []
+        mgr._websocket_map[websocket].player_ids.add("player_id")
+        mgr._websocket_map[websocket].player_ids.add("bogus")
+        assert mgr.lookup_players_for_websocket(websocket) == [player]
+
     @patch("apologiesserver.manager.pendulum.now")
     @patch("apologiesserver.manager.uuid4")
     def test_track_game(self, uuid4, now):
@@ -538,14 +648,22 @@ class TestStateManager:
         assert game == TrackedGame.for_context("leela", "game_id", advertised)
         assert mgr._game_map["game_id"] is game
 
-    def test_total_game_count(self):
+    def test_delete_game(self):
+        game = MagicMock()
+        mgr = StateManager()
+        mgr._game_map["game"] = game
+        mgr.delete_game(MagicMock(game_id="bogus"))  # safe to delete unknown game
+        mgr.delete_game(MagicMock(game_id="game"))
+        assert "game" not in mgr._game_map
+
+    def test_get_total_game_count(self):
         game1 = MagicMock()
         mgr = StateManager()
-        assert mgr.total_game_count() == 0
+        assert mgr.get_total_game_count() == 0
         mgr._game_map["game1"] = game1
-        assert mgr.total_game_count() == 1
+        assert mgr.get_total_game_count() == 1
 
-    def test_in_progress_game_count(self):
+    def test_get_in_progress_game_count(self):
         game1 = MagicMock()
         game1.is_in_progress.return_value = True
         game2 = MagicMock()
@@ -553,11 +671,11 @@ class TestStateManager:
         game3 = MagicMock()
         game3.is_in_progress.return_value = True
         mgr = StateManager()
-        assert mgr.in_progress_game_count() == 0
+        assert mgr.get_in_progress_game_count() == 0
         mgr._game_map["game1"] = game1
         mgr._game_map["game2"] = game2
         mgr._game_map["game3"] = game3
-        assert mgr.in_progress_game_count() == 2  # game1 and game3
+        assert mgr.get_in_progress_game_count() == 2  # game1 and game3
 
     def test_lookup_game_game_id(self):
         game = MagicMock()
@@ -574,14 +692,6 @@ class TestStateManager:
         assert mgr.lookup_game(player=MagicMock(game_id=None)) is None
         assert mgr.lookup_game(player=MagicMock(game_id="bogus")) is None
         assert mgr.lookup_game(player=MagicMock(game_id="game")) is game
-
-    def test_delete_game(self):
-        game = MagicMock()
-        mgr = StateManager()
-        mgr._game_map["game"] = game
-        mgr.delete_game(MagicMock(game_id="bogus"))  # safe to delete unknown game
-        mgr.delete_game(MagicMock(game_id="game"))
-        assert "game" not in mgr._game_map
 
     def test_lookup_all_games(self):
         game1 = MagicMock()
@@ -642,8 +752,10 @@ class TestStateManager:
         now.return_value = to_date("2020-05-11T16:57:00,000")
         websocket = MagicMock()
         mgr = StateManager()
+        mgr.track_websocket(websocket)  # this would always be done ahead of time, so do it here
         player = mgr.track_player(websocket, "handle")
         assert player == TrackedPlayer.for_context("player_id", websocket, "handle")
+        assert "player_id" in mgr._websocket_map[websocket].player_ids
         assert mgr._player_map["player_id"] is player
         assert mgr._handle_map["handle"] == "player_id"
         with pytest.raises(ProcessingError, match=r"Handle is already in use"):
@@ -651,12 +763,45 @@ class TestStateManager:
         assert mgr._player_map["player_id"] is player
         assert mgr._handle_map["handle"] == "player_id"
 
-    def test_registered_player_count(self):
+    def test_delete_player_no_websocket(self):
+        mgr = StateManager()
+        mgr._player_map["player_id"] = MagicMock()
+        mgr._handle_map["handle"] = MagicMock()
+        mgr.delete_player(MagicMock(player_id="bogus", handle="bogus", websocket=MagicMock()))  # safe to delete unknown stuff
+        mgr.delete_player(MagicMock(player_id="player_id", handle="handle", websocket=None))
+        assert "player_id" not in mgr._player_map
+        assert "handle" not in mgr._handle_map
+
+    def test_delete_player_unknown_websocket(self):
+        websocket = MagicMock()
+        mgr = StateManager()
+        # note: not tracking the websocket, so it will not exist when we try to look it up
+        mgr._player_map["player_id"] = MagicMock()
+        mgr._handle_map["handle"] = MagicMock()
+        mgr.delete_player(MagicMock(player_id="bogus", handle="bogus", websocket=MagicMock()))  # safe to delete unknown stuff
+        mgr.delete_player(MagicMock(player_id="player_id", handle="handle", websocket=websocket))
+        assert "player_id" not in mgr._player_map
+        assert "handle" not in mgr._handle_map
+
+    def test_delete_player(self):
+        websocket = MagicMock()
+        mgr = StateManager()
+        mgr.track_websocket(websocket)  # this would always be done ahead of time, so do it here
+        mgr._websocket_map[websocket].player_ids.add("player_id")
+        mgr._player_map["player_id"] = MagicMock()
+        mgr._handle_map["handle"] = MagicMock()
+        mgr.delete_player(MagicMock(player_id="bogus", handle="bogus", websocket=MagicMock()))  # safe to delete unknown stuff
+        mgr.delete_player(MagicMock(player_id="player_id", handle="handle", websocket=websocket))
+        assert "player_id" not in list(mgr._websocket_map[websocket].player_ids)
+        assert "player_id" not in mgr._player_map
+        assert "handle" not in mgr._handle_map
+
+    def test_get_registered_player_count(self):
         player = MagicMock()
         mgr = StateManager()
-        assert mgr.registered_player_count() == 0
+        assert mgr.get_registered_player_count() == 0
         mgr._player_map["player"] = player
-        assert mgr.registered_player_count() == 1
+        assert mgr.get_registered_player_count() == 1
 
     def test_lookup_player_player_id(self):
         player = MagicMock()
@@ -675,140 +820,39 @@ class TestStateManager:
         assert mgr.lookup_player(handle="bogus") is None
         assert mgr.lookup_player(handle="handle") is player
 
-    def test_delete_player(self):
-        player = MagicMock()
-        mgr = StateManager()
-        mgr._player_map["player"] = player
-        mgr._handle_map["handle"] = "player"
-        mgr.delete_player(MagicMock(player_id="bogus", handle="bogus"))  # safe to delete unknown player
-        mgr.delete_player(MagicMock(player_id="player", handle="handle"))
-        assert "player" not in mgr._player_map
-        assert "handle" not in mgr._handle_map
-
     def test_lookup_all_players(self):
         player = MagicMock()
         mgr = StateManager()
         mgr._player_map["player"] = player
         assert mgr.lookup_all_players() == [player]
 
-    def test_lookup_websocket_none(self):
-        mgr = StateManager()
-        assert mgr.lookup_websocket() is None
-
-    def test_lookup_websocket_player(self):
+    def test_lookup_websocket_activity(self):
+        date = to_date("2020-05-12T16:26:00,000")
         websocket = MagicMock()
-        player = MagicMock(websocket=websocket)
+        tracked = MagicMock(websocket=websocket, last_active_date=date, player_ids=OrderedSet(["1", "2", "3"]))
         mgr = StateManager()
-        assert mgr.lookup_websocket(player=player) == websocket
-
-    def test_lookup_websocket_player_id(self):
-        websocket = MagicMock()
-        player = MagicMock(websocket=websocket)
-        mgr = StateManager()
-        mgr.lookup_player = MagicMock()
-        mgr.lookup_player.return_value = player
-        assert mgr.lookup_websocket(player_id="player") == websocket
-        mgr.lookup_player.assert_called_once_with(player_id="player")
-
-    def test_lookup_websocket_player_id_none(self):
-        mgr = StateManager()
-        mgr.lookup_player = MagicMock()
-        mgr.lookup_player.return_value = None
-        assert mgr.lookup_websocket(player_id="player") is None
-        mgr.lookup_player.assert_called_once_with(player_id="player")
-
-    def test_lookup_websocket_handle(self):
-        websocket = MagicMock()
-        player = MagicMock(websocket=websocket)
-        mgr = StateManager()
-        mgr.lookup_player = MagicMock()
-        mgr.lookup_player.return_value = player
-        assert mgr.lookup_websocket(handle="handle") == websocket
-        mgr.lookup_player.assert_called_once_with(handle="handle")
-
-    def test_lookup_websocket_handle_none(self):
-        mgr = StateManager()
-        mgr.lookup_player = MagicMock()
-        mgr.lookup_player.return_value = None
-        assert mgr.lookup_websocket(handle="handle") is None
-        mgr.lookup_player.assert_called_once_with(handle="handle")
-
-    def test_lookup_websockets_none(self):
-        mgr = StateManager()
-        websockets = mgr.lookup_websockets()
-        assert websockets == []
-
-    def test_lookup_websockets(self):
-        websocket1 = MagicMock()
-        player1 = MagicMock()
-        websocket2 = MagicMock()
-        websocket3 = MagicMock()
-        mgr = StateManager()
-        mgr.lookup_websocket = MagicMock()
-        mgr.lookup_websocket.side_effect = [websocket1, websocket2, websocket3, None]
-        websockets = mgr.lookup_websockets(players=[player1], player_ids=["player2", "player4"], handles=["handle3"])
-        assert websockets == [websocket1, websocket2, websocket3]
-        mgr.lookup_websocket.assert_has_calls(
-            [call(player=player1), call(player_id="player2"), call(player_id="player4"), call(handle="handle3")]
-        )
-
-    def test_lookup_all_websockets(self):
-        websocket = MagicMock()
-        player = MagicMock()
-        mgr = StateManager()
-        mgr.lookup_all_players = MagicMock()
-        mgr.lookup_all_players.return_value = [player]
-        mgr.lookup_websockets = MagicMock()
-        mgr.lookup_websockets.return_value = [websocket]
-        assert mgr.lookup_all_websockets() == [websocket]
-        mgr.lookup_all_players.assert_called_once()
-        mgr.lookup_websockets.assert_called_once_with(players=[player])
-
-    def test_lookup_player_for_websocket_empty(self):
-        websocket = MagicMock()
-        mgr = StateManager()
-        mgr.lookup_all_players = MagicMock()
-        mgr.lookup_all_players.return_value = []
-        assert mgr.lookup_player_for_websocket(websocket) is None
-
-    def test_lookup_player_for_websocket_not_found(self):
-        websocket = MagicMock()
-        player = MagicMock(websocket=MagicMock())
-        mgr = StateManager()
-        mgr.lookup_all_players = MagicMock()
-        mgr.lookup_all_players.return_value = [player]
-        assert mgr.lookup_player_for_websocket(websocket) is None
-
-    def test_lookup_player_for_websocket_found(self):
-        websocket = MagicMock()
-        player = MagicMock(websocket=websocket)
-        mgr = StateManager()
-        mgr.lookup_all_players = MagicMock()
-        mgr.lookup_all_players.return_value = [player]
-        assert mgr.lookup_player_for_websocket(websocket) is player
+        mgr._websocket_map[websocket] = tracked
+        assert mgr.lookup_websocket_activity() == [(tracked, date, 3)]
 
     def test_lookup_player_activity(self):
-        date = to_date("2020-05-11T16:57:00,000")
-        state = ConnectionState.CONNECTED
-        player = MagicMock(last_active_date=date, connection_state=state)
+        date = to_date("2020-05-12T16:26:00,000")
+        tracked = MagicMock(player_id="player_id", last_active_date=date, connection_state=ConnectionState.CONNECTED)
         mgr = StateManager()
-        mgr.lookup_all_players = MagicMock()
-        mgr.lookup_all_players.return_value = [player]
-        assert mgr.lookup_player_activity() == [(player, date, state)]
+        mgr._player_map["player_id"] = tracked
+        assert mgr.lookup_player_activity() == [(tracked, date, ConnectionState.CONNECTED)]
 
     def test_lookup_game_activity(self):
-        date = to_date("2020-05-11T16:57:00,000")
-        game = MagicMock(last_active_date=date)
+        date = to_date("2020-05-12T16:26:00,000")
+        tracked = MagicMock(game_id="game_id", last_active_date=date)
         mgr = StateManager()
-        mgr.lookup_all_games = MagicMock()
-        mgr.lookup_all_games.return_value = [game]
-        assert mgr.lookup_game_activity() == [(game, date)]
+        mgr._game_map["game_id"] = tracked
+        assert mgr.lookup_game_activity() == [(tracked, date)]
 
     def test_lookup_game_completion(self):
-        date1 = to_date("2020-05-11T16:57:00,000")
-        game1 = MagicMock(game_state=GameState.COMPLETED, completed_date=date1)
-        game2 = MagicMock(game_state=GameState.PLAYING, completed_date=None)
+        date = to_date("2020-05-12T16:26:00,000")
+        tracked1 = MagicMock(game_id="1", completed_date=None, game_state=GameState.PLAYING)
+        tracked2 = MagicMock(game_id="2", completed_date=date, game_state=GameState.COMPLETED)
         mgr = StateManager()
-        mgr.lookup_all_games = MagicMock()
-        mgr.lookup_all_games.return_value = [game1, game2]
-        assert mgr.lookup_game_completion() == [(game1, date1)]  # uncompleted games are ignored
+        mgr._game_map["1"] = tracked1
+        mgr._game_map["2"] = tracked2
+        assert mgr.lookup_game_completion() == [(tracked2, date)]

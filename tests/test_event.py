@@ -342,7 +342,7 @@ class TestRequestMethods:
     def test_handle_register_player_request_below_limit(self, config):
         config.return_value = MagicMock(registered_player_limit=5)
         handler = EventHandler(MagicMock())
-        handler.manager.registered_player_count.return_value = 4
+        handler.manager.get_registered_player_count.return_value = 4
         handler.handle_player_registered_event = MagicMock()
         websocket = MagicMock()
         context = RegisterPlayerContext(handle="leela")
@@ -355,7 +355,7 @@ class TestRequestMethods:
     def test_handle_register_player_request_at_limit(self, config):
         config.return_value = MagicMock(registered_player_limit=5)
         handler = EventHandler(MagicMock())
-        handler.manager.registered_player_count.return_value = 5
+        handler.manager.get_registered_player_count.return_value = 5
         handler.handle_player_registered_event = MagicMock()
         websocket = MagicMock()
         context = RegisterPlayerContext(handle="leela")
@@ -415,7 +415,7 @@ class TestRequestMethods:
     def test_handle_advertise_game_request_below_limit(self, config):
         config.return_value = MagicMock(total_game_limit=5)
         handler = EventHandler(MagicMock())
-        handler.manager.total_game_count.return_value = 4
+        handler.manager.get_total_game_count.return_value = 4
         handler.handle_game_advertised_event = MagicMock()
         context = AdvertiseGameContext("name", GameMode.STANDARD, 3, Visibility.PUBLIC, ["fry", "bender"])
         message = Message(MessageType.ADVERTISE_GAME, context=context)
@@ -430,7 +430,7 @@ class TestRequestMethods:
     def test_handle_advertise_game_request_at_limit(self, config):
         config.return_value = MagicMock(total_game_limit=5)
         handler = EventHandler(MagicMock())
-        handler.manager.total_game_count.return_value = 5
+        handler.manager.get_total_game_count.return_value = 5
         handler.handle_game_advertised_event = MagicMock()
         context = AdvertiseGameContext("name", GameMode.STANDARD, 3, Visibility.PUBLIC, ["fry", "bender"])
         message = Message(MessageType.ADVERTISE_GAME, context=context)
@@ -568,7 +568,7 @@ class TestRequestMethods:
     def test_handle_start_game_request_below_limit(self, config):
         config.return_value = MagicMock(in_progress_game_limit=5)
         handler = EventHandler(MagicMock())
-        handler.manager.in_progress_game_count.return_value = 4
+        handler.manager.get_in_progress_game_count.return_value = 4
         handler.handle_game_started_event = MagicMock()
         message = Message(MessageType.START_GAME)
         websocket = MagicMock()
@@ -583,7 +583,7 @@ class TestRequestMethods:
     def test_handle_start_game_request_at_limit(self, config):
         config.return_value = MagicMock(in_progress_game_limit=5)
         handler = EventHandler(MagicMock())
-        handler.manager.in_progress_game_count.return_value = 5
+        handler.manager.get_in_progress_game_count.return_value = 5
         handler.handle_game_started_event = MagicMock()
         message = Message(MessageType.START_GAME)
         websocket = MagicMock()
@@ -790,7 +790,7 @@ class TestEventMethods:
         config.return_value = MagicMock(websocket_limit=5)
         websocket = MagicMock()
         handler = EventHandler(MagicMock())
-        handler.manager.websocket_count.return_value = 4
+        handler.manager.get_websocket_count.return_value = 4
         handler.handle_websocket_connected_event(websocket)
         handler.manager.track_websocket.assert_called_once_with(websocket)
 
@@ -799,7 +799,7 @@ class TestEventMethods:
         config.return_value = MagicMock(websocket_limit=5)
         websocket = MagicMock()
         handler = EventHandler(MagicMock())
-        handler.manager.websocket_count.return_value = 5
+        handler.manager.get_websocket_count.return_value = 5
         with pytest.raises(ProcessingError, match=r"Connection limit reached"):
             handler.handle_websocket_connected_event(websocket)
         handler.manager.track_websocket.assert_not_called()
@@ -1124,7 +1124,7 @@ class TestEventMethods:
         message = Message(MessageType.GAME_JOINED, context=context)
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
-        handler.manager.in_progress_game_count.return_value = 4
+        handler.manager.get_in_progress_game_count.return_value = 4
         handler.manager.lookup_game.return_value = game
         handler.handle_game_started_event = MagicMock()
         handler.handle_game_joined_event(player, game=game)
@@ -1147,7 +1147,7 @@ class TestEventMethods:
         message = Message(MessageType.GAME_JOINED, context=context)
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
-        handler.manager.in_progress_game_count.return_value = 5
+        handler.manager.get_in_progress_game_count.return_value = 5
         handler.manager.lookup_game.return_value = game
         handler.handle_game_started_event = MagicMock()
         handler.handle_game_joined_event(player, game=game)
