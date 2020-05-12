@@ -995,8 +995,9 @@ class TestEventMethods:
         player.mark_idle.assert_not_called()
 
     def test_handle_player_idle_event_change(self):
-        player = MagicMock(activity_state=None)
-        message = Message(MessageType.PLAYER_IDLE)
+        player = MagicMock(handle="handle", activity_state=None)
+        context = PlayerIdleContext(handle="handle")
+        message = Message(MessageType.PLAYER_IDLE, context=context)
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
         handler.handle_player_idle_event(player)
@@ -1018,9 +1019,10 @@ class TestEventMethods:
 
     def test_handle_player_inactive_event_change(self):
         websocket = MagicMock()
-        player = MagicMock(websocket=websocket, activity_state=None)
+        player = MagicMock(handle="handle", websocket=websocket, activity_state=None)
         game = MagicMock()
-        message = Message(MessageType.PLAYER_INACTIVE)
+        context = PlayerInactiveContext(handle="handle")
+        message = Message(MessageType.PLAYER_INACTIVE, context=context)
         handler = EventHandler(MagicMock())
         handler.handle_player_unregistered_event = MagicMock()
         handler.queue.message = MagicMock()
@@ -1200,8 +1202,9 @@ class TestEventMethods:
 
     def test_handle_game_started_event(self):
         player = MagicMock()
-        game = MagicMock()
-        message = Message(MessageType.GAME_STARTED)
+        game = MagicMock(game_id="game")
+        context = GameStartedContext(game_id="game")
+        message = Message(MessageType.GAME_STARTED, context=context)
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
         handler.handle_game_player_change_event = MagicMock()
@@ -1218,8 +1221,8 @@ class TestEventMethods:
 
     def test_handle_game_cancelled_event_notify(self):
         player = MagicMock()
-        game = MagicMock()
-        context = GameCancelledContext(CancelledReason.SHUTDOWN, "comment")
+        game = MagicMock(game_id="game")
+        context = GameCancelledContext("game", CancelledReason.SHUTDOWN, "comment")
         message = Message(MessageType.GAME_CANCELLED, context=context)
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
@@ -1250,8 +1253,8 @@ class TestEventMethods:
 
     def test_handle_game_completed_event(self):
         player = MagicMock()
-        game = MagicMock()
-        context = GameCompletedContext("comment")
+        game = MagicMock(game_id="game")
+        context = GameCompletedContext("game", "comment")
         message = Message(MessageType.GAME_COMPLETED, context=context)
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
@@ -1274,8 +1277,9 @@ class TestEventMethods:
 
     def test_handle_game_idle_event_change(self):
         player = MagicMock()
-        game = MagicMock(activity_state=None)
-        message = Message(MessageType.GAME_IDLE)
+        game = MagicMock(game_id="game", activity_state=None)
+        context = GameIdleContext(game_id="game")
+        message = Message(MessageType.GAME_IDLE, context=context)
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
         handler.manager.lookup_game_players.return_value = [player]
@@ -1291,11 +1295,17 @@ class TestEventMethods:
         handler.handle_game_cancelled_event.assert_not_called()
 
     def test_handle_game_inactive_event_change(self):
-        game = MagicMock(activity_state=None)
+        player = MagicMock()
+        game = MagicMock(game_id="game", activity_state=None)
+        context = GameInactiveContext(game_id="game")
+        message = Message(MessageType.GAME_INACTIVE, context=context)
         handler = EventHandler(MagicMock())
+        handler.queue.message = MagicMock()
         handler.handle_game_cancelled_event = MagicMock()
+        handler.manager.lookup_game_players.return_value = [player]
         handler.handle_game_inactive_event(game)
         game.mark_inactive.assert_called_once()
+        handler.queue.message.assert_called_once_with(message, players=[player])
         handler.handle_game_cancelled_event.assert_called_once_with(game, CancelledReason.INACTIVE)
 
     def test_handle_game_obsolete_event(self):
@@ -1369,9 +1379,9 @@ class TestEventMethods:
     def test_handle_game_player_change_event(self):
         game_player = MagicMock()
         player = MagicMock()
-        game = MagicMock()
+        game = MagicMock(game_id="game")
         game.get_game_players.return_value = [game_player]
-        context = GamePlayerChangeContext(comment="comment", players=[game_player])
+        context = GamePlayerChangeContext(game_id="game", comment="comment", players=[game_player])
         message = Message(MessageType.GAME_PLAYER_CHANGE, context=context)
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
@@ -1381,10 +1391,10 @@ class TestEventMethods:
 
     @patch("apologiesserver.event.GameStateChangeContext")
     def test_handle_game_state_change_event_specific_player(self, game_state_change_context):
-        context = GameStateChangeContext(player=None, opponents=None)
+        context = GameStateChangeContext(game_id="game", player=None, opponents=None)
         player = MagicMock()
         view = MagicMock()
-        game = MagicMock()
+        game = MagicMock(game_id="game")
         game.get_player_view.return_value = view
         game_state_change_context.for_view.return_value = context
         message = Message(MessageType.GAME_STATE_CHANGE, context=context)
@@ -1397,10 +1407,10 @@ class TestEventMethods:
 
     @patch("apologiesserver.event.GameStateChangeContext")
     def test_handle_game_state_change_event_game_players(self, game_state_change_context):
-        context = GameStateChangeContext(player=None, opponents=None)
+        context = GameStateChangeContext(game_id="game", player=None, opponents=None)
         player = MagicMock()
         view = MagicMock()
-        game = MagicMock()
+        game = MagicMock(game_id="game")
         game.get_player_view.return_value = view
         game_state_change_context.for_view.return_value = context
         message = Message(MessageType.GAME_STATE_CHANGE, context=context)
@@ -1414,8 +1424,8 @@ class TestEventMethods:
 
     @patch("apologiesserver.event.GamePlayerTurnContext")
     def test_handle_game_player_turn_event(self, game_player_turn_context):
-        context = GamePlayerTurnContext(None, None)
-        player = MagicMock()
+        context = GamePlayerTurnContext("handle", "game", None, None)
+        player = MagicMock(handle="handle", game_id="game")
         moves = [MagicMock()]
         game_player_turn_context.for_moves.return_value = context
         message = Message(MessageType.GAME_PLAYER_TURN, context=context)

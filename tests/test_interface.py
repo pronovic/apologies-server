@@ -104,7 +104,8 @@ class TestProcessingError:
 class TestGameStateChangeContext:
     def test_for_view(self) -> None:
         view = create_view()
-        context = GameStateChangeContext.for_view(view)
+        context = GameStateChangeContext.for_view("game", view)
+        assert context.game_id == "game"
 
         player = context.player
         assert player.color == PlayerColor.RED
@@ -129,7 +130,9 @@ class TestGameStateChangeContext:
 class TestGamePlayerTurnContext:
     def test_for_moves_simple(self) -> None:
         moves = create_moves_simple()
-        context = GamePlayerTurnContext.for_moves(moves)
+        context = GamePlayerTurnContext.for_moves("handle", "game", moves)
+        assert context.handle == "handle"
+        assert context.game_id == "game"
 
         assert context.drawn_card == CardType.CARD_APOLOGIES  # because there is only one card among the moves
         assert len(context.moves) == 1
@@ -144,7 +147,9 @@ class TestGamePlayerTurnContext:
 
     def test_for_moves_complex(self) -> None:
         moves = create_moves_complex()
-        context = GamePlayerTurnContext.for_moves(moves)
+        context = GamePlayerTurnContext.for_moves("handle", "game", moves)
+        assert context.handle == "handle"
+        assert context.game_id == "game"
 
         assert context.drawn_card is None  # because there is more than one card among the legal moves
         assert len(context.moves) == 2
@@ -187,8 +192,8 @@ class TestGeneral:
             Message(MessageType.REGISTER_PLAYER, None)
         with pytest.raises(ValueError, match=r"Message type GAME_JOINED does not support this context"):
             Message(MessageType.GAME_JOINED, "Hello")
-        with pytest.raises(ValueError, match=r"Message type PLAYER_IDLE does not allow a context"):
-            Message(MessageType.PLAYER_IDLE, "Hello")
+        with pytest.raises(ValueError, match=r"Message type WEBSOCKET_INACTIVE does not allow a context"):
+            Message(MessageType.WEBSOCKET_INACTIVE, "Hello")
 
     def test_from_json_missing_message(self) -> None:
         data = """
@@ -778,7 +783,7 @@ class TestRequest:
 
 class TestEvent:
     def test_request_failed_roundtrip(self) -> None:
-        context = RequestFailedContext(FailureReason.INTERNAL_ERROR, "it didn't work")
+        context = RequestFailedContext(FailureReason.INTERNAL_ERROR, "it didn't work", "handle")
         message = Message(MessageType.REQUEST_FAILED, context)
         roundtrip(message)
 
@@ -815,16 +820,14 @@ class TestEvent:
         message = Message(MessageType.PLAYER_REGISTERED, context)
         roundtrip(message)
 
-    def test_player_disconnected_roundtrip(self) -> None:
-        message = Message(MessageType.PLAYER_DISCONNECTED)
-        roundtrip(message)
-
     def test_player_idle_roundtrip(self) -> None:
-        message = Message(MessageType.PLAYER_IDLE)
+        context = PlayerIdleContext("handle")
+        message = Message(MessageType.PLAYER_IDLE, context=context)
         roundtrip(message)
 
     def test_player_inactive_roundtrip(self) -> None:
-        message = Message(MessageType.PLAYER_INACTIVE)
+        context = PlayerInactiveContext("handle")
+        message = Message(MessageType.PLAYER_INACTIVE, context=context)
         roundtrip(message)
 
     def test_player_message_received_roundtrip(self) -> None:
@@ -850,47 +853,46 @@ class TestEvent:
         roundtrip(message)
 
     def test_game_started_roundtrip(self) -> None:
-        message = Message(MessageType.GAME_STARTED)
+        context = GameStartedContext("game")
+        message = Message(MessageType.GAME_STARTED, context=context)
         roundtrip(message)
 
     def test_game_cancelled_roundtrip(self) -> None:
-        context = GameCancelledContext(CancelledReason.CANCELLED, "YELLOW player (nibbler) quit")
+        context = GameCancelledContext("game", CancelledReason.CANCELLED, "YELLOW player (nibbler) quit")
         message = Message(MessageType.GAME_CANCELLED, context)
         roundtrip(message)
 
     def test_game_completed_roundtrip(self) -> None:
-        context = GameCompletedContext("YELLOW player (nibbler) won after 46 turns")
+        context = GameCompletedContext("game", "YELLOW player (nibbler) won after 46 turns")
         message = Message(MessageType.GAME_COMPLETED, context)
         roundtrip(message)
 
     def test_game_idle_roundtrip(self) -> None:
-        message = Message(MessageType.GAME_IDLE)
+        context = GameIdleContext("game")
+        message = Message(MessageType.GAME_IDLE, context=context)
         roundtrip(message)
 
     def test_game_inactive_roundtrip(self) -> None:
-        message = Message(MessageType.GAME_INACTIVE)
-        roundtrip(message)
-
-    def test_game_obsolete_roundtrip(self) -> None:
-        message = Message(MessageType.GAME_OBSOLETE)
+        context = GameInactiveContext("game")
+        message = Message(MessageType.GAME_INACTIVE, context=context)
         roundtrip(message)
 
     def test_game_player_change_roundtrip(self) -> None:
         red = GamePlayer("leela", PlayerColor.RED, PlayerType.HUMAN, PlayerState.QUIT)
         yellow = GamePlayer("Legolas", PlayerColor.YELLOW, PlayerType.PROGRAMMATIC, PlayerState.PLAYING)
         players = [red, yellow]
-        context = GamePlayerChangeContext("YELLOW player (leela) quit", players)
+        context = GamePlayerChangeContext("game", "YELLOW player (leela) quit", players)
         message = Message(MessageType.GAME_PLAYER_CHANGE, context)
         roundtrip(message)
 
     def test_game_state_change_roundtrip(self) -> None:
         view = create_view()
-        context = GameStateChangeContext.for_view(view)
+        context = GameStateChangeContext.for_view("game", view)
         message = Message(MessageType.GAME_STATE_CHANGE, context)
         roundtrip(message)
 
     def test_game_player_turn_roundtrip(self) -> None:
         moves = create_moves_complex()
-        context = GamePlayerTurnContext.for_moves(moves)
+        context = GamePlayerTurnContext.for_moves("handle", "game", moves)
         message = Message(MessageType.GAME_PLAYER_TURN, context)
         roundtrip(message)

@@ -60,7 +60,7 @@ def _lookup_method(handler: EventHandler, message: MessageType) -> Callable[[Req
     elif message == MessageType.SEND_MESSAGE:
         return handler.handle_send_message_request
     else:
-        raise ProcessingError(FailureReason.INTERNAL_ERROR, "Invalid request %s" % message.name)
+        raise ProcessingError(FailureReason.INTERNAL_ERROR, comment="Invalid request %s" % message.name)
 
 
 def _handle_message(handler: EventHandler, message: Message, websocket: WebSocketServerProtocol) -> None:
@@ -118,7 +118,10 @@ async def _handle_exception(exception: Exception, websocket: WebSocketServerProt
             raise exception
         except ProcessingError as e:
             disconnect = e.reason == FailureReason.WEBSOCKET_LIMIT  # this is a special case that can't easily be handled elsewhere
-            context = RequestFailedContext(e.reason, e.comment if e.comment else e.reason.value)
+            reason = e.reason
+            comment = e.comment if e.comment else e.reason.value
+            handle = e.handle
+            context = RequestFailedContext(reason=reason, comment=comment, handle=handle)
         except ValueError as e:
             context = RequestFailedContext(FailureReason.INVALID_REQUEST, str(e))
         except Exception as e:

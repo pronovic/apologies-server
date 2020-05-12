@@ -446,7 +446,7 @@ class StateManager:
     def mark_active(self, player: TrackedPlayer) -> None:
         """Mark a player and its associated websocket as active."""
         if not player.websocket or player.websocket not in self._websocket_map:
-            raise ProcessingError(FailureReason.INTERNAL_ERROR, "Did not find player websocket")
+            raise ProcessingError(FailureReason.INTERNAL_ERROR, comment="Did not find player websocket", handle=player.handle)
         websocket = self._websocket_map[player.websocket]
         websocket.mark_active()
         player.mark_active()
@@ -454,7 +454,7 @@ class StateManager:
     def track_websocket(self, websocket: WebSocketServerProtocol) -> None:
         """Track a connected websocket."""
         if websocket in self._websocket_map:
-            raise ProcessingError(FailureReason.INTERNAL_ERROR, "Duplicate websocket encountered")
+            raise ProcessingError(FailureReason.INTERNAL_ERROR, comment="Duplicate websocket encountered")
         self._websocket_map[websocket] = TrackedWebsocket(websocket=websocket)
 
     def delete_websocket(self, websocket: WebSocketServerProtocol) -> None:
@@ -529,7 +529,7 @@ class StateManager:
     def track_player(self, websocket: WebSocketServerProtocol, handle: str) -> TrackedPlayer:
         """Track a newly-registered player."""
         if handle in self._handle_map:
-            raise ProcessingError(FailureReason.DUPLICATE_USER)
+            raise ProcessingError(FailureReason.DUPLICATE_USER, handle=handle)
         player_id = "%s" % uuid4()
         self._websocket_map[websocket].player_ids.add(player_id)
         self._player_map[player_id] = TrackedPlayer.for_context(player_id, websocket, handle)

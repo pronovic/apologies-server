@@ -60,12 +60,17 @@ __all__ = [
     "RegisteredPlayersContext",
     "AvailableGamesContext",
     "PlayerRegisteredContext",
+    "PlayerIdleContext",
+    "PlayerInactiveContext",
     "PlayerMessageReceivedContext",
     "GameAdvertisedContext",
     "GameInvitationContext",
     "GameJoinedContext",
+    "GameStartedContext",
     "GameCancelledContext",
     "GameCompletedContext",
+    "GameIdleContext",
+    "GameInactiveContext",
     "GamePlayerChangeContext",
     "GameStateChangeContext",
     "GamePlayerTurnContext",
@@ -175,7 +180,6 @@ class MessageType(Enum):
     REGISTERED_PLAYERS = "Registered Players"
     AVAILABLE_GAMES = "Available Games"
     PLAYER_REGISTERED = "Player Registered"
-    PLAYER_DISCONNECTED = "Player Disconnected"
     WEBSOCKET_IDLE = "Connection Idle"
     WEBSOCKET_INACTIVE = "Connection Inactive"
     PLAYER_IDLE = "Player Idle"
@@ -189,7 +193,6 @@ class MessageType(Enum):
     GAME_COMPLETED = "Game Completed"
     GAME_IDLE = "Game Idle"
     GAME_INACTIVE = "Game Inactive"
-    GAME_OBSOLETE = "Game Obsolete"
     GAME_PLAYER_CHANGE = "Game Player Change"
     GAME_STATE_CHANGE = "Game State Change"
     GAME_PLAYER_TURN = "Game Player Turn"
@@ -201,6 +204,7 @@ class ProcessingError(RuntimeError):
 
     reason = attr.ib(type=FailureReason)
     comment = attr.ib(type=Optional[str], default=None)
+    handle = attr.ib(type=Optional[str], default=None)
 
     def __repr__(self) -> str:
         return self.comment if self.comment else self.reason.value  # type: ignore
@@ -393,6 +397,7 @@ class RequestFailedContext(Context):
 
     reason = attr.ib(type=FailureReason)
     comment = attr.ib(type=Optional[str])
+    handle = attr.ib(type=Optional[str], default=None)
 
 
 @attr.s(frozen=True)
@@ -411,15 +416,29 @@ class AvailableGamesContext(Context):
 
 @attr.s(frozen=True)
 class PlayerRegisteredContext(Context):
-    """Context for an PLAYER_REGISTERED event."""
+    """Context for a PLAYER_REGISTERED event."""
 
     player_id = attr.ib(type=str)
     handle = attr.ib(type=str)
 
 
 @attr.s(frozen=True)
+class PlayerIdleContext(Context):
+    """Context for a PLAYER_IDLE event."""
+
+    handle = attr.ib(type=str)
+
+
+@attr.s(frozen=True)
+class PlayerInactiveContext(Context):
+    """Context for a PLAYER_INACTIVE event."""
+
+    handle = attr.ib(type=str)
+
+
+@attr.s(frozen=True)
 class PlayerMessageReceivedContext(Context):
-    """Context for an PLAYER_MESSAGE_RECEIVED event."""
+    """Context for a PLAYER_MESSAGE_RECEIVED event."""
 
     sender_handle = attr.ib(type=str)
     recipient_handles = attr.ib(type=List[str])
@@ -428,77 +447,104 @@ class PlayerMessageReceivedContext(Context):
 
 @attr.s(frozen=True)
 class GameAdvertisedContext(Context):
-    """Context for an GAME_ADVERTISED event."""
+    """Context for a GAME_ADVERTISED event."""
 
     game = attr.ib(type=AdvertisedGame)
 
 
 @attr.s(frozen=True)
 class GameInvitationContext(Context):
-    """Context for an GAME_INVITATION event."""
+    """Context for a GAME_INVITATION event."""
 
     game = attr.ib(type=AdvertisedGame)
 
 
 @attr.s(frozen=True)
 class GameJoinedContext(Context):
-    """Context for an GAME_JOINED event."""
+    """Context for a GAME_JOINED event."""
+
+    game_id = attr.ib(type=str)
+
+
+@attr.s(frozen=True)
+class GameStartedContext(Context):
+    """Context for a GAME_STARTED event."""
 
     game_id = attr.ib(type=str)
 
 
 @attr.s(frozen=True)
 class GameCancelledContext(Context):
-    """Context for an GAME_CANCELLED event."""
+    """Context for a GAME_CANCELLED event."""
 
+    game_id = attr.ib(type=str)
     reason = attr.ib(type=CancelledReason)
     comment = attr.ib(type=Optional[str])
 
 
 @attr.s(frozen=True)
 class GameCompletedContext(Context):
-    """Context for an GAME_COMPLETED event."""
+    """Context for a GAME_COMPLETED event."""
 
+    game_id = attr.ib(type=str)
     comment = attr.ib(type=Optional[str])
 
 
 @attr.s(frozen=True)
-class GamePlayerChangeContext(Context):
-    """Context for an GAME_PLAYER_CHANGE event."""
+class GameIdleContext(Context):
+    """Context for a GAME_IDLE event."""
 
+    game_id = attr.ib(type=str)
+
+
+@attr.s(frozen=True)
+class GameInactiveContext(Context):
+    """Context for a GAME_INACTIVE event."""
+
+    game_id = attr.ib(type=str)
+
+
+@attr.s(frozen=True)
+class GamePlayerChangeContext(Context):
+    """Context for a GAME_PLAYER_CHANGE event."""
+
+    game_id = attr.ib(type=str)
     comment = attr.ib(type=Optional[str])
     players = attr.ib(type=List[GamePlayer])
 
 
 @attr.s(frozen=True)
 class GameStateChangeContext(Context):
-    """Context for an GAME_STATE_CHANGE event."""
+    """Context for a GAME_STATE_CHANGE event."""
 
+    game_id = attr.ib(type=str)
     player = attr.ib(type=GameStatePlayer)
     opponents = attr.ib(type=List[GameStatePlayer])
 
     @staticmethod
-    def for_view(view: PlayerView) -> GameStateChangeContext:
+    def for_view(game_id: str, view: PlayerView) -> GameStateChangeContext:
         """Create a GameStateChangeContext based on apologies.game.PlayerView."""
         player = GameStatePlayer.for_player(view.player)
         opponents = [GameStatePlayer.for_player(opponent) for opponent in view.opponents.values()]
-        return GameStateChangeContext(player, opponents)
+        return GameStateChangeContext(game_id, player, opponents)
 
 
 @attr.s(frozen=True)
 class GamePlayerTurnContext(Context):
-    """Context for an GAME_PLAYER_TURN event."""
+    """Context for a GAME_PLAYER_TURN event."""
 
+    handle = attr.ib(type=str)
+    game_id = attr.ib(type=str)
     drawn_card = attr.ib(type=Optional[CardType])
     moves = attr.ib(type=Dict[str, GameMove])
 
     @staticmethod
-    def for_moves(moves: List[Move]) -> GamePlayerTurnContext:
+    def for_moves(handle: str, game_id: str, moves: List[Move]) -> GamePlayerTurnContext:
         """Create a GamePlayerTurnContext based on a sequence of apologies.rules.Move."""
         cards = {move.card.cardtype for move in moves}
         drawn_card = None if len(cards) > 1 else next(iter(cards))  # if there's only one card, it's the one they drew from the deck
         converted = {move.id: GameMove.for_move(move) for move in moves}
-        return GamePlayerTurnContext(drawn_card, converted)
+        return GamePlayerTurnContext(handle, game_id, drawn_card, converted)
 
 
 # Map from MessageType to context
@@ -523,19 +569,17 @@ _CONTEXT: Dict[MessageType, Optional[Type[Context]]] = {
     MessageType.REGISTERED_PLAYERS: RegisteredPlayersContext,
     MessageType.AVAILABLE_GAMES: AvailableGamesContext,
     MessageType.PLAYER_REGISTERED: PlayerRegisteredContext,
-    MessageType.PLAYER_DISCONNECTED: None,
-    MessageType.PLAYER_IDLE: None,
-    MessageType.PLAYER_INACTIVE: None,
+    MessageType.PLAYER_IDLE: PlayerIdleContext,
+    MessageType.PLAYER_INACTIVE: PlayerInactiveContext,
     MessageType.PLAYER_MESSAGE_RECEIVED: PlayerMessageReceivedContext,
     MessageType.GAME_ADVERTISED: GameAdvertisedContext,
     MessageType.GAME_INVITATION: GameInvitationContext,
     MessageType.GAME_JOINED: GameJoinedContext,
-    MessageType.GAME_STARTED: None,
+    MessageType.GAME_STARTED: GameStartedContext,
     MessageType.GAME_CANCELLED: GameCancelledContext,
     MessageType.GAME_COMPLETED: GameCompletedContext,
-    MessageType.GAME_IDLE: None,
-    MessageType.GAME_INACTIVE: None,
-    MessageType.GAME_OBSOLETE: None,
+    MessageType.GAME_IDLE: GameIdleContext,
+    MessageType.GAME_INACTIVE: GameInactiveContext,
     MessageType.GAME_PLAYER_CHANGE: GamePlayerChangeContext,
     MessageType.GAME_STATE_CHANGE: GameStateChangeContext,
     MessageType.GAME_PLAYER_TURN: GamePlayerTurnContext,

@@ -345,16 +345,30 @@ Other events only change internal server state, or trigger other events.
 
 This event is triggered if a player request is syntactically invalid, if the
 arguments are illegal, or if the request fails for some other reason.   The
-message provides context to the sender, telling them what happened.
+message provides context to the sender, telling them what happened.  If possible,
+the handle of the associated player is provided.  If the handle can't be
+established, then it will be `null`.
 
-Example message:
+Example messages:
 
 ```json
 {
   "message": "REQUEST_FAILED",
   "context": {
-    "reason": "USER_LIMIT",
-    "comment": "The registered user limit has been reached; please try again later"
+    "reason": "WEBSOCKET_LIMIT",
+    "comment": "Connection limit reached; try again later",
+    "handle": null
+  }
+}
+```
+
+```json
+{
+  "message": "REQUEST_FAILED",
+  "context": {
+    "reason": "NOT_PLAYING",
+    "comment": "Player is not playing a game",
+    "handle": "leela"
   }
 }
 ```
@@ -544,6 +558,9 @@ Example message:
 ```json
 {
   "message": "PLAYER_IDLE"
+  "context": {
+    "handle": "leela"
+  }
 }
 ```
 
@@ -559,6 +576,9 @@ Example message:
 ```json
 {
   "message": "PLAYER_INACTIVE"
+  "context": {
+    "handle": "leela"
+  }
 }
 ```
 
@@ -660,6 +680,9 @@ Example message:
 ```json
 {
   "message": "GAME_STARTED"
+  "context": {
+    "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe"
+  }
 }
 ```
 
@@ -679,6 +702,7 @@ Example message:
 {
   "message": "GAME_CANCELLED",
   "context": {
+    "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe",
     "reason": "NOT_VIABLE",
     "comment": "Player nibbler unregistered"
   }
@@ -697,6 +721,7 @@ Example message:
 {
   "message": "GAME_COMPLETED",
   "context": {
+    "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe",
     "comment": "Player nibbler (YELLOW) won the game after 46 turns"
   }
 }
@@ -713,14 +738,29 @@ Example message:
 ```json
 {
   "message": "GAME_IDLE"
+  "context": {
+    "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe"
+  }
 }
 ```
 
 ### Game Inactive
 
 This event is triggered when the _Idle Game Check_ determines that an idle game
-has exceeded the inactive threshold.  The server will immediately cancel the
-game, triggering a _Game Cancelled_ event.
+has exceeded the inactive threshold.  The generated message notifies all
+players that the game is inactive and will be cancelled.  The server will then
+immediately cancel the game, triggering a _Game Cancelled_ event.
+
+Example message:
+
+```json
+{
+  "message": "GAME_INACTIVE"
+  "context": {
+    "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe"
+  }
+}
+```
 
 ### Game Obsolete
 
@@ -760,6 +800,7 @@ Example message:
 {
   "message": "GAME_PLAYER_CHANGE",
   "context": {
+    "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe",
     "comment": "Player nibbler (YELLOW) quit the game."
     "players": [
       {
@@ -811,6 +852,7 @@ Example message:
 {
   "message": "GAME_STATE_CHANGE",
   "context": {
+    "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe",
     "player": {
       "color": "RED",
       "turns": 16,
@@ -913,6 +955,8 @@ Example message:
 {
   "message": "GAME_PLAYER_TURN",
   "context": {
+    "handle": "leela",
+    "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe",
     "drawn_card": "CARD_APOLOGIES",
     "moves": {
       "a9fff13fbe5e46feaeda87382bf4c3b8": {

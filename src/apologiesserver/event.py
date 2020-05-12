@@ -216,9 +216,9 @@ class EventHandler:
     def handle_register_player_request(self, message: Message, websocket: WebSocketServerProtocol) -> None:
         """Handle the Register Player request."""
         log.info("REQUEST[Register Player]")
-        if self.manager.get_registered_player_count() >= config().registered_player_limit:
-            raise ProcessingError(FailureReason.USER_LIMIT)
         context = cast(RegisterPlayerContext, message.context)
+        if self.manager.get_registered_player_count() >= config().registered_player_limit:
+            raise ProcessingError(FailureReason.USER_LIMIT, handle=context.handle)
         self.handle_player_registered_event(websocket, context.handle)
 
     def handle_reregister_player_request(self, request: RequestContext) -> None:
@@ -240,9 +240,9 @@ class EventHandler:
         """Handle the Advertise Game request."""
         log.info("REQUEST[Advertise Game]")
         if request.game:
-            raise ProcessingError(FailureReason.ALREADY_PLAYING)
+            raise ProcessingError(FailureReason.ALREADY_PLAYING, handle=request.player.handle)
         if self.manager.get_total_game_count() >= config().total_game_limit:
-            raise ProcessingError(FailureReason.GAME_LIMIT)
+            raise ProcessingError(FailureReason.GAME_LIMIT, handle=request.player.handle)
         context = cast(AdvertiseGameContext, request.message.context)
         self.handle_game_advertised_event(request.player, context)
 
@@ -255,7 +255,7 @@ class EventHandler:
         """Handle the Join Game request."""
         log.info("REQUEST[Join Game]")
         if request.game:
-            raise ProcessingError(FailureReason.ALREADY_PLAYING)
+            raise ProcessingError(FailureReason.ALREADY_PLAYING, handle=request.player.handle)
         context = cast(JoinGameContext, request.message.context)
         self.handle_game_joined_event(request.player, game_id=context.game_id)
 
@@ -263,58 +263,58 @@ class EventHandler:
         """Handle the Quit Game request."""
         log.info("REQUEST[Quit Game]")
         if not request.game:
-            raise ProcessingError(FailureReason.NOT_PLAYING)
+            raise ProcessingError(FailureReason.NOT_PLAYING, handle=request.player.handle)
         if not request.game.is_in_progress():
-            raise ProcessingError(FailureReason.INVALID_GAME, "Game is not in progress")
+            raise ProcessingError(FailureReason.INVALID_GAME, comment="Game is not in progress", handle=request.player.handle)
         if request.player.handle == request.game.advertiser_handle:
-            raise ProcessingError(FailureReason.ADVERTISER_MAY_NOT_QUIT)
+            raise ProcessingError(FailureReason.ADVERTISER_MAY_NOT_QUIT, handle=request.player.handle)
         self.handle_game_player_quit_event(request.player, request.game)
 
     def handle_start_game_request(self, request: RequestContext) -> None:
         """Handle the Start Game request."""
         log.info("REQUEST[Start Game]")
         if not request.game:
-            raise ProcessingError(FailureReason.NOT_PLAYING)
+            raise ProcessingError(FailureReason.NOT_PLAYING, handle=request.player.handle)
         if request.game.is_playing():
-            raise ProcessingError(FailureReason.INVALID_GAME, "Game is already being played")
+            raise ProcessingError(FailureReason.INVALID_GAME, comment="Game is already being played", handle=request.player.handle)
         if request.game.advertiser_handle != request.player.handle:
-            raise ProcessingError(FailureReason.NOT_ADVERTISER)
+            raise ProcessingError(FailureReason.NOT_ADVERTISER, handle=request.player.handle)
         if self.manager.get_in_progress_game_count() >= config().in_progress_game_limit:
-            raise ProcessingError(FailureReason.GAME_LIMIT)
+            raise ProcessingError(FailureReason.GAME_LIMIT, handle=request.player.handle)
         self.handle_game_started_event(request.game)
 
     def handle_cancel_game_request(self, request: RequestContext) -> None:
         """Handle the Cancel Game request."""
         log.info("REQUEST[Cancel Game]")
         if not request.game:
-            raise ProcessingError(FailureReason.NOT_PLAYING)
+            raise ProcessingError(FailureReason.NOT_PLAYING, handle=request.player.handle)
         if not request.game.is_in_progress():
-            raise ProcessingError(FailureReason.INVALID_GAME, "Game is not in progress")
+            raise ProcessingError(FailureReason.INVALID_GAME, comment="Game is not in progress", handle=request.player.handle)
         if request.game.advertiser_handle != request.player.handle:
-            raise ProcessingError(FailureReason.NOT_ADVERTISER)
+            raise ProcessingError(FailureReason.NOT_ADVERTISER, handle=request.player.handle)
         self.handle_game_cancelled_event(request.game, CancelledReason.CANCELLED)
 
     def handle_execute_move_request(self, request: RequestContext) -> None:
         """Handle the Execute Move request."""
         log.info("REQUEST[Execute Move]")
         if not request.game:
-            raise ProcessingError(FailureReason.NOT_PLAYING)
+            raise ProcessingError(FailureReason.NOT_PLAYING, handle=request.player.handle)
         if not request.game.is_playing():
-            raise ProcessingError(FailureReason.INVALID_GAME, "Game is not being played")
+            raise ProcessingError(FailureReason.INVALID_GAME, comment="Game is not being played", handle=request.player.handle)
         if not request.game.is_move_pending(request.player.handle):
-            raise ProcessingError(FailureReason.NO_MOVE_PENDING)
+            raise ProcessingError(FailureReason.NO_MOVE_PENDING, handle=request.player.handle)
         context = cast(ExecuteMoveContext, request.message.context)
         if not request.game.is_legal_move(request.player.handle, context.move_id):
-            raise ProcessingError(FailureReason.ILLEGAL_MOVE)
+            raise ProcessingError(FailureReason.ILLEGAL_MOVE, handle=request.player.handle)
         self.handle_game_execute_move_event(request.player, request.game, context.move_id)
 
     def handle_retrieve_game_state_request(self, request: RequestContext) -> None:
         """Handle the Retrieve Game State request."""
         log.info("REQUEST[Retrieve Game]")
         if not request.game:
-            raise ProcessingError(FailureReason.NOT_PLAYING)
+            raise ProcessingError(FailureReason.NOT_PLAYING, handle=request.player.handle)
         if not request.game.is_playing():
-            raise ProcessingError(FailureReason.INVALID_GAME, "Game is not being played")
+            raise ProcessingError(FailureReason.INVALID_GAME, comment="Game is not being played", handle=request.player.handle)
         self.handle_game_state_change_event(request.game, request.player)
 
     def handle_send_message_request(self, request: RequestContext) -> None:
@@ -424,7 +424,8 @@ class EventHandler:
         """Handle the Player Idle event."""
         log.info("EVENT[Player Idle]")
         if player.activity_state != ActivityState.IDLE:
-            message = Message(MessageType.PLAYER_IDLE)
+            context = PlayerIdleContext(handle=player.handle)
+            message = Message(MessageType.PLAYER_IDLE, context=context)
             self.queue.message(message, players=[player])
             player.mark_idle()
 
@@ -435,7 +436,8 @@ class EventHandler:
         log.info("EVENT[Player Inactive]")
         if player.activity_state != ActivityState.INACTIVE:
             player.mark_inactive()
-            message = Message(MessageType.PLAYER_INACTIVE)
+            context = PlayerInactiveContext(handle=player.handle)
+            message = Message(MessageType.PLAYER_INACTIVE, context=context)
             game = self.manager.lookup_game(player=player)
             self.queue.message(message, players=[player])
             self.handle_player_unregistered_event(player, game)
@@ -475,9 +477,9 @@ class EventHandler:
         if game_id:
             game = self.manager.lookup_game(game_id=game_id)
             if not game or not game.is_available(player):
-                raise ProcessingError(FailureReason.INVALID_GAME)
+                raise ProcessingError(FailureReason.INVALID_GAME, handle=player.handle)
         if not game:
-            raise ProcessingError(FailureReason.INTERNAL_ERROR, "Invalid arguments")
+            raise ProcessingError(FailureReason.INTERNAL_ERROR, comment="Invalid arguments", handle=player.handle)
         game.mark_active()
         player.mark_joined(game)
         game.mark_joined(player)
@@ -498,7 +500,8 @@ class EventHandler:
     def handle_game_started_event(self, game: TrackedGame) -> None:
         """Handle the Game Started event."""
         log.info("EVENT[Game Started]")
-        message = Message(MessageType.GAME_STARTED)
+        context = GameStartedContext(game_id=game.game_id)
+        message = Message(MessageType.GAME_STARTED, context=context)
         game.mark_active()
         game.mark_started()
         players = self.manager.lookup_game_players(game)
@@ -513,7 +516,7 @@ class EventHandler:
     ) -> None:
         """Handle the Game Cancelled event."""
         log.info("EVENT[Game Cancelled]")
-        context = GameCancelledContext(reason=reason, comment=comment)
+        context = GameCancelledContext(game_id=game.game_id, reason=reason, comment=comment)
         message = Message(MessageType.GAME_CANCELLED, context)
         players = self.manager.lookup_game_players(game)
         for player in players:
@@ -526,7 +529,7 @@ class EventHandler:
     def handle_game_completed_event(self, game: TrackedGame, comment: Optional[str] = None) -> None:
         """Handle the Game Completed event."""
         log.info("EVENT[Game Completed]")
-        context = GameCompletedContext(comment=comment)
+        context = GameCompletedContext(game_id=game.game_id, comment=comment)
         message = Message(MessageType.GAME_COMPLETED, context)
         players = self.manager.lookup_game_players(game)
         for player in players:
@@ -539,7 +542,8 @@ class EventHandler:
         """Handle the Game Idle event."""
         log.info("EVENT[Game Idle]")
         if game.activity_state != ActivityState.IDLE:
-            message = Message(MessageType.GAME_IDLE)
+            context = GameIdleContext(game_id=game.game_id)
+            message = Message(MessageType.GAME_IDLE, context=context)
             players = self.manager.lookup_game_players(game)
             self.queue.message(message, players=players)
 
@@ -548,6 +552,10 @@ class EventHandler:
         log.info("EVENT[Game Inactive]")
         if game.activity_state != ActivityState.INACTIVE:
             game.mark_inactive()
+            context = GameInactiveContext(game_id=game.game_id)
+            message = Message(MessageType.GAME_INACTIVE, context=context)
+            players = self.manager.lookup_game_players(game)
+            self.queue.message(message, players=players)
             self.handle_game_cancelled_event(game, CancelledReason.INACTIVE)
 
     def handle_game_obsolete_event(self, game: TrackedGame) -> None:
@@ -582,7 +590,7 @@ class EventHandler:
         """Handle the Game Player Change event."""
         log.info("EVENT[Game Player Change]")
         players = self.manager.lookup_game_players(game)
-        context = GamePlayerChangeContext(comment=comment, players=game.get_game_players())
+        context = GamePlayerChangeContext(game_id=game.game_id, comment=comment, players=game.get_game_players())
         message = Message(MessageType.GAME_PLAYER_CHANGE, context=context)
         self.queue.message(message, players=players)
 
@@ -594,13 +602,13 @@ class EventHandler:
         players = [player] if player else self.manager.lookup_game_players(game)
         for player in players:
             view = game.get_player_view(player)
-            context = GameStateChangeContext.for_view(view)
+            context = GameStateChangeContext.for_view(game_id=game.game_id, view=view)
             message = Message(MessageType.GAME_STATE_CHANGE, context=context)
             self.queue.message(message, players=[player])
 
     def handle_game_player_turn_event(self, player: TrackedPlayer, moves: List[Move]) -> None:
         """Handle the Game Player Turn event."""
         log.info("EVENT[Game Player Turn]")
-        context = GamePlayerTurnContext.for_moves(moves)
+        context = GamePlayerTurnContext.for_moves(handle=player.handle, game_id=player.game_id, moves=moves)  # type: ignore
         message = Message(MessageType.GAME_PLAYER_TURN, context)
         self.queue.message(message, players=[player])
