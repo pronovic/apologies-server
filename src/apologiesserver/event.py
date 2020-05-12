@@ -384,7 +384,7 @@ class EventHandler:
         """Handle the Player Registered event."""
         log.info("EVENT[Player Registered]")
         player = self.manager.track_player(websocket, handle)
-        context = PlayerRegisteredContext(player_id=player.player_id)
+        context = PlayerRegisteredContext(player_id=player.player_id, handle=player.handle)
         message = Message(MessageType.PLAYER_REGISTERED, context)
         self.queue.message(message, websockets=[websocket])
 
@@ -392,7 +392,7 @@ class EventHandler:
         """Handle the Player Registered event."""
         log.info("EVENT[Player Registered]")
         player.websocket = websocket
-        context = PlayerRegisteredContext(player_id=player.player_id)
+        context = PlayerRegisteredContext(player_id=player.player_id, handle=player.handle)
         message = Message(MessageType.PLAYER_REGISTERED, context)
         self.queue.message(message, players=[player])
 
@@ -430,13 +430,14 @@ class EventHandler:
 
     def handle_player_inactive_event(self, player: TrackedPlayer) -> None:
         """Handle the Player Inactive event."""
+        # Note that we do not disconnect the websocket, because it might still be in use by other players.
+        # If this is the last registered player using the websocket, it will also eventually be marked inactive, and be closed then.
         log.info("EVENT[Player Inactive]")
         if player.activity_state != ActivityState.INACTIVE:
             player.mark_inactive()
             message = Message(MessageType.PLAYER_INACTIVE)
             game = self.manager.lookup_game(player=player)
             self.queue.message(message, players=[player])
-            self.queue.disconnect(player.websocket)
             self.handle_player_unregistered_event(player, game)
 
     def handle_player_message_received_event(self, sender_handle: str, recipient_handles: List[str], sender_message: str) -> None:

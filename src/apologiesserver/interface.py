@@ -414,6 +414,7 @@ class PlayerRegisteredContext(Context):
     """Context for an PLAYER_REGISTERED event."""
 
     player_id = attr.ib(type=str)
+    handle = attr.ib(type=str)
 
 
 @attr.s(frozen=True)

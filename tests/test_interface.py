@@ -811,7 +811,7 @@ class TestEvent:
         roundtrip(message)
 
     def test_player_registered_roundtrip(self) -> None:
-        context = PlayerRegisteredContext("player")
+        context = PlayerRegisteredContext("player", "handle")
         message = Message(MessageType.PLAYER_REGISTERED, context)
         roundtrip(message)
 

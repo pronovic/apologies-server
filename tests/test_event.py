@@ -882,8 +882,8 @@ class TestEventMethods:
 
     def test_handle_player_registered_event(self):
         websocket = MagicMock()
-        player = MagicMock(player_id="player_id")
-        context = PlayerRegisteredContext(player_id="player_id")
+        player = MagicMock(player_id="player_id", handle="handle")
+        context = PlayerRegisteredContext(player_id="player_id", handle="handle")
         message = Message(MessageType.PLAYER_REGISTERED, context=context)
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
@@ -894,8 +894,8 @@ class TestEventMethods:
 
     def test_handle_player_reregistered_event(self):
         websocket = MagicMock()
-        player = MagicMock(player_id="player_id")
-        context = PlayerRegisteredContext(player_id="player_id")
+        player = MagicMock(player_id="player_id", handle="handle")
+        context = PlayerRegisteredContext(player_id="player_id", handle="handle")
         message = Message(MessageType.PLAYER_REGISTERED, context=context)
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
@@ -1030,7 +1030,7 @@ class TestEventMethods:
         player.mark_inactive.assert_called_once()
         handler.manager.lookup_game.assert_called_once_with(player=player)
         handler.queue.message.assert_called_once_with(message, players=[player])
-        handler.queue.disconnect.assert_called_once_with(websocket)
+        handler.queue.disconnect.assert_not_called()  # we don't close now, only when the websocket itself goes inactive
         handler.handle_player_unregistered_event.assert_called_once_with(player, game)
 
     def test_handle_player_message_received_event(self):
