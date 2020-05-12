@@ -7,6 +7,17 @@ server that does not horizontally scale, so there is an obvious place to run
 these checks. A future design that is intended to horizontally scale will need
 a separate scheduling component.
 
+### Idle Websocket Check
+
+On a periodic basis, the server will check how long it has been since the most
+recent activity for each connected websocket.  A websocket which has no
+registered players and exceeds the idle threshold will be marked as idle,
+triggering an _Websocket Idle_ event.  A websocket which was already idle and
+exceeds the inactive threshold, will be terminated, triggering a _Webhook
+Inactive_ event.  Any websocket associated with at least one registered player
+is ignored for the purposes of this check, because we want the players to be
+marked idle before their associated connection.
+
 ### Idle Game Check
 
 On a periodic basis, the server will check how long it has been since the most
@@ -357,6 +368,48 @@ across server restarts, so in-progress games will be interrupted.
 ```json
 {
   "message": "SERVER_SHUTDOWN"
+}
+```
+
+### Websocket Connected
+
+This event is triggered when a new client connection is established.  Multiple
+players can conceivably share the same webhook, since the player is identified
+by the Authorization header and not by the webhook itself.  So, we track
+webhooks separately from players.
+
+### Websocket Disconnected
+
+This event is triggered when a webhook disconnects.  A webhook may become
+disconnected from the server without the associated players explicitly
+unregistering.  A _Player Disconnected_ event will be triggered for each player
+associated with the disconnected webhook.
+
+### Websocket Idle
+
+This event is triggered when the _Idle Websocket Check_ determines that a
+websocket has been idle for too long.  This notifies the websocket that it is
+idle and at risk of being terminated.
+
+Example message:
+
+```json
+{
+  "message": "WEBSOCKET_IDLE"
+}
+```
+
+### Websocket Inactive
+
+This event is triggered when the _Idle Websocket Check_ determines that a
+websocket has exceeded the inactive threshold and will be disconnected
+and a _Websocket Disconnected_ event will be triggered.
+
+Example message:
+
+```json
+{
+  "message": "WEBSOCKET_INACTIVE"
 }
 ```
 
