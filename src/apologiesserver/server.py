@@ -60,11 +60,11 @@ def _lookup_method(handler: EventHandler, message: MessageType) -> Callable[[Req
     elif message == MessageType.SEND_MESSAGE:
         return handler.handle_send_message_request
     else:
-        raise ProcessingError(FailureReason.INTERNAL_ERROR, "Invalid request %s" % message.name)
+        raise ProcessingError(FailureReason.INTERNAL_ERROR, comment="Invalid request %s" % message.name)
 
 
 def _handle_message(handler: EventHandler, message: Message, websocket: WebSocketServerProtocol) -> None:
-    """Handle a valid message received from a websocket client."""
+    """Handle a valid message received from a websocket client, assumed to be within the handler's lock."""
     if message.message == MessageType.REGISTER_PLAYER:
         handler.handle_register_player_request(message, websocket)
     else:
@@ -72,8 +72,8 @@ def _handle_message(handler: EventHandler, message: Message, websocket: WebSocke
         player = handler.manager.lookup_player(player_id=player_id)
         if not player:
             raise ProcessingError(FailureReason.INVALID_PLAYER)
+        handler.manager.mark_active(player)  # marks both the player and its websocket as active
         log.debug("Request is for player: %s", player)
-        player.mark_active()
         game = handler.manager.lookup_game(game_id=player.game_id)
         request = RequestContext(message, websocket, player, game)
         method = _lookup_method(handler, request.message.message)
@@ -91,11 +91,19 @@ async def _handle_data(data: Union[str, bytes], websocket: WebSocketServerProtoc
         await handler.execute_tasks()
 
 
+async def _handle_connect(websocket: WebSocketServerProtocol) -> None:
+    """Handle a newly-connected client."""
+    with EventHandler(manager()) as handler:
+        async with handler.manager.lock:
+            handler.handle_websocket_connected_event(websocket)
+        await handler.execute_tasks()
+
+
 async def _handle_disconnect(websocket: WebSocketServerProtocol) -> None:
     """Handle a disconnected client."""
     with EventHandler(manager()) as handler:
         async with handler.manager.lock:
-            handler.handle_player_disconnected_event(websocket)
+            handler.handle_websocket_disconnected_event(websocket)
         await handler.execute_tasks()
 
 
@@ -104,11 +112,16 @@ async def _handle_disconnect(websocket: WebSocketServerProtocol) -> None:
 async def _handle_exception(exception: Exception, websocket: WebSocketServerProtocol) -> None:
     """Handle an exception by sending a request failed event."""
     try:
+        disconnect = False
         try:
             log.error("Handling exception: %s", str(exception))
             raise exception
         except ProcessingError as e:
-            context = RequestFailedContext(e.reason, e.comment if e.comment else e.reason.value)
+            disconnect = e.reason == FailureReason.WEBSOCKET_LIMIT  # this is a special case that can't easily be handled elsewhere
+            reason = e.reason
+            comment = e.comment if e.comment else e.reason.value
+            handle = e.handle
+            context = RequestFailedContext(reason=reason, comment=comment, handle=handle)
         except ValueError as e:
             context = RequestFailedContext(FailureReason.INVALID_REQUEST, str(e))
         except Exception as e:
@@ -116,6 +129,8 @@ async def _handle_exception(exception: Exception, websocket: WebSocketServerProt
             context = RequestFailedContext(FailureReason.INTERNAL_ERROR, FailureReason.INTERNAL_ERROR.value)
         message = Message(MessageType.REQUEST_FAILED, context)
         await websocket.send(message.to_json())
+        if disconnect:
+            await websocket.close()
     except Exception as e:
         # We don't propogate errors like this to the caller.  We just ignore them and
         # hope that we can recover for future requests.  If the websocket is dead,
@@ -130,7 +145,7 @@ async def _handle_exception(exception: Exception, websocket: WebSocketServerProt
 # noinspection PyBroadException
 async def _handle_connection(websocket: WebSocketServerProtocol, _path: str) -> None:
     """Handle a client connection, invoked once for each client that connects to the server."""
-    log.debug("Got new websocket connection: %s", websocket)
+    await _handle_connect(websocket)
     try:
         async for data in websocket:
             try:

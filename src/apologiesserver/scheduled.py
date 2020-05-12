@@ -17,10 +17,13 @@ from .manager import manager
 
 log = logging.getLogger("apologies.scheduled")
 
-# TODO: need some sort of idle websocket check
-#       if a client connects, but never registers, we do want to dump them eventually
-#       not sure how to detect this - I don't register that websocket anywhere right now
-#       maybe we also need a limit on the number of inbound connections
+
+async def _execute_idle_websocket_check() -> None:
+    """Execute the Idle Websocket Check task."""
+    with EventHandler(manager()) as handler:
+        async with handler.manager.lock:
+            handler.handle_idle_websocket_check_task()
+        await handler.execute_tasks()
 
 
 async def _execute_idle_player_check() -> None:
@@ -45,6 +48,15 @@ async def _execute_obsolete_game_check() -> None:
         async with handler.manager.lock:
             handler.handle_obsolete_game_check_task()
         await handler.execute_tasks()
+
+
+async def _schedule_idle_websocket_check() -> None:
+    """Schedule the Idle Websocket Check task to run periodically, with a delay before starting."""
+    period = config().idle_websocket_check_period_sec
+    delay = config().idle_websocket_check_delay_sec
+    p = Periodic(period, _execute_idle_websocket_check)
+    await p.start(delay=delay)
+    log.debug("Completed scheduling idle websocket check with period %d and delay %d", period, delay)
 
 
 async def _schedule_idle_player_check() -> None:
@@ -76,4 +88,4 @@ async def _schedule_obsolete_game_check() -> None:
 
 def scheduled_tasks() -> List[Callable[[], Coroutine[Any, Any, None]]]:
     """Get a list of tasks that need to be scheduled."""
-    return [_schedule_idle_player_check, _schedule_idle_game_check, _schedule_obsolete_game_check]
+    return [_schedule_idle_websocket_check, _schedule_idle_player_check, _schedule_idle_game_check, _schedule_obsolete_game_check]

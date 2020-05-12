@@ -14,6 +14,8 @@ boundary.  Any tasks that might block (such as network requests) should be added
 task queue, to be executed by the execute() method once state updates have been completed.  
 """
 
+# TODO: event logging sucks.  I need a better way to make the logs more legible
+
 from __future__ import annotations  # see: https://stackoverflow.com/a/33533514/2907667
 
 import asyncio
@@ -29,7 +31,7 @@ from websockets import WebSocketServerProtocol
 
 from .config import config
 from .interface import *
-from .manager import StateManager, TrackedGame, TrackedPlayer
+from .manager import StateManager, TrackedGame, TrackedPlayer, TrackedWebsocket
 
 log = logging.getLogger("apologies.event")
 
@@ -131,6 +133,27 @@ class EventHandler:
         await self.queue.execute()
 
     # noinspection PyTypeChecker
+    def handle_idle_websocket_check_task(self) -> Tuple[int, int]:
+        """Execute the Idle Websocket Check task, returning tuple of (idle, inactive)."""
+        log.info("SCHEDULED[Idle Websocket Check]")
+        idle = 0
+        inactive = 0
+        now = pendulum.now()
+        idle_thresh_min = config().websocket_idle_thresh_min
+        inactive_thresh_min = config().websocket_inactive_thresh_min
+        for (websocket, last_active_date, players) in self.manager.lookup_websocket_activity():
+            if players < 1:  # by definition, a websocket is not idle until or unless it has no registered players
+                since_active = now.diff(last_active_date).in_minutes()
+                if since_active >= inactive_thresh_min:
+                    inactive += 1
+                    self.handle_websocket_inactive_event(websocket)
+                elif since_active >= idle_thresh_min:
+                    idle += 1
+                    self.handle_websocket_idle_event(websocket)
+        log.debug("Idle websocket check completed, found %d idle and %d inactive websockets", idle, inactive)
+        return idle, inactive
+
+    # noinspection PyTypeChecker
     def handle_idle_player_check_task(self) -> Tuple[int, int]:
         """Execute the Idle Player Check task, returning tuple of (idle, inactive)."""
         log.info("SCHEDULED[Idle Player Check]")
@@ -193,9 +216,9 @@ class EventHandler:
     def handle_register_player_request(self, message: Message, websocket: WebSocketServerProtocol) -> None:
         """Handle the Register Player request."""
         log.info("REQUEST[Register Player]")
-        if self.manager.registered_player_count() >= config().registered_player_limit:
-            raise ProcessingError(FailureReason.USER_LIMIT)
         context = cast(RegisterPlayerContext, message.context)
+        if self.manager.get_registered_player_count() >= config().registered_player_limit:
+            raise ProcessingError(FailureReason.USER_LIMIT, handle=context.handle)
         self.handle_player_registered_event(websocket, context.handle)
 
     def handle_reregister_player_request(self, request: RequestContext) -> None:
@@ -217,9 +240,9 @@ class EventHandler:
         """Handle the Advertise Game request."""
         log.info("REQUEST[Advertise Game]")
         if request.game:
-            raise ProcessingError(FailureReason.ALREADY_PLAYING)
-        if self.manager.total_game_count() >= config().total_game_limit:
-            raise ProcessingError(FailureReason.GAME_LIMIT)
+            raise ProcessingError(FailureReason.ALREADY_PLAYING, handle=request.player.handle)
+        if self.manager.get_total_game_count() >= config().total_game_limit:
+            raise ProcessingError(FailureReason.GAME_LIMIT, handle=request.player.handle)
         context = cast(AdvertiseGameContext, request.message.context)
         self.handle_game_advertised_event(request.player, context)
 
@@ -232,7 +255,7 @@ class EventHandler:
         """Handle the Join Game request."""
         log.info("REQUEST[Join Game]")
         if request.game:
-            raise ProcessingError(FailureReason.ALREADY_PLAYING)
+            raise ProcessingError(FailureReason.ALREADY_PLAYING, handle=request.player.handle)
         context = cast(JoinGameContext, request.message.context)
         self.handle_game_joined_event(request.player, game_id=context.game_id)
 
@@ -240,58 +263,58 @@ class EventHandler:
         """Handle the Quit Game request."""
         log.info("REQUEST[Quit Game]")
         if not request.game:
-            raise ProcessingError(FailureReason.NOT_PLAYING)
+            raise ProcessingError(FailureReason.NOT_PLAYING, handle=request.player.handle)
         if not request.game.is_in_progress():
-            raise ProcessingError(FailureReason.INVALID_GAME, "Game is not in progress")
+            raise ProcessingError(FailureReason.INVALID_GAME, comment="Game is not in progress", handle=request.player.handle)
         if request.player.handle == request.game.advertiser_handle:
-            raise ProcessingError(FailureReason.ADVERTISER_MAY_NOT_QUIT)
+            raise ProcessingError(FailureReason.ADVERTISER_MAY_NOT_QUIT, handle=request.player.handle)
         self.handle_game_player_quit_event(request.player, request.game)
 
     def handle_start_game_request(self, request: RequestContext) -> None:
         """Handle the Start Game request."""
         log.info("REQUEST[Start Game]")
         if not request.game:
-            raise ProcessingError(FailureReason.NOT_PLAYING)
+            raise ProcessingError(FailureReason.NOT_PLAYING, handle=request.player.handle)
         if request.game.is_playing():
-            raise ProcessingError(FailureReason.INVALID_GAME, "Game is already being played")
+            raise ProcessingError(FailureReason.INVALID_GAME, comment="Game is already being played", handle=request.player.handle)
         if request.game.advertiser_handle != request.player.handle:
-            raise ProcessingError(FailureReason.NOT_ADVERTISER)
-        if self.manager.in_progress_game_count() >= config().in_progress_game_limit:
-            raise ProcessingError(FailureReason.GAME_LIMIT)
+            raise ProcessingError(FailureReason.NOT_ADVERTISER, handle=request.player.handle)
+        if self.manager.get_in_progress_game_count() >= config().in_progress_game_limit:
+            raise ProcessingError(FailureReason.GAME_LIMIT, handle=request.player.handle)
         self.handle_game_started_event(request.game)
 
     def handle_cancel_game_request(self, request: RequestContext) -> None:
         """Handle the Cancel Game request."""
         log.info("REQUEST[Cancel Game]")
         if not request.game:
-            raise ProcessingError(FailureReason.NOT_PLAYING)
+            raise ProcessingError(FailureReason.NOT_PLAYING, handle=request.player.handle)
         if not request.game.is_in_progress():
-            raise ProcessingError(FailureReason.INVALID_GAME, "Game is not in progress")
+            raise ProcessingError(FailureReason.INVALID_GAME, comment="Game is not in progress", handle=request.player.handle)
         if request.game.advertiser_handle != request.player.handle:
-            raise ProcessingError(FailureReason.NOT_ADVERTISER)
+            raise ProcessingError(FailureReason.NOT_ADVERTISER, handle=request.player.handle)
         self.handle_game_cancelled_event(request.game, CancelledReason.CANCELLED)
 
     def handle_execute_move_request(self, request: RequestContext) -> None:
         """Handle the Execute Move request."""
         log.info("REQUEST[Execute Move]")
         if not request.game:
-            raise ProcessingError(FailureReason.NOT_PLAYING)
+            raise ProcessingError(FailureReason.NOT_PLAYING, handle=request.player.handle)
         if not request.game.is_playing():
-            raise ProcessingError(FailureReason.INVALID_GAME, "Game is not being played")
+            raise ProcessingError(FailureReason.INVALID_GAME, comment="Game is not being played", handle=request.player.handle)
         if not request.game.is_move_pending(request.player.handle):
-            raise ProcessingError(FailureReason.NO_MOVE_PENDING)
+            raise ProcessingError(FailureReason.NO_MOVE_PENDING, handle=request.player.handle)
         context = cast(ExecuteMoveContext, request.message.context)
         if not request.game.is_legal_move(request.player.handle, context.move_id):
-            raise ProcessingError(FailureReason.ILLEGAL_MOVE)
+            raise ProcessingError(FailureReason.ILLEGAL_MOVE, handle=request.player.handle)
         self.handle_game_execute_move_event(request.player, request.game, context.move_id)
 
     def handle_retrieve_game_state_request(self, request: RequestContext) -> None:
         """Handle the Retrieve Game State request."""
         log.info("REQUEST[Retrieve Game]")
         if not request.game:
-            raise ProcessingError(FailureReason.NOT_PLAYING)
+            raise ProcessingError(FailureReason.NOT_PLAYING, handle=request.player.handle)
         if not request.game.is_playing():
-            raise ProcessingError(FailureReason.INVALID_GAME, "Game is not being played")
+            raise ProcessingError(FailureReason.INVALID_GAME, comment="Game is not being played", handle=request.player.handle)
         self.handle_game_state_change_event(request.game, request.player)
 
     def handle_send_message_request(self, request: RequestContext) -> None:
@@ -308,6 +331,38 @@ class EventHandler:
         self.queue.message(message, websockets=websockets)
         for game in self.manager.lookup_in_progress_games():
             self.handle_game_cancelled_event(game, CancelledReason.SHUTDOWN, notify=False)
+
+    def handle_websocket_connected_event(self, websocket: WebSocketServerProtocol) -> None:
+        """Handle the Websocket Connected event."""
+        log.info("EVENT[Websocket Connected]: %s", websocket)
+        if self.manager.get_websocket_count() >= config().websocket_limit:
+            raise ProcessingError(FailureReason.WEBSOCKET_LIMIT)
+        self.manager.track_websocket(websocket)
+
+    def handle_websocket_disconnected_event(self, websocket: WebSocketServerProtocol) -> None:
+        """Handle the Websocket Disconnected event."""
+        log.info("EVENT[Websocket Disconnected]: %s", websocket)
+        players = self.manager.lookup_players_for_websocket(websocket)
+        for player in players:
+            self.handle_player_disconnected_event(player)
+        self.manager.delete_websocket(websocket)
+
+    def handle_websocket_idle_event(self, websocket: TrackedWebsocket) -> None:
+        """Handle the Websocket Idle event."""
+        log.info("EVENT[Websocket Idle]")
+        if websocket.activity_state != ActivityState.IDLE:
+            message = Message(MessageType.WEBSOCKET_IDLE)
+            self.queue.message(message, websockets=[websocket.websocket])
+            websocket.mark_idle()
+
+    def handle_websocket_inactive_event(self, websocket: TrackedWebsocket) -> None:
+        """Handle the Websocket Inactive event."""
+        log.info("EVENT[Websocket Inactive]")
+        if websocket.activity_state != ActivityState.INACTIVE:
+            websocket.mark_inactive()
+            message = Message(MessageType.WEBSOCKET_INACTIVE)
+            self.queue.message(message, websockets=[websocket.websocket])
+            self.queue.disconnect(websocket.websocket)  # will eventually trigger handle_websocket_disconnected_event()
 
     def handle_registered_players_event(self, player: TrackedPlayer) -> None:
         """Handle the Registered Players event."""
@@ -329,7 +384,7 @@ class EventHandler:
         """Handle the Player Registered event."""
         log.info("EVENT[Player Registered]")
         player = self.manager.track_player(websocket, handle)
-        context = PlayerRegisteredContext(player_id=player.player_id)
+        context = PlayerRegisteredContext(player_id=player.player_id, handle=player.handle)
         message = Message(MessageType.PLAYER_REGISTERED, context)
         self.queue.message(message, websockets=[websocket])
 
@@ -337,7 +392,7 @@ class EventHandler:
         """Handle the Player Registered event."""
         log.info("EVENT[Player Registered]")
         player.websocket = websocket
-        context = PlayerRegisteredContext(player_id=player.player_id)
+        context = PlayerRegisteredContext(player_id=player.player_id, handle=player.handle)
         message = Message(MessageType.PLAYER_REGISTERED, context)
         self.queue.message(message, players=[player])
 
@@ -353,36 +408,39 @@ class EventHandler:
                 self.handle_game_cancelled_event(game, CancelledReason.NOT_VIABLE, comment)
         self.manager.delete_player(player)
 
-    def handle_player_disconnected_event(self, websocket: WebSocketServerProtocol) -> None:
+    def handle_player_disconnected_event(self, player: TrackedPlayer) -> None:
         """Handle the Player Disconnected event."""
-        log.info("EVENT[Player Disconnected]: %s", websocket)
-        player = self.manager.lookup_player_for_websocket(websocket)
-        if player:
-            game = self.manager.lookup_game(player=player)
-            player.mark_disconnected()
-            if game:
-                comment = "Player %s disconnected" % player.handle
-                game.mark_quit(player)
-                self.handle_game_player_change_event(game, comment)
-                if not game.is_viable():
-                    self.handle_game_cancelled_event(game, CancelledReason.NOT_VIABLE, comment)
+        log.info("EVENT[Player Disconnected]")
+        game = self.manager.lookup_game(player=player)
+        player.mark_disconnected()
+        if game:
+            comment = "Player %s disconnected" % player.handle
+            game.mark_quit(player)
+            self.handle_game_player_change_event(game, comment)
+            if not game.is_viable():
+                self.handle_game_cancelled_event(game, CancelledReason.NOT_VIABLE, comment)
 
     def handle_player_idle_event(self, player: TrackedPlayer) -> None:
         """Handle the Player Idle event."""
         log.info("EVENT[Player Idle]")
-        message = Message(MessageType.PLAYER_IDLE)
-        self.queue.message(message, players=[player])
-        player.mark_idle()
+        if player.activity_state != ActivityState.IDLE:
+            context = PlayerIdleContext(handle=player.handle)
+            message = Message(MessageType.PLAYER_IDLE, context=context)
+            self.queue.message(message, players=[player])
+            player.mark_idle()
 
     def handle_player_inactive_event(self, player: TrackedPlayer) -> None:
         """Handle the Player Inactive event."""
+        # Note that we do not disconnect the websocket, because it might still be in use by other players.
+        # If this is the last registered player using the websocket, it will also eventually be marked inactive, and be closed then.
         log.info("EVENT[Player Inactive]")
-        player.mark_inactive()
-        message = Message(MessageType.PLAYER_INACTIVE)
-        game = self.manager.lookup_game(player=player)
-        self.queue.message(message, players=[player])
-        self.queue.disconnect(player.websocket)
-        self.handle_player_unregistered_event(player, game)
+        if player.activity_state != ActivityState.INACTIVE:
+            player.mark_inactive()
+            context = PlayerInactiveContext(handle=player.handle)
+            message = Message(MessageType.PLAYER_INACTIVE, context=context)
+            game = self.manager.lookup_game(player=player)
+            self.queue.message(message, players=[player])
+            self.handle_player_unregistered_event(player, game)
 
     def handle_player_message_received_event(self, sender_handle: str, recipient_handles: List[str], sender_message: str) -> None:
         """Handle the Player Message Received event."""
@@ -419,9 +477,9 @@ class EventHandler:
         if game_id:
             game = self.manager.lookup_game(game_id=game_id)
             if not game or not game.is_available(player):
-                raise ProcessingError(FailureReason.INVALID_GAME)
+                raise ProcessingError(FailureReason.INVALID_GAME, handle=player.handle)
         if not game:
-            raise ProcessingError(FailureReason.INTERNAL_ERROR, "Invalid arguments")
+            raise ProcessingError(FailureReason.INTERNAL_ERROR, comment="Invalid arguments", handle=player.handle)
         game.mark_active()
         player.mark_joined(game)
         game.mark_joined(player)
@@ -429,7 +487,7 @@ class EventHandler:
         message = Message(MessageType.GAME_JOINED, context)
         self.queue.message(message, players=[player])
         if game.is_fully_joined():
-            if self.manager.in_progress_game_count() >= config().in_progress_game_limit:
+            if self.manager.get_in_progress_game_count() >= config().in_progress_game_limit:
                 # Rather than giving the caller an error, we just ignore the game and force the
                 # advertiser to manually start it sometime later.  At least then, if the limit
                 # has still been reached, the player receiving the error will be able to make
@@ -442,7 +500,8 @@ class EventHandler:
     def handle_game_started_event(self, game: TrackedGame) -> None:
         """Handle the Game Started event."""
         log.info("EVENT[Game Started]")
-        message = Message(MessageType.GAME_STARTED)
+        context = GameStartedContext(game_id=game.game_id)
+        message = Message(MessageType.GAME_STARTED, context=context)
         game.mark_active()
         game.mark_started()
         players = self.manager.lookup_game_players(game)
@@ -457,7 +516,7 @@ class EventHandler:
     ) -> None:
         """Handle the Game Cancelled event."""
         log.info("EVENT[Game Cancelled]")
-        context = GameCancelledContext(reason=reason, comment=comment)
+        context = GameCancelledContext(game_id=game.game_id, reason=reason, comment=comment)
         message = Message(MessageType.GAME_CANCELLED, context)
         players = self.manager.lookup_game_players(game)
         for player in players:
@@ -470,7 +529,7 @@ class EventHandler:
     def handle_game_completed_event(self, game: TrackedGame, comment: Optional[str] = None) -> None:
         """Handle the Game Completed event."""
         log.info("EVENT[Game Completed]")
-        context = GameCompletedContext(comment=comment)
+        context = GameCompletedContext(game_id=game.game_id, comment=comment)
         message = Message(MessageType.GAME_COMPLETED, context)
         players = self.manager.lookup_game_players(game)
         for player in players:
@@ -482,15 +541,22 @@ class EventHandler:
     def handle_game_idle_event(self, game: TrackedGame) -> None:
         """Handle the Game Idle event."""
         log.info("EVENT[Game Idle]")
-        message = Message(MessageType.GAME_IDLE)
-        players = self.manager.lookup_game_players(game)
-        self.queue.message(message, players=players)
+        if game.activity_state != ActivityState.IDLE:
+            context = GameIdleContext(game_id=game.game_id)
+            message = Message(MessageType.GAME_IDLE, context=context)
+            players = self.manager.lookup_game_players(game)
+            self.queue.message(message, players=players)
 
     def handle_game_inactive_event(self, game: TrackedGame) -> None:
         """Handle the Game Inactive event."""
         log.info("EVENT[Game Inactive]")
-        game.mark_inactive()
-        self.handle_game_cancelled_event(game, CancelledReason.INACTIVE)
+        if game.activity_state != ActivityState.INACTIVE:
+            game.mark_inactive()
+            context = GameInactiveContext(game_id=game.game_id)
+            message = Message(MessageType.GAME_INACTIVE, context=context)
+            players = self.manager.lookup_game_players(game)
+            self.queue.message(message, players=players)
+            self.handle_game_cancelled_event(game, CancelledReason.INACTIVE)
 
     def handle_game_obsolete_event(self, game: TrackedGame) -> None:
         """Handle the Game Obsolete event."""
@@ -524,7 +590,7 @@ class EventHandler:
         """Handle the Game Player Change event."""
         log.info("EVENT[Game Player Change]")
         players = self.manager.lookup_game_players(game)
-        context = GamePlayerChangeContext(comment=comment, players=game.get_game_players())
+        context = GamePlayerChangeContext(game_id=game.game_id, comment=comment, players=game.get_game_players())
         message = Message(MessageType.GAME_PLAYER_CHANGE, context=context)
         self.queue.message(message, players=players)
 
@@ -536,13 +602,13 @@ class EventHandler:
         players = [player] if player else self.manager.lookup_game_players(game)
         for player in players:
             view = game.get_player_view(player)
-            context = GameStateChangeContext.for_view(view)
+            context = GameStateChangeContext.for_view(game_id=game.game_id, view=view)
             message = Message(MessageType.GAME_STATE_CHANGE, context=context)
             self.queue.message(message, players=[player])
 
     def handle_game_player_turn_event(self, player: TrackedPlayer, moves: List[Move]) -> None:
         """Handle the Game Player Turn event."""
         log.info("EVENT[Game Player Turn]")
-        context = GamePlayerTurnContext.for_moves(moves)
+        context = GamePlayerTurnContext.for_moves(handle=player.handle, game_id=player.game_id, moves=moves)  # type: ignore
         message = Message(MessageType.GAME_PLAYER_TURN, context)
         self.queue.message(message, players=[player])

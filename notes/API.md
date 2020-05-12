@@ -7,6 +7,17 @@ server that does not horizontally scale, so there is an obvious place to run
 these checks. A future design that is intended to horizontally scale will need
 a separate scheduling component.
 
+### Idle Websocket Check
+
+On a periodic basis, the server will check how long it has been since the most
+recent activity for each connected websocket.  A websocket which has no
+registered players and exceeds the idle threshold will be marked as idle,
+triggering an _Websocket Idle_ event.  A websocket which was already idle and
+exceeds the inactive threshold, will be terminated, triggering a _Webhook
+Inactive_ event.  Any websocket associated with at least one registered player
+is ignored for the purposes of this check, because we want the players to be
+marked idle before their associated connection.
+
 ### Idle Game Check
 
 On a periodic basis, the server will check how long it has been since the most
@@ -334,16 +345,30 @@ Other events only change internal server state, or trigger other events.
 
 This event is triggered if a player request is syntactically invalid, if the
 arguments are illegal, or if the request fails for some other reason.   The
-message provides context to the sender, telling them what happened.
+message provides context to the sender, telling them what happened.  If possible,
+the handle of the associated player is provided.  If the handle can't be
+established, then it will be `null`.
 
-Example message:
+Example messages:
 
 ```json
 {
   "message": "REQUEST_FAILED",
   "context": {
-    "reason": "USER_LIMIT",
-    "comment": "The registered user limit has been reached; please try again later"
+    "reason": "WEBSOCKET_LIMIT",
+    "comment": "Connection limit reached; try again later",
+    "handle": null
+  }
+}
+```
+
+```json
+{
+  "message": "REQUEST_FAILED",
+  "context": {
+    "reason": "NOT_PLAYING",
+    "comment": "Player is not playing a game",
+    "handle": "leela"
   }
 }
 ```
@@ -357,6 +382,48 @@ across server restarts, so in-progress games will be interrupted.
 ```json
 {
   "message": "SERVER_SHUTDOWN"
+}
+```
+
+### Websocket Connected
+
+This event is triggered when a new client connection is established.  Multiple
+players can conceivably share the same webhook, since the player is identified
+by the Authorization header and not by the webhook itself.  So, we track
+webhooks separately from players.
+
+### Websocket Disconnected
+
+This event is triggered when a webhook disconnects.  A webhook may become
+disconnected from the server without the associated players explicitly
+unregistering.  A _Player Disconnected_ event will be triggered for each player
+associated with the disconnected webhook.
+
+### Websocket Idle
+
+This event is triggered when the _Idle Websocket Check_ determines that a
+websocket has been idle for too long.  This notifies the websocket that it is
+idle and at risk of being terminated.
+
+Example message:
+
+```json
+{
+  "message": "WEBSOCKET_IDLE"
+}
+```
+
+### Websocket Inactive
+
+This event is triggered when the _Idle Websocket Check_ determines that a
+websocket has exceeded the inactive threshold.  We websocket and will be
+disconnected and a _Websocket Disconnected_ event will be triggered.
+
+Example message:
+
+```json
+{
+  "message": "WEBSOCKET_INACTIVE"
 }
 ```
 
@@ -490,7 +557,10 @@ Example message:
 
 ```json
 {
-  "message": "PLAYER_IDLE"
+  "message": "PLAYER_IDLE",
+  "context": {
+    "handle": "leela"
+  }
 }
 ```
 
@@ -505,7 +575,10 @@ Example message:
 
 ```json
 {
-  "message": "PLAYER_INACTIVE"
+  "message": "PLAYER_INACTIVE",
+  "context": {
+    "handle": "leela"
+  }
 }
 ```
 
@@ -606,7 +679,10 @@ Example message:
 
 ```json
 {
-  "message": "GAME_STARTED"
+  "message": "GAME_STARTED",
+  "context": {
+    "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe"
+  }
 }
 ```
 
@@ -626,6 +702,7 @@ Example message:
 {
   "message": "GAME_CANCELLED",
   "context": {
+    "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe",
     "reason": "NOT_VIABLE",
     "comment": "Player nibbler unregistered"
   }
@@ -644,6 +721,7 @@ Example message:
 {
   "message": "GAME_COMPLETED",
   "context": {
+    "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe",
     "comment": "Player nibbler (YELLOW) won the game after 46 turns"
   }
 }
@@ -659,15 +737,30 @@ Example message:
 
 ```json
 {
-  "message": "GAME_IDLE"
+  "message": "GAME_IDLE",
+  "context": {
+    "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe"
+  }
 }
 ```
 
 ### Game Inactive
 
 This event is triggered when the _Idle Game Check_ determines that an idle game
-has exceeded the inactive threshold.  The server will immediately cancel the
-game, triggering a _Game Cancelled_ event.
+has exceeded the inactive threshold.  The generated message notifies all
+players that the game is inactive and will be cancelled.  The server will then
+immediately cancel the game, triggering a _Game Cancelled_ event.
+
+Example message:
+
+```json
+{
+  "message": "GAME_INACTIVE",
+  "context": {
+    "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe"
+  }
+}
+```
 
 ### Game Obsolete
 
@@ -707,7 +800,8 @@ Example message:
 {
   "message": "GAME_PLAYER_CHANGE",
   "context": {
-    "comment": "Player nibbler (YELLOW) quit the game."
+    "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe",
+    "comment": "Player nibbler (YELLOW) quit the game.",
     "players": [
       {
         "handle": "leela",
@@ -758,6 +852,7 @@ Example message:
 {
   "message": "GAME_STATE_CHANGE",
   "context": {
+    "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe",
     "player": {
       "color": "RED",
       "turns": 16,
@@ -860,6 +955,8 @@ Example message:
 {
   "message": "GAME_PLAYER_TURN",
   "context": {
+    "handle": "leela",
+    "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe",
     "drawn_card": "CARD_APOLOGIES",
     "moves": {
       "a9fff13fbe5e46feaeda87382bf4c3b8": {
