@@ -82,7 +82,7 @@ def _handle_message(handler: EventHandler, message: Message, websocket: WebSocke
 
 async def _handle_data(data: Union[str, bytes], websocket: WebSocketServerProtocol) -> None:
     """Handle data received from a websocket client."""
-    log.debug("Received raw data for websocket %s: %s", websocket, data)
+    log.debug("Received raw data for websocket %s:\n%s", websocket, data)
     message = Message.for_json(str(data))
     log.debug("Extracted message: %s", message)
     with EventHandler(manager()) as handler:
@@ -93,7 +93,6 @@ async def _handle_data(data: Union[str, bytes], websocket: WebSocketServerProtoc
 
 async def _handle_disconnect(websocket: WebSocketServerProtocol) -> None:
     """Handle a disconnected client."""
-    log.debug("Websocket is disconnected: %s", websocket)
     with EventHandler(manager()) as handler:
         async with handler.manager.lock:
             handler.handle_player_disconnected_event(websocket)
@@ -132,11 +131,14 @@ async def _handle_exception(exception: Exception, websocket: WebSocketServerProt
 async def _handle_connection(websocket: WebSocketServerProtocol, _path: str) -> None:
     """Handle a client connection, invoked once for each client that connects to the server."""
     log.debug("Got new websocket connection: %s", websocket)
-    async for data in websocket:
-        try:
-            await _handle_data(data, websocket)
-        except Exception as e:
-            await _handle_exception(e, websocket)
+    try:
+        async for data in websocket:
+            try:
+                await _handle_data(data, websocket)
+            except Exception as e:
+                await _handle_exception(e, websocket)
+    except websockets.exceptions.ConnectionClosed:  # we get this if the connection closes for any reason
+        pass
     await _handle_disconnect(websocket)
 
 
@@ -173,8 +175,10 @@ def _schedule_tasks(loop: AbstractEventLoop) -> None:
 
 def _run_server(loop: AbstractEventLoop, stop: "Future[Any]") -> None:
     """Run the websocket server, stopping and closing the event loop when the server completes."""
+    host = config().server_host
+    port = config().server_port
     log.info("Starting websocket server...")
-    loop.run_until_complete(_websocket_server(stop))
+    loop.run_until_complete(_websocket_server(stop=stop, host=host, port=port))
     loop.stop()
     loop.close()
 

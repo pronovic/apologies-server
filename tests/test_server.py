@@ -110,17 +110,19 @@ class TestFunctions:
         _schedule_tasks(loop)
         loop.create_task.assert_called_with(task())
 
+    @patch("apologiesserver.server.config")
     @patch("apologiesserver.server._websocket_server")
-    def test_run_server(self, websocket_server):
+    def test_run_server(self, websocket_server, config):
         # I'm not entirely sure I'm testing this properly.
         # I can't find a good way to prove that _websocket_server(stop) was passed to run_until_complete
         # But, the function is so short that I can eyeball it, and it will either work or it won't when run by hand
+        config.return_value = MagicMock(server_host="host", server_port=1234)
         stop = asyncio.Future()
         stop.set_result(None)
         loop = AsyncMock()
         _run_server(loop, stop)
         loop.run_until_complete.assert_called_once()
-        websocket_server.assert_called_once_with(stop)
+        websocket_server.assert_called_once_with(stop=stop, host="host", port=1234)
         loop.stop.assert_called_once()
         loop.close.assert_called_once()
 

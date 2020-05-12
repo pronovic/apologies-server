@@ -17,10 +17,14 @@ from .manager import manager
 
 log = logging.getLogger("apologies.scheduled")
 
+# TODO: need some sort of idle websocket check
+#       if a client connects, but never registers, we do want to dump them eventually
+#       not sure how to detect this - I don't register that websocket anywhere right now
+#       maybe we also need a limit on the number of inbound connections
+
 
 async def _execute_idle_player_check() -> None:
     """Execute the Idle Player Check task."""
-    log.info("SCHEDULED[Idle Player Check]")
     with EventHandler(manager()) as handler:
         async with handler.manager.lock:
             handler.handle_idle_player_check_task()
@@ -29,7 +33,6 @@ async def _execute_idle_player_check() -> None:
 
 async def _execute_idle_game_check() -> None:
     """Execute the Idle Game Check task."""
-    log.info("SCHEDULED[Idle Game Check]")
     with EventHandler(manager()) as handler:
         async with handler.manager.lock:
             handler.handle_idle_game_check_task()
@@ -38,7 +41,6 @@ async def _execute_idle_game_check() -> None:
 
 async def _execute_obsolete_game_check() -> None:
     """Execute the Obsolete Game Check task."""
-    log.info("SCHEDULED[Obsolete Game Check]")
     with EventHandler(manager()) as handler:
         async with handler.manager.lock:
             handler.handle_obsolete_game_check_task()

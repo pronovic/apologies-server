@@ -18,6 +18,7 @@ from __future__ import annotations  # see: https://stackoverflow.com/a/33533514/
 
 import asyncio
 import logging
+import re
 from typing import List, Optional, Set, Tuple, cast
 
 import attr
@@ -33,6 +34,19 @@ from .manager import StateManager, TrackedGame, TrackedPlayer
 log = logging.getLogger("apologies.event")
 
 
+async def close(websocket: WebSocketServerProtocol) -> None:
+    """Close a websocket."""
+    log.debug("Closing websocket: %s", websocket)
+    await websocket.close()
+
+
+async def send(message: str, websocket: WebSocketServerProtocol) -> None:
+    """Send a response to a websocket."""
+    masked = re.sub(r'"player_id" *: *"[^"]*"', r'"player_id": "<masked>"', message)  # this is a secret, so mask it out
+    log.debug("Sending message to websocket: %s\n%s", websocket, masked)
+    await websocket.send(message)
+
+
 @attr.s(frozen=True)
 class RequestContext:
     """Context provided to a request handler method."""
@@ -43,6 +57,7 @@ class RequestContext:
     game = attr.ib(type=Optional[TrackedGame], default=None)
 
 
+# noinspection PyMethodMayBeStatic
 @attr.s
 class TaskQueue:
 
@@ -83,9 +98,11 @@ class TaskQueue:
             self.disconnects.add(websocket)
 
     async def execute(self) -> None:
-        """Execute all tasks in the queue."""
-        tasks = [websocket.close() for websocket in self.disconnects]
-        tasks.extend([websocket.send(message) for message, websocket in self.messages if websocket not in self.disconnects])
+        """Execute all tasks in the queue, sending messages first and then disconnecting websockets."""
+        tasks = [send(message, websocket) for message, websocket in self.messages]
+        if tasks:
+            await asyncio.wait(tasks)
+        tasks = [close(websocket) for websocket in self.disconnects]
         if tasks:
             await asyncio.wait(tasks)
 
@@ -338,7 +355,7 @@ class EventHandler:
 
     def handle_player_disconnected_event(self, websocket: WebSocketServerProtocol) -> None:
         """Handle the Player Disconnected event."""
-        log.info("EVENT[Player Disconnected]")
+        log.info("EVENT[Player Disconnected]: %s", websocket)
         player = self.manager.lookup_player_for_websocket(websocket)
         if player:
             game = self.manager.lookup_game(player=player)
