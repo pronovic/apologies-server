@@ -557,7 +557,7 @@ Example message:
 
 ```json
 {
-  "message": "PLAYER_IDLE"
+  "message": "PLAYER_IDLE",
   "context": {
     "handle": "leela"
   }
@@ -575,7 +575,7 @@ Example message:
 
 ```json
 {
-  "message": "PLAYER_INACTIVE"
+  "message": "PLAYER_INACTIVE",
   "context": {
     "handle": "leela"
   }
@@ -679,7 +679,7 @@ Example message:
 
 ```json
 {
-  "message": "GAME_STARTED"
+  "message": "GAME_STARTED",
   "context": {
     "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe"
   }
@@ -737,7 +737,7 @@ Example message:
 
 ```json
 {
-  "message": "GAME_IDLE"
+  "message": "GAME_IDLE",
   "context": {
     "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe"
   }
@@ -755,7 +755,7 @@ Example message:
 
 ```json
 {
-  "message": "GAME_INACTIVE"
+  "message": "GAME_INACTIVE",
   "context": {
     "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe"
   }
@@ -801,7 +801,7 @@ Example message:
   "message": "GAME_PLAYER_CHANGE",
   "context": {
     "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe",
-    "comment": "Player nibbler (YELLOW) quit the game."
+    "comment": "Player nibbler (YELLOW) quit the game.",
     "players": [
       {
         "handle": "leela",
