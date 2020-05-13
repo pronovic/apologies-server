@@ -38,14 +38,14 @@ log = logging.getLogger("apologies.event")
 
 async def close(websocket: WebSocketServerProtocol) -> None:
     """Close a websocket."""
-    log.debug("Closing websocket: %s", websocket)
+    log.debug("Closing websocket: %s", id(websocket))
     await websocket.close()
 
 
 async def send(message: str, websocket: WebSocketServerProtocol) -> None:
     """Send a response to a websocket."""
     masked = re.sub(r'"player_id" *: *"[^"]*"', r'"player_id": "<masked>"', message)  # this is a secret, so mask it out
-    log.debug("Sending message to websocket: %s\n%s", websocket, masked)
+    log.debug("Sending message to websocket: %s\n%s", id(websocket), masked)
     await websocket.send(message)
 
 
@@ -216,7 +216,7 @@ class EventHandler:
     def handle_register_player_request(self, message: Message, websocket: WebSocketServerProtocol) -> None:
         """Handle the Register Player request."""
         context = cast(RegisterPlayerContext, message.context)
-        log.info("Request - REGISTER PLAYER - %s %s", context.handle, websocket)
+        log.info("Request - REGISTER PLAYER - %s on %s", context.handle, id(websocket))
         if self.manager.get_registered_player_count() >= config().registered_player_limit:
             raise ProcessingError(FailureReason.USER_LIMIT, handle=context.handle)
         self.handle_player_registered_event(websocket, context.handle)
@@ -339,14 +339,14 @@ class EventHandler:
 
     def handle_websocket_connected_event(self, websocket: WebSocketServerProtocol) -> None:
         """Handle the Websocket Connected event."""
-        log.info("Event - WEBSOCKET CONNECTED - %s", websocket)
+        log.info("Event - WEBSOCKET CONNECTED - %s", id(websocket))
         if self.manager.get_websocket_count() >= config().websocket_limit:
             raise ProcessingError(FailureReason.WEBSOCKET_LIMIT)
         self.manager.track_websocket(websocket)
 
     def handle_websocket_disconnected_event(self, websocket: WebSocketServerProtocol) -> None:
         """Handle the Websocket Disconnected event."""
-        log.info("Event - WEBSOCKET DISCONNECTED - %s", websocket)
+        log.info("Event - WEBSOCKET DISCONNECTED - %s", id(websocket))
         players = self.manager.lookup_players_for_websocket(websocket)
         for player in players:
             self.handle_player_disconnected_event(player)
@@ -354,7 +354,7 @@ class EventHandler:
 
     def handle_websocket_idle_event(self, websocket: TrackedWebsocket) -> None:
         """Handle the Websocket Idle event."""
-        log.info("Event - WEBSOCKET IDLE - %s", websocket)
+        log.info("Event - WEBSOCKET IDLE - %s", id(websocket.websocket))
         if websocket.activity_state != ActivityState.IDLE:
             message = Message(MessageType.WEBSOCKET_IDLE)
             self.queue.message(message, websockets=[websocket.websocket])
@@ -362,7 +362,7 @@ class EventHandler:
 
     def handle_websocket_inactive_event(self, websocket: TrackedWebsocket) -> None:
         """Handle the Websocket Inactive event."""
-        log.info("Event - WEBSOCKET INACTIVE - %s", websocket)
+        log.info("Event - WEBSOCKET INACTIVE - %s", id(websocket.websocket))
         if websocket.activity_state != ActivityState.INACTIVE:
             websocket.mark_inactive()
             message = Message(MessageType.WEBSOCKET_INACTIVE)
@@ -387,7 +387,7 @@ class EventHandler:
 
     def handle_player_registered_event(self, websocket: WebSocketServerProtocol, handle: str) -> None:
         """Handle the Player Registered event."""
-        log.info("Event - PLAYER REGISTERED - %s on %s", handle, websocket)
+        log.info("Event - PLAYER REGISTERED - %s on %s", handle, id(websocket))
         player = self.manager.track_player(websocket, handle)
         context = PlayerRegisteredContext(player_id=player.player_id, handle=player.handle)
         message = Message(MessageType.PLAYER_REGISTERED, context)
@@ -395,7 +395,7 @@ class EventHandler:
 
     def handle_player_reregistered_event(self, player: TrackedPlayer, websocket: WebSocketServerProtocol) -> None:
         """Handle the Player Registered event."""
-        log.info("Event - PLAYER REREGISTERED - %s on %s", player.handle, websocket)
+        log.info("Event - PLAYER REREGISTERED - %s on %s", player.handle, id(websocket))
         player.websocket = websocket
         context = PlayerRegisteredContext(player_id=player.player_id, handle=player.handle)
         message = Message(MessageType.PLAYER_REGISTERED, context)
@@ -527,7 +527,7 @@ class EventHandler:
         self, game: TrackedGame, reason: CancelledReason, comment: Optional[str] = None, notify: bool = True
     ) -> None:
         """Handle the Game Cancelled event."""
-        log.info("Event - GAME CANCELLED - %s %s %s", game.game_id, reason, "'%s'" % comment if comment else None)
+        log.info("Event - GAME CANCELLED - %s for %s (%s)", game.game_id, reason, "'%s'" % comment if comment else None)
         context = GameCancelledContext(game_id=game.game_id, reason=reason, comment=comment)
         message = Message(MessageType.GAME_CANCELLED, context)
         players = self.manager.lookup_game_players(game)
@@ -540,7 +540,7 @@ class EventHandler:
 
     def handle_game_completed_event(self, game: TrackedGame, comment: Optional[str] = None) -> None:
         """Handle the Game Completed event."""
-        log.info("Event - GAME COMPLETED - %s %s", game.game_id, "'%s'" % comment if comment else None)
+        log.info("Event - GAME COMPLETED - %s (%s)", game.game_id, "'%s'" % comment if comment else None)
         context = GameCompletedContext(game_id=game.game_id, comment=comment)
         message = Message(MessageType.GAME_COMPLETED, context)
         players = self.manager.lookup_game_players(game)
@@ -600,7 +600,7 @@ class EventHandler:
 
     def handle_game_player_change_event(self, game: TrackedGame, comment: str) -> None:
         """Handle the Game Player Change event."""
-        log.info("Event - GAME PLAYER CHANGE - %s %s", game.game_id, "'%s'" % comment if comment else None)
+        log.info("Event - GAME PLAYER CHANGE - %s (%s)", game.game_id, "'%s'" % comment if comment else None)
         players = self.manager.lookup_game_players(game)
         context = GamePlayerChangeContext(game_id=game.game_id, comment=comment, players=game.get_game_players())
         message = Message(MessageType.GAME_PLAYER_CHANGE, context=context)
@@ -609,7 +609,7 @@ class EventHandler:
     # pylint: disable=redefined-argument-from-local
     def handle_game_state_change_event(self, game: TrackedGame, player: Optional[TrackedPlayer] = None) -> None:
         """Handle the Game State Change event."""
-        log.info("Event - GAME STATE CHANGE - %s %s", game.game_id, player.handle if player else None)
+        log.info("Event - GAME STATE CHANGE - %s for %s", game.game_id, player.handle if player else None)
         game.mark_active()
         players = [player] if player else self.manager.lookup_game_players(game)
         for player in players:
