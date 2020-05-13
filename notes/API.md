@@ -100,10 +100,9 @@ Example request:
 ### Unregister Player
 
 A player may unregister at any time.  Once unregistered, the player's handle is
-available to be registered by another player.  If the player is currently
-playing a game, unregistering will trigger a _Game Player Change_ event for
-players in that game and might potentially result in a _Game Cancelled_ event
-if the game is no longer viable.
+available to be registered by another player.  If the player has joined or is
+currently playing a game, unregistering will trigger a _Game Player Left_
+event.
 
 Example request:
 
@@ -220,13 +219,11 @@ Example request:
 A registered player that has joined a game may quit that game, even if the game
 has not yet started or finished.  However, the advertising player may not quit.
 The advertising player must cancel the game instead.  Qutting will trigger a
-_Game Player Change_ event for the game.  When a player leaves a game, the game
-might no longer be viable.  In that case, the game might be cancelled,
-triggering a _Game Cancelled_ event.  If the game continues to be viable, the
-player who quit will simply be ignored for future turns.  Receipt of this
-message resets the sender's last active timestamp and marks the sender as
-active, and also resets the game's last active timestamp and marks the game as
-active.
+_Game Player Left_ event for the game.  If the game continues to be viable, the
+player who quit will have their move chosen programmatically for future turns.
+Receipt of this message resets the sender's last active timestamp and marks the
+sender as active, and also resets the game's last active timestamp and marks
+the game as active.
 
 Example request:
 
@@ -273,15 +270,16 @@ Example request:
 
 When a player has been notified that it is their turn via the _Game Player
 Turn_ event, it must choose a move from among the legal moves provided in the
-event, and request to execute that move by id.  When a move has been completed,
-this triggers one of several other events depending on the state of the game
-(potentially a _Game State Change_ event, a _Game Player Turn_ event, a _Game
-Completed_ event, etc.).  The request will be rejected with a _Request Failed_
-event if the player is not playing a game, if the player's game has been
-cancelled or completed, if it is not currently the player's turn, or if the
-player attempts to execute an illegal move.  Receipt of this message resets the
-sender's last active timestamp and marks the sender as active, and also resets
-the game's last active timestamp and marks the game as active.
+event, and request to execute that move by id.  This triggers a _Game Player
+Move_ event.  When a move has been completed, this triggers one of several
+other events depending on the state of the game (potentially a _Game State
+Change_ event, a _Game Player Turn_ event, a _Game Completed_ event, etc.).
+The request will be rejected with a _Request Failed_ event if the player is not
+playing a game, if the player's game has been cancelled or completed, if it is
+not currently the player's turn, or if the player attempts to execute an
+illegal move.  Receipt of this message resets the sender's last active
+timestamp and marks the sender as active, and also resets the game's last
+active timestamp and marks the game as active.
 
 Example request:
 
@@ -512,6 +510,7 @@ Example message:
   "message": "PLAYER_REGISTERED",
   "context": {
     "player_id": "8fc4a03b-3e4d-438c-a3fc-b6913e829ab3",
+    "handle": "leela" 
   }
 }
 ```
@@ -519,7 +518,8 @@ Example message:
 ### Player Reregistered
 
 This event is triggered when a player successfully re-registers their handle
-using a saved-off player id.   
+using a saved-off player id.  (The message is the same as for the _Player
+Registered_ event.)
 
 Example message:
 
@@ -528,24 +528,23 @@ Example message:
   "message": "PLAYER_REGISTERED",
   "context": {
     "player_id": "8fc4a03b-3e4d-438c-a3fc-b6913e829ab3",
+    "handle": "leela" 
   }
 }
 ```
 
 ### Player Unregistered
 
-This event is triggered when a player unregisters.  If the player is currently
-playing a game, unregistering will trigger a _Game Player Change_ event for
-players in that game and might potentially result in a _Game Cancelled_ event
-if the game is no longer viable.
+This event is triggered when a player unregisters.  If the player has joined or
+is currently playing a game, a _Game Player Left_ event is triggered.
 
 ### Player Disconnected
 
 A player may become disconnected from the server without explicitly
 unregistering.  In this case, the player will be marked as disconnected and
-idle, and a _Game Player Change_ event will be triggered for any game the
-player has joined.  No events will be sent to the player as long as it remains
-in a disconnected state.  
+idle.  No events will be sent to the player as long as it remains in a
+disconnected state.  If the player has joined or is playing a game, a _Game
+Player Left_ event is triggered.
 
 ### Player Idle
 
@@ -722,7 +721,7 @@ Example message:
   "message": "GAME_COMPLETED",
   "context": {
     "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe",
-    "comment": "Player nibbler (YELLOW) won the game after 46 turns"
+    "comment": "Player nibbler (YELLOW) won after 46 turns"
   }
 }
 ```
@@ -773,18 +772,50 @@ generated.
 
 This event is triggered when a player explicitly quits a game.  A player may
 quit a game any time after they join, regardless of whether the game has been
-started.  If the game has been started, quitting will trigger a _Game Player
+started.  This triggers a _Game Player Left_ event.
+
+### Game Player Left
+
+This event is triggered when a player leaves a game, either by quitting or by
+being disconnected.  If the advertiser leaves the game, this triggers a _Game
+Cancelled Event_.  For other players, leaving will trigger a _Game Player
 Change_ event and might potentially result in a _Game Cancelled_ event if the
-game is no longer viable.  
+game is no longer viable.  If the game has already been started and continues
+to be viable, future moves for this player will be chosen programmatically.  If
+the player is in the middle of their turn, this will happen immediately.
 
+### Game Player Move
 
-### Execute Move
+This event is triggered when a player chooses their move.  In turn, it
+triggers a _Game Move_ event. 
 
-This event is triggered when a player chooses their move.  The player's move
-is validated and then executed.  If the player has won the game, then a 
-_Game Completed_ event is triggered.  Otherwise a _Game State Change_ event
-is triggered.
+### Game Programmatic Move Event
 
+There are several different circumstances where we might need to choose a
+programmatic move for a player.  The first is that the player itself is
+programmatic - the advertiser chose to start the game before a full set of
+human players joined.  Every move for a programmatic player must be chosen
+programmatically.  However, we also choose a move programmatically for any
+player that has quit or been disconnected from an in-progress game.  Once the
+move has been chosen programmatically, this triggers a _Game Move_ event.
+
+### Game Move
+
+This event is triggered when a move has been chosen, either by a player or
+progammatically.  The move is executed.  If the player has won the game, then a
+_Game Completed_ event is triggered.  Otherwise a _Game State Change_ and a
+_Game Next Turn_ event are both triggered.  This event also resets the game's
+last active timestamp and marks the game as active.
+
+### Game Next Turn
+
+This event is triggered by the _Game Move_ event if the game has not been
+completed by the executed move.  If the next turn is for a programmatic player,
+the _Game Programmatic Move_ event is triggered.  If the next turn is for a
+human player, then one of two things happens. If the player is still playing
+the game, then a _Game Player Turn_ event is triggered.  If the player is not
+playing the game (if they quit, were disconnected, or even unregistered) then a
+_Game Programmatic Move_ event is triggered instead.
 
 ### Game Player Change
 

@@ -218,7 +218,7 @@ class GamePlayer:
     """The public definition of a player within a game."""
 
     handle = attr.ib(type=str)
-    player_color = attr.ib(type=PlayerColor)
+    player_color = attr.ib(type=Optional[PlayerColor])
     player_type = attr.ib(type=PlayerType)
     player_state = attr.ib(type=PlayerState)
 

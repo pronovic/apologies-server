@@ -23,7 +23,8 @@ from typing import List, Optional, Set, Tuple, cast
 
 import attr
 import pendulum
-from apologies.rules import Move
+from apologies.rules import Move, Rules
+from apologies.source import RewardV1InputSource
 from ordered_set import OrderedSet  # this makes expected results easier to articulate in test code
 from websockets import WebSocketServerProtocol
 
@@ -304,7 +305,7 @@ class EventHandler:
             raise ProcessingError(FailureReason.NO_MOVE_PENDING, handle=request.player.handle)
         if not request.game.is_legal_move(request.player.handle, context.move_id):
             raise ProcessingError(FailureReason.ILLEGAL_MOVE, handle=request.player.handle)
-        self.handle_game_execute_move_event(request.player, request.game, context.move_id)
+        self.handle_game_player_move_event(request.player, request.game, context.move_id)
 
     def handle_retrieve_game_state_request(self, request: RequestContext) -> None:
         """Handle the Retrieve Game State request."""
@@ -405,10 +406,7 @@ class EventHandler:
         player.mark_quit()
         if game:
             comment = "Player %s unregistered" % player.handle
-            game.mark_quit(player)
-            self.handle_game_player_change_event(game, comment)
-            if not game.is_viable():
-                self.handle_game_cancelled_event(game, CancelledReason.NOT_VIABLE, comment)
+            self.handle_game_player_left_event(player, game, comment)
         self.manager.delete_player(player)
 
     def handle_player_disconnected_event(self, player: TrackedPlayer) -> None:
@@ -418,10 +416,7 @@ class EventHandler:
         player.mark_disconnected()
         if game:
             comment = "Player %s disconnected" % player.handle
-            game.mark_quit(player)
-            self.handle_game_player_change_event(game, comment)
-            if not game.is_viable():
-                self.handle_game_cancelled_event(game, CancelledReason.NOT_VIABLE, comment)
+            self.handle_game_player_left_event(player, game, comment)
 
     def handle_player_idle_event(self, player: TrackedPlayer) -> None:
         """Handle the Player Idle event."""
@@ -484,13 +479,13 @@ class EventHandler:
         log.info("Event - GAME JOINED - %s", game_id if game_id else game.game_id if game else None)
         if game_id:
             game = self.manager.lookup_game(game_id=game_id)
-            if not game or not game.is_available(player):
+            if not game or not game.is_available(player.handle):
                 raise ProcessingError(FailureReason.INVALID_GAME, handle=player.handle)
         if not game:
             raise ProcessingError(FailureReason.INTERNAL_ERROR, comment="Invalid arguments", handle=player.handle)
         game.mark_active()
         player.mark_joined(game)
-        game.mark_joined(player)
+        game.mark_joined(player.handle)
         context = GameJoinedContext(game_id=game.game_id)
         message = Message(MessageType.GAME_JOINED, context)
         self.queue.message(message, players=[player])
@@ -572,27 +567,65 @@ class EventHandler:
         self.manager.delete_game(game)
 
     def handle_game_player_quit_event(self, player: TrackedPlayer, game: TrackedGame) -> None:
-        """Handle the Player Unregistered event."""
-        log.info("Event - PLAYER_QUIT - %s quit %s", player.handle, game.game_id)
-        comment = "Player %s quit" % player.handle
+        """Handle the Game Player Quit event."""
+        log.info("Event - GAME PLAYER QUIT - %s quit %s", player.handle, game.game_id)
         game.mark_active()
         player.mark_quit()
-        game.mark_quit(player)
-        self.handle_game_player_change_event(game, comment)
-        if not game.is_viable():
-            self.handle_game_cancelled_event(game, CancelledReason.NOT_VIABLE, comment)
+        comment = "Player %s quit" % player.handle
+        self.handle_game_player_left_event(player, game, comment)
 
-    def handle_game_execute_move_event(self, player: TrackedPlayer, game: TrackedGame, move_id: str) -> None:
-        """Handle the Execute Move event."""
-        log.info("Event - EXECUTE MOVE - %s for %s, move %s", player.handle, game.game_id, move_id)
+    def handle_game_player_left_event(self, player: TrackedPlayer, game: TrackedGame, comment: str) -> None:
+        """Handle the Game Player Left event."""
+        log.info("Event - GAME PLAYER LEFT - %s left %s ('%s')", player.handle, game.game_id, comment)
+        if player.handle == game.advertiser_handle:
+            self.handle_game_cancelled_event(game, CancelledReason.CANCELLED, comment)
+        else:
+            game.mark_quit(player.handle)
+            self.handle_game_player_change_event(game, comment)
+            if not game.is_viable():
+                self.handle_game_cancelled_event(game, CancelledReason.NOT_VIABLE, comment)
+            elif game.is_playing() and game.is_move_pending(player.handle):
+                # if the player is in the middle of their turn when they leave, we need to finish it for them
+                self.handle_game_programmatic_move_event(player.handle, game)
+
+    def handle_game_player_move_event(self, player: TrackedPlayer, game: TrackedGame, move_id: str) -> None:
+        """Handle the Game Player Move event."""
+        log.info("Event - GAME PLAYER MOVE - %s for %s, move %s", player.handle, game.game_id, move_id)
+        self.handle_game_move_event(player.handle, game, move_id)
+
+    def handle_game_programmatic_move_event(self, handle: str, game: TrackedGame) -> None:
+        """Handle the Game Programmatic Move event."""
+        log.info("Event - GAME PROGRAMMATIC MOVE - %s for %s", handle, game.game_id)
+        view = game.get_player_view(handle)
+        moves = game.get_legal_moves(handle)
+        move = RewardV1InputSource().choose_move(game.mode, view, moves, Rules.evaluate_move)
+        self.handle_game_move_event(handle, game, move.id)
+
+    def handle_game_move_event(self, handle: str, game: TrackedGame, move_id: str) -> None:
+        """Handle the Game Move event."""
+        log.info("Event - GAME MOVE - %s for %s, move %s", handle, game.game_id, move_id)
         game.mark_active()
-        (completed, comment) = game.execute_move(player, move_id)
+        (completed, comment) = game.execute_move(handle, move_id)
         if completed:
             self.handle_game_completed_event(game, comment)
         else:
-            player, moves = game.get_next_turn()
-            self.handle_game_player_turn_event(player, moves)
             self.handle_game_state_change_event(game)
+            self.handle_game_next_turn_event(game)
+
+    def handle_game_next_turn_event(self, game: TrackedGame) -> None:
+        """Handle the Game Next Turn event."""
+        log.info("Event - GAME NEXT TURN - %s", game.game_id)
+        handle, player_type = game.get_next_turn()
+        if player_type == PlayerType.PROGRAMMATIC:
+            self.handle_game_programmatic_move_event(handle, game)
+        else:
+            player = self.manager.lookup_player(handle=handle)
+            if player and player.player_state == PlayerState.PLAYING:  # they might have quit or even have unregistered
+                moves = game.get_legal_moves(handle)
+                self.handle_game_player_turn_event(player, moves)
+            else:
+                # if the player is no longer available to play, then we execute a move programmatically
+                self.handle_game_programmatic_move_event(handle, game)
 
     def handle_game_player_change_event(self, game: TrackedGame, comment: str) -> None:
         """Handle the Game Player Change event."""
@@ -609,7 +642,7 @@ class EventHandler:
         game.mark_active()
         players = [player] if player else self.manager.lookup_game_players(game)
         for player in players:
-            view = game.get_player_view(player)
+            view = game.get_player_view(player.handle)
             context = GameStateChangeContext.for_view(game_id=game.game_id, view=view)
             message = Message(MessageType.GAME_STATE_CHANGE, context=context)
             self.queue.message(message, players=[player])
