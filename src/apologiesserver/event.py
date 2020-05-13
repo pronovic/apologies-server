@@ -14,8 +14,6 @@ boundary.  Any tasks that might block (such as network requests) should be added
 task queue, to be executed by the execute() method once state updates have been completed.  
 """
 
-# TODO: event logging sucks.  I need a better way to make the logs more legible
-
 from __future__ import annotations  # see: https://stackoverflow.com/a/33533514/2907667
 
 import asyncio
@@ -412,8 +410,6 @@ class EventHandler:
             if not game.is_viable():
                 self.handle_game_cancelled_event(game, CancelledReason.NOT_VIABLE, comment)
         self.manager.delete_player(player)
-
-    # TODO: start here
 
     def handle_player_disconnected_event(self, player: TrackedPlayer) -> None:
         """Handle the Player Disconnected event."""
