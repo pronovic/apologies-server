@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, call
 
 import pytest
 from apologies.game import GameMode
+from apologies.rules import Rules
 from asynctest import CoroutineMock
 from asynctest import MagicMock as AsyncMock
 from asynctest import patch
@@ -1287,20 +1288,188 @@ class TestEventMethods:
         player.mark_quit.assert_called_once()
         handler.handle_game_player_left_event.assert_called_once_with(player, game, comment)
 
-    def test_handle_game_player_left_event(self):
-        raise NotImplementedError
+    def test_handle_game_player_left_event_advertiser(self):
+        player = MagicMock(handle="leela")
+        game = MagicMock(advertiser_handle="leela")
+        handler = EventHandler(MagicMock())
+        handler.handle_game_player_change_event = MagicMock()
+        handler.handle_game_cancelled_event = MagicMock()
+        handler.handle_game_programmatic_move_event = MagicMock()
+        handler.handle_game_player_left_event(player, game, "comment")
+        handler.handle_game_cancelled_event.assert_called_once_with(game, CancelledReason.CANCELLED, "comment")
+        handler.handle_game_programmatic_move_event.assert_not_called()
+
+    def test_handle_game_player_left_event_not_viable(self):
+        player = MagicMock(handle="bender")
+        game = MagicMock(advertiser_handle="leela")
+        game.is_viable.return_value = False
+        handler = EventHandler(MagicMock())
+        handler.handle_game_player_change_event = MagicMock()
+        handler.handle_game_cancelled_event = MagicMock()
+        handler.handle_game_programmatic_move_event = MagicMock()
+        handler.handle_game_player_left_event(player, game, "comment")
+        game.mark_quit.assert_called_once_with("bender")
+        handler.handle_game_player_change_event.assert_called_once_with(game, "comment")
+        handler.handle_game_cancelled_event.assert_called_once_with(game, CancelledReason.NOT_VIABLE, "comment")
+        handler.handle_game_programmatic_move_event.assert_not_called()
+
+    def test_handle_game_player_left_event_viable_not_playing(self):
+        player = MagicMock(handle="bender")
+        game = MagicMock(advertiser_handle="leela")
+        game.is_viable.return_value = True
+        game.is_playing.return_value = False
+        handler = EventHandler(MagicMock())
+        handler.handle_game_player_change_event = MagicMock()
+        handler.handle_game_cancelled_event = MagicMock()
+        handler.handle_game_programmatic_move_event = MagicMock()
+        handler.handle_game_player_left_event(player, game, "comment")
+        game.mark_quit.assert_called_once_with("bender")
+        handler.handle_game_player_change_event.assert_called_once_with(game, "comment")
+        handler.handle_game_cancelled_event.assert_not_called()
+        handler.handle_game_programmatic_move_event.assert_not_called()
+
+    def test_handle_game_player_left_event_viable_playing(self):
+        player = MagicMock(handle="bender")
+        game = MagicMock(advertiser_handle="leela")
+        game.is_viable.return_value = True
+        game.is_playing.return_value = True
+        game.is_move_pending.return_value = False
+        handler = EventHandler(MagicMock())
+        handler.handle_game_player_change_event = MagicMock()
+        handler.handle_game_cancelled_event = MagicMock()
+        handler.handle_game_programmatic_move_event = MagicMock()
+        handler.handle_game_player_left_event(player, game, "comment")
+        game.mark_quit.assert_called_once_with("bender")
+        handler.handle_game_player_change_event.assert_called_once_with(game, "comment")
+        handler.handle_game_cancelled_event.assert_not_called()
+        handler.handle_game_programmatic_move_event.assert_not_called()
+
+    def test_handle_game_player_left_event_viable_pending(self):
+        player = MagicMock(handle="bender")
+        game = MagicMock(advertiser_handle="leela")
+        game.is_viable.return_value = True
+        game.is_playing.return_value = True
+        game.is_move_pending.return_value = True
+        handler = EventHandler(MagicMock())
+        handler.handle_game_player_change_event = MagicMock()
+        handler.handle_game_cancelled_event = MagicMock()
+        handler.handle_game_programmatic_move_event = MagicMock()
+        handler.handle_game_player_left_event(player, game, "comment")
+        game.mark_quit.assert_called_once_with("bender")
+        handler.handle_game_player_change_event.assert_called_once_with(game, "comment")
+        handler.handle_game_cancelled_event.assert_not_called()
+        handler.handle_game_programmatic_move_event.assert_called_once_with("bender", game)
 
     def test_handle_game_player_move_event(self):
-        raise NotImplementedError
+        player = MagicMock(handle="handle")
+        game = MagicMock()
+        handler = EventHandler(MagicMock())
+        handler.handle_game_move_event = MagicMock()
+        handler.handle_game_player_move_event(player, game, "move")
+        handler.handle_game_move_event.assert_called_once_with("handle", game, "move")
 
-    def test_handle_game_programmatic_move_event(self):
-        raise NotImplementedError
+    @patch("apologiesserver.event.RewardV1InputSource")
+    def test_handle_game_programmatic_move_event(self, obj):
+        source = MagicMock()
+        obj.return_value = source  # mock the constructor
+        view = MagicMock()
+        move = MagicMock(id="move")
+        game = MagicMock(mode=GameMode.STANDARD)
+        game.get_player_view.return_value = view
+        game.get_legal_moves.return_value = [move]
+        source.choose_move.return_value = move
+        handler = EventHandler(MagicMock())
+        handler.handle_game_move_event = MagicMock()
+        handler.handle_game_programmatic_move_event("handle", game)
+        game.get_player_view.assert_called_once_with("handle")
+        game.get_legal_moves.assert_called_once_with("handle")
+        source.choose_move.assert_called_once_with(GameMode.STANDARD, view, [move], Rules.evaluate_move)
+        handler.handle_game_move_event.assert_called_once_with("handle", game, "move")
 
-    def test_handle_game_move_event(self):
-        raise NotImplementedError
+    def test_handle_game_move_event_completed(self):
+        game = MagicMock()
+        game.execute_move.return_value = (True, "comment")
+        handler = EventHandler(MagicMock())
+        handler.handle_game_completed_event = MagicMock()
+        handler.handle_game_state_change_event = MagicMock()
+        handler.handle_game_next_turn_event = MagicMock()
+        handler.handle_game_move_event("handle", game, "move_id")
+        game.mark_active.assert_called_once()
+        game.execute_move.assert_called_once_with("handle", "move_id")
+        handler.handle_game_completed_event.assert_called_once_with(game, "comment")
+        handler.handle_game_state_change_event.assert_not_called()
+        handler.handle_game_next_turn_event.assert_not_called()
 
-    def test_handle_game_next_turn_event(self):
-        raise NotImplementedError
+    def test_handle_game_player_event_not_completed(self):
+        game = MagicMock()
+        game.execute_move.return_value = (False, "comment")
+        handler = EventHandler(MagicMock())
+        handler.handle_game_completed_event = MagicMock()
+        handler.handle_game_state_change_event = MagicMock()
+        handler.handle_game_next_turn_event = MagicMock()
+        handler.handle_game_move_event("handle", game, "move_id")
+        game.mark_active.assert_called_once()
+        game.execute_move.assert_called_once_with("handle", "move_id")
+        handler.handle_game_completed_event.assert_not_called()
+        handler.handle_game_state_change_event.assert_called_once_with(game)
+        handler.handle_game_next_turn_event.assert_called_once_with(game)
+
+    def test_handle_game_next_turn_event_programmatic(self):
+        game = MagicMock()
+        game.get_next_turn.return_value = ("handle", PlayerType.PROGRAMMATIC)
+        handler = EventHandler(MagicMock())
+        handler.handle_game_programmatic_move_event = MagicMock()
+        handler.handle_game_player_turn_event = MagicMock()
+        handler.handle_game_next_turn_event(game)
+        handler.handle_game_programmatic_move_event.assert_called_once_with("handle", game)
+        handler.handle_game_player_turn_event.assert_not_called()
+
+    def test_handle_game_next_turn_event_human_not_found(self):
+        game = MagicMock()
+        game.get_next_turn.return_value = ("handle", PlayerType.HUMAN)
+        game.is_playing.return_value = True
+        handler = EventHandler(MagicMock())
+        handler.manager.lookup_player.return_value = None  # player is not found
+        handler.handle_game_programmatic_move_event = MagicMock()
+        handler.handle_game_player_turn_event = MagicMock()
+        handler.handle_game_next_turn_event(game)
+        handler.handle_game_programmatic_move_event.assert_called_once_with("handle", game)
+        game.get_legal_moves.assert_not_called()
+        handler.handle_game_player_turn_event.assert_not_called()
+        handler.manager.lookup_player.assert_called_once_with(handle="handle")
+
+    def test_handle_game_next_turn_event_human_not_playing(self):
+        for player_state in [player_state for player_state in PlayerState if player_state != PlayerState.PLAYING]:
+            player = MagicMock(player_state=player_state)
+            game = MagicMock()
+            game.get_next_turn.return_value = ("handle", PlayerType.HUMAN)
+            game.is_playing.return_value = True
+            handler = EventHandler(MagicMock())
+            handler.manager.lookup_player.return_value = player
+            handler.handle_game_programmatic_move_event = MagicMock()
+            handler.handle_game_player_turn_event = MagicMock()
+            handler.handle_game_next_turn_event(game)
+            handler.handle_game_programmatic_move_event.assert_called_once_with("handle", game)
+            game.get_legal_moves.assert_not_called()
+            handler.handle_game_player_turn_event.assert_not_called()
+            handler.manager.lookup_player.assert_called_once_with(handle="handle")
+
+    def test_handle_game_next_turn_event_human_playing(self):
+        move = MagicMock()
+        player = MagicMock(player_state=PlayerState.PLAYING)
+        game = MagicMock()
+        game.get_next_turn.return_value = ("handle", PlayerType.HUMAN)
+        game.is_playing.return_value = True
+        game.get_legal_moves.return_value = [move]
+        handler = EventHandler(MagicMock())
+        handler.manager.lookup_player.return_value = player
+        handler.handle_game_programmatic_move_event = MagicMock()
+        handler.handle_game_player_turn_event = MagicMock()
+        handler.handle_game_next_turn_event(game)
+        handler.handle_game_programmatic_move_event.assert_not_called()
+        game.get_legal_moves.assert_called_once_with("handle")
+        handler.handle_game_player_turn_event.assert_called_once_with(player, [move])
+        handler.manager.lookup_player.assert_called_once_with(handle="handle")
 
     def test_handle_game_player_change_event(self):
         game_player = MagicMock()

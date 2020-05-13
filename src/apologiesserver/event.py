@@ -575,17 +575,16 @@ class EventHandler:
         self.handle_game_player_left_event(player, game, comment)
 
     def handle_game_player_left_event(self, player: TrackedPlayer, game: TrackedGame, comment: str) -> None:
-        """Handle the Game Player Quit event."""
+        """Handle the Game Player Left event."""
         log.info("Event - GAME PLAYER LEFT - %s left %s ('%s')", player.handle, game.game_id, comment)
         if player.handle == game.advertiser_handle:
-            comment = "Advertiser %s left the game" % player.handle
             self.handle_game_cancelled_event(game, CancelledReason.CANCELLED, comment)
         else:
             game.mark_quit(player.handle)
             self.handle_game_player_change_event(game, comment)
             if not game.is_viable():
                 self.handle_game_cancelled_event(game, CancelledReason.NOT_VIABLE, comment)
-            if game.is_playing() and game.is_move_pending(player.handle):
+            elif game.is_playing() and game.is_move_pending(player.handle):
                 # if the player is in the middle of their turn when they leave, we need to finish it for them
                 self.handle_game_programmatic_move_event(player.handle, game)
 
