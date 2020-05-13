@@ -721,7 +721,7 @@ Example message:
   "message": "GAME_COMPLETED",
   "context": {
     "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe",
-    "comment": "Player nibbler (YELLOW) won the game after 46 turns"
+    "comment": "Player nibbler (YELLOW) won after 46 turns"
   }
 }
 ```

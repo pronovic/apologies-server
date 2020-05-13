@@ -1,16 +1,28 @@
 # -*- coding: utf-8 -*-
 # vim: set ft=python ts=4 sw=4 expandtab:
-# pylint: disable=redefined-outer-name,wildcard-import
+# pylint: disable=redefined-outer-name,wildcard-import,protected-access,too-many-lines
 
 from unittest.mock import MagicMock, patch
 
 import pendulum
 import pytest
+from apologies.engine import Character
 from apologies.game import GameMode, PlayerColor
 from ordered_set import OrderedSet
 
 from apologiesserver.interface import *
-from apologiesserver.manager import _MANAGER, _NAMES, StateManager, TrackedGame, TrackedPlayer, TrackedWebsocket, manager
+from apologiesserver.manager import (
+    _MANAGER,
+    _NAMES,
+    CurrentTurn,
+    NoOpInputSource,
+    StateManager,
+    TrackedEngine,
+    TrackedGame,
+    TrackedPlayer,
+    TrackedWebsocket,
+    manager,
+)
 
 from .util import random_string, to_date
 
@@ -179,34 +191,209 @@ class TestTrackedPlayer:
         assert player.player_state == PlayerState.WAITING  # they move through QUIT and back to WAITING
 
 
+class TestNoOpInputSource:
+    """
+    Test the NoOpInputSource class.
+    """
+
+    def test_choose_move(self):
+        source = NoOpInputSource()
+        with pytest.raises(NotImplementedError):
+            source.choose_move(MagicMock(), MagicMock, MagicMock(), MagicMock())
+
+
+class TestCurrentTurn:
+    """
+    Test the CurrentTurn class.
+    """
+
+    def test_for_engine(self):
+        move = MagicMock(id="move_id")
+        character = MagicMock()
+        character.configure_mock(name="handle")  # the "name" attribute means something special in the constructor
+        view = MagicMock()
+        engine = MagicMock()
+        engine.next_turn.return_value = (PlayerColor.RED, character)
+        engine.game.create_player_view.return_value = view
+        engine.construct_legal_moves.return_value = (None, [move])
+        turn = CurrentTurn.for_engine(engine)
+        engine.next_turn.assert_called_once()
+        engine.game.create_player_view.assert_called_once_with(PlayerColor.RED)
+        engine.construct_legal_moves.assert_called_once_with(view)
+        assert turn.handle == "handle"
+        assert turn.color == PlayerColor.RED
+        assert turn.view is view
+        assert turn.movelist == [move]
+        assert turn.movedict == {"move_id": move}
+
+
 class TestTrackedEngine:
     """
     Test the TrackedEngine class.
     """
 
-    def test_start_game(self):
-        raise NotImplementedError
+    # noinspection PyTypeChecker
+    @patch("apologiesserver.manager.CurrentTurn")
+    def test_start_game(self, current_turn):
+        replacement = MagicMock()
+        current_turn.for_engine.return_value = replacement
+        mode = GameMode.STANDARD
+        handles = ["leela", "bender"]
+        engine = TrackedEngine()
+        engine._engine = MagicMock()
+        with pytest.raises(ProcessingError, match=r"Illegal state for operation"):
+            engine.start_game(mode, handles=handles)  # there's already an engine
+        engine._engine = None
+        engine._colors = {}
+        engine._current = None
+        colors = engine.start_game(mode, handles)
+        assert colors == engine._colors and colors is not engine._colors  # it's a copy
+        assert engine._engine.mode == mode
+        assert engine._engine.characters == [
+            Character(name="leela", source=NoOpInputSource()),
+            Character(name="bender", source=NoOpInputSource()),
+        ]
+        assert engine._engine.started is True
+        assert "leela" in engine._colors and "bender" in engine._colors and engine._colors["leela"] != engine._colors["bender"]
+        assert engine._current is replacement
+        current_turn.for_engine.assert_called_with(engine._engine)
 
     def test_stop_game(self):
-        raise NotImplementedError
+        engine = TrackedEngine()
+        engine._engine = MagicMock()
+        engine._colors = {"a": "b"}
+        engine._current = MagicMock()
+        engine.stop_game()
+        assert engine._engine is None
+        assert engine._colors == {}
+        assert engine._current is None
 
     def test_get_next_turn(self):
-        raise NotImplementedError
+        engine = TrackedEngine()
+        engine._current = None
+        with pytest.raises(ProcessingError, match=r"Illegal state for operation"):
+            engine.get_next_turn()
+        engine._current = MagicMock(handle="handle")
+        assert engine.get_next_turn() == "handle"
 
     def test_get_legal_moves(self):
-        raise NotImplementedError
+        move = MagicMock()
+        engine = TrackedEngine()
+        engine._current = None
+        with pytest.raises(ProcessingError, match=r"Illegal state for operation"):
+            engine.get_legal_moves("handle")  # no current turn
+        engine._current = MagicMock(handle="handle")
+        engine._current.movelist = [move]
+        with pytest.raises(ProcessingError, match=r"Illegal state for operation"):
+            engine.get_legal_moves("bogus")  # unknown handle
+        assert engine.get_legal_moves("handle") == [move]
 
     def test_get_player_view(self):
-        raise NotImplementedError
+        view = MagicMock()
+        engine = TrackedEngine()
+        engine._engine = None
+        with pytest.raises(ProcessingError, match=r"Illegal state for operation"):
+            engine.get_player_view("handle")  # no engine
+        engine._engine = MagicMock()
+        engine._engine.game.create_player_view.return_value = view
+        engine._colors = {"handle": PlayerColor.RED}
+        with pytest.raises(ProcessingError, match=r"Illegal state for operation"):
+            engine.get_player_view("bogus")  # unknown handle
+        assert engine.get_player_view("handle") is view
+        engine._engine.game.create_player_view.assert_called_once_with(PlayerColor.RED)
 
     def test_is_move_pending(self):
-        raise NotImplementedError
+        engine = TrackedEngine()
+        engine._current = None
+        with pytest.raises(ProcessingError, match=r"Illegal state for operation"):
+            engine.is_move_pending("handle")  # no current turn
+        engine._current = MagicMock(handle="handle")
+        assert engine.is_move_pending("bogus") is False
+        assert engine.is_move_pending("handle") is True
 
     def test_is_legal_move(self):
-        raise NotImplementedError
+        move = MagicMock()
+        engine = TrackedEngine()
+        engine._current = None
+        with pytest.raises(ProcessingError, match=r"Illegal state for operation"):
+            engine.is_legal_move("handle", "move_id")  # no current turn
+        engine._current = MagicMock(handle="handle")
+        engine._current.movedict = {"move_id": move}
+        assert engine.is_legal_move("bogus", "move_id") is False  # handle doesn't match current turn
+        assert engine.is_legal_move("handle", "bogus") is False  # move isn't in the current turn's list
+        assert engine.is_legal_move("handle", "move_id") is True
 
-    def test_execute_move(self):
-        raise NotImplementedError
+    def test_execute_move_validations(self):
+        move = MagicMock()
+        engine = TrackedEngine()
+        engine._engine = None
+        engine._current = None
+        with pytest.raises(ProcessingError, match=r"Illegal state for operation"):
+            engine.execute_move("handle", "move_id")  # no engine
+        engine._engine = MagicMock()
+        with pytest.raises(ProcessingError, match=r"Illegal state for operation"):
+            engine.execute_move("handle", "move_id")  # no current turn
+        engine._current = MagicMock(handle="handle")
+        engine._current.movedict = {"move_id": move}
+        with pytest.raises(ProcessingError, match=r"Illegal state for operation"):
+            engine.execute_move("bogus", "move_id")  # handle doesn't match current turn
+        with pytest.raises(ProcessingError, match=r"Illegal state for operation"):
+            engine.execute_move("handle", "move_id")  # can't find color mapping for handle
+        engine._colors = {"handle": PlayerColor.RED}
+        with pytest.raises(ProcessingError, match=r"Illegal state for operation"):
+            engine.execute_move("handle", "bogus")  # unknown move
+
+    def test_execute_move_completed(self):
+        character = MagicMock()
+        character.configure_mock(name="handle")  # the "name" attribute means something special in the constructor
+        player = MagicMock(color=PlayerColor.YELLOW, turns=42)
+        move = MagicMock()
+        current = MagicMock(handle="handle")
+        engine = TrackedEngine()
+        engine._engine = MagicMock(completed=True)
+        engine._current = current
+        engine._current.movedict = {"move_id": move}
+        engine._colors = {"handle": PlayerColor.RED}
+        engine._engine.winner.return_value = (character, player)  # only set if the game is completed
+        engine._engine.execute_move.return_value = True  # turn is always true if the game is completed
+        assert engine.execute_move("handle", "move_id") == (True, "Player handle (YELLOW) won after 42 turns")
+        assert engine._current is None
+        engine._engine.execute_move.assert_called_once_with(PlayerColor.RED, move)
+
+    def test_execute_move_not_done(self):
+        character = MagicMock()
+        character.configure_mock(name="handle")  # the "name" attribute means something special in the constructor
+        move = MagicMock()
+        current = MagicMock(handle="handle")
+        engine = TrackedEngine()
+        engine._engine = MagicMock(completed=False)
+        engine._current = current
+        engine._current.movedict = {"move_id": move}
+        engine._colors = {"handle": PlayerColor.RED}
+        engine._engine.winner.return_value = None  # only set if the game is completed
+        engine._engine.execute_move.return_value = False  # player's turn is not done yet, so current does not change
+        assert engine.execute_move("handle", "move_id") == (False, None)
+        assert engine._current is current
+        engine._engine.execute_move.assert_called_once_with(PlayerColor.RED, move)
+
+    @patch("apologiesserver.manager.CurrentTurn")
+    def test_execute_move_done(self, current_turn):
+        character = MagicMock()
+        character.configure_mock(name="handle")  # the "name" attribute means something special in the constructor
+        move = MagicMock()
+        current = MagicMock(handle="handle")
+        replacement = MagicMock()
+        current_turn.for_engine.return_value = replacement
+        engine = TrackedEngine()
+        engine._engine = MagicMock(completed=False)
+        engine._current = current
+        engine._current.movedict = {"move_id": move}
+        engine._colors = {"handle": PlayerColor.RED}
+        engine._engine.winner.return_value = None  # only set if the game is completed
+        engine._engine.execute_move.return_value = True  # player's turn is now done, so current will change
+        assert engine.execute_move("handle", "move_id") == (False, None)
+        assert engine._current is replacement
+        engine._engine.execute_move.assert_called_once_with(PlayerColor.RED, move)
 
 
 # pylint: disable=too-many-public-methods
@@ -283,22 +470,22 @@ class TestTrackedGame:
         player = MagicMock(player_type=PlayerType.PROGRAMMATIC)
         game = create_test_game()
         game.game_players["handle"] = player
-        game.engine.get_next_turn.return_value = "handle"
+        game._engine.get_next_turn.return_value = "handle"
         assert game.get_next_turn() == ("handle", PlayerType.PROGRAMMATIC)
 
     def test_get_legal_moves(self):
         move = MagicMock()
         game = create_test_game()
-        game.engine.get_legal_moves.return_value = [move]
+        game._engine.get_legal_moves.return_value = [move]
         assert game.get_legal_moves("handle") == [move]
-        game.engine.get_legal_moves.assert_called_once_with("handle")
+        game._engine.get_legal_moves.assert_called_once_with("handle")
 
     def test_get_player_view(self):
         view = MagicMock()
         game = create_test_game()
-        game.engine.get_player_view.return_value = view
+        game._engine.get_player_view.return_value = view
         assert game.get_player_view("handle") == view
-        game.engine.get_player_view.assert_called_once_with("handle")
+        game._engine.get_player_view.assert_called_once_with("handle")
 
     def test_is_available_public(self):
         game = TrackedGame("game_id", "handle", "name", GameMode.STANDARD, 3, Visibility.PUBLIC, ["bender", "fry"])
@@ -382,15 +569,15 @@ class TestTrackedGame:
 
     def test_is_move_pending(self):
         game = create_test_game()
-        game.engine.is_move_pending.return_value = True
+        game._engine.is_move_pending.return_value = True
         assert game.is_move_pending("handle") is True
-        game.engine.is_move_pending.assert_called_once_with("handle")
+        game._engine.is_move_pending.assert_called_once_with("handle")
 
     def test_is_legal_move(self):
         game = create_test_game()
-        game.engine.is_legal_move.return_value = True
+        game._engine.is_legal_move.return_value = True
         assert game.is_legal_move("handle", "move_id") is True
-        game.engine.is_legal_move.assert_called_once_with("handle", "move_id")
+        game._engine.is_legal_move.assert_called_once_with("handle", "move_id")
 
     # noinspection PyTypeChecker
     def test_mark_active(self):
@@ -466,7 +653,7 @@ class TestTrackedGame:
             }
             return colors
 
-        game.engine.start_game = stubbed_start_game
+        game._engine.start_game = stubbed_start_game
 
         game.game_state = GameState.ADVERTISED  # otherwise it's an illegal state
         game.last_active_date = None
@@ -501,7 +688,7 @@ class TestTrackedGame:
                 game.game_state = game_state
                 game.mark_completed("comment")
             assert game.game_state == game_state  # should not change
-            game.engine.stop_game.assert_not_called()
+            game._engine.stop_game.assert_not_called()
 
     # noinspection PyTypeChecker
     def test_mark_completed(self):
@@ -520,7 +707,7 @@ class TestTrackedGame:
         assert game.game_state == GameState.COMPLETED
         assert game.completed_comment == "comment"
         assert game.game_players == {"gp1": gp1_copy, "gp2": gp2_copy}
-        game.engine.stop_game.assert_called_once()
+        game._engine.stop_game.assert_called_once()
 
     def test_mark_cancelled_illegal_state(self):
         game = create_test_game()
@@ -529,7 +716,7 @@ class TestTrackedGame:
                 game.game_state = game_state
                 game.mark_cancelled(CancelledReason.CANCELLED, "comment")
             assert game.game_state == game_state  # should not change
-            game.engine.stop_game.assert_not_called()
+            game._engine.stop_game.assert_not_called()
 
     # noinspection PyTypeChecker
     def test_mark_cancelled(self):
@@ -550,7 +737,7 @@ class TestTrackedGame:
             assert game.cancelled_reason == CancelledReason.NOT_VIABLE
             assert game.completed_comment == "comment"
             assert game.game_players == {"gp1": gp1_copy, "gp2": gp2_copy}
-            game.engine.stop_game.assert_called_once()
+            game._engine.stop_game.assert_called_once()
 
     def test_mark_quit_illegal_state(self):
         for game_state in [game_state for game_state in GameState if game_state not in (GameState.PLAYING, GameState.ADVERTISED)]:
@@ -583,9 +770,8 @@ class TestTrackedGame:
     def test_execute_move(self):
         game = create_test_game()
         game.execute_move("handle", "move_id")
-        game.engine.execute_move.assert_called_once_with("handle", "move_id")
+        game._engine.execute_move.assert_called_once_with("handle", "move_id")
 
-    # pylint: disable=protected-access
     def test_mark_joined_programmatic(self):
         game = create_test_game()
         game.game_players = {}
@@ -597,7 +783,6 @@ class TestTrackedGame:
         assert gp1.player_type == PlayerType.PROGRAMMATIC
         assert gp1.player_state == PlayerState.JOINED
 
-    # pylint: disable=protected-access
     def test_assign_handle(self):
         game = create_test_game()
 
@@ -611,7 +796,6 @@ class TestTrackedGame:
             assert handle in _NAMES and handle not in ("Frodo", "Gimli")
 
 
-# pylint: disable=protected-access
 class TestStateManager:
     """
     Test the StateManager class.

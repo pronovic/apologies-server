@@ -2,8 +2,6 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=wildcard-import,too-many-lines
 
-# TODO: this does not actually include any way to manage game state or engine yet (that's the next big design step)
-
 """
 State manager.
 
@@ -37,14 +35,15 @@ from __future__ import annotations  # see: https://stackoverflow.com/a/33533514/
 import asyncio
 import logging
 import random
-from typing import Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 from uuid import uuid4
 
 import attr
 import pendulum
-from apologies.engine import Engine
+from apologies.engine import Character, Engine
 from apologies.game import GameMode, PlayerColor, PlayerView
 from apologies.rules import Move
+from apologies.source import CharacterInputSource
 from ordered_set import OrderedSet  # this makes expected results easier to articulate in test code
 from pendulum.datetime import DateTime
 from websockets import WebSocketServerProtocol
@@ -196,42 +195,120 @@ class TrackedPlayer:
 
 
 @attr.s
+class NoOpInputSource(CharacterInputSource):
+    """A no-op input source, which raises an error if ever used."""
+
+    # The Apologies library is designed with a synchronous callback model in mind.
+    # Since this server uses Python's asyncio instead, we ignore the callback and
+    # trigger individual steps in the game play process when events are received.
+    # This implementation throws an error if it's ever used, to make it clear if
+    # we do something wrong.
+
+    def choose_move(
+        self, _mode: GameMode, _view: PlayerView, _moves: List[Move], _evaluator: Callable[[PlayerView, Move], PlayerView]
+    ) -> Move:
+        raise NotImplementedError
+
+
+@attr.s(frozen=True)
+class CurrentTurn:
+
+    handle = attr.ib(type=str)
+    color = attr.ib(type=PlayerColor)
+    view = attr.ib(type=PlayerView)
+    movelist = attr.ib(type=List[Move])
+    movedict = attr.ib(type=Dict[str, Move])
+
+    @staticmethod
+    def for_engine(engine: Engine) -> CurrentTurn:
+        color, character = engine.next_turn()
+        view = engine.game.create_player_view(color)
+        _, movelist = engine.construct_legal_moves(view)
+        movedict = {move.id: move for move in movelist}
+        return CurrentTurn(handle=character.name, color=color, view=view, movelist=movelist, movedict=movedict)
+
+
+@attr.s
 class TrackedEngine:
     """Wrapper over an Apologies game engine, to manage game play state for TrackedGame."""
 
-    engine = attr.ib(type=Engine, default=None)
+    _engine = attr.ib(type=Optional[Engine], default=None)
+    _colors = attr.ib(type=Dict[str, PlayerColor])
+    _current = attr.ib(type=Optional[CurrentTurn], default=None)
+
+    @_colors.default
+    def _default_colors(self) -> Dict[str, PlayerColor]:
+        return {}
 
     def start_game(self, mode: GameMode, handles: List[str]) -> Dict[str, PlayerColor]:
         """Start the game, returning a map from handle to assigned color."""
-        raise NotImplementedError
+        if self._engine:
+            raise ProcessingError(FailureReason.INTERNAL_ERROR, "Illegal state for operation")
+        characters = [Character(name=handle, source=NoOpInputSource()) for handle in handles]
+        self._engine = Engine(mode, characters=characters)
+        self._engine.start_game()
+        self._colors = {character.name: color for color, character in self._engine.colors.items()}
+        self._current = CurrentTurn.for_engine(self._engine)
+        return self._colors.copy()  # copy so caller can't mess with internal state
 
     def stop_game(self) -> None:
         """Stop the game after the game is completed or has been cancelled."""
-        raise NotImplementedError
+        self._engine = None
+        self._colors = {}
+        self._current = None
 
     def get_next_turn(self) -> str:
-        """Get the next turn to be played."""
-        raise NotImplementedError
+        """Get the handle of the player that should play the next turn."""
+        if not self._current:
+            raise ProcessingError(FailureReason.INTERNAL_ERROR, "Illegal state for operation")
+        return self._current.handle
 
     def get_legal_moves(self, handle: str) -> List[Move]:
         """Get the legal moves for the player at this stage in the game."""
-        raise NotImplementedError
+        if not self._current or handle != self._current.handle:
+            raise ProcessingError(FailureReason.INTERNAL_ERROR, "Illegal state for operation")
+        return self._current.movelist[:]
 
     def get_player_view(self, handle: str) -> PlayerView:
         """Get the player's view of the game state."""
-        raise NotImplementedError
+        if not self._engine or handle not in self._colors:
+            raise ProcessingError(FailureReason.INTERNAL_ERROR, "Illegal state for operation")
+        color = self._colors[handle]
+        return self._engine.game.create_player_view(color)
 
     def is_move_pending(self, handle: str) -> bool:
         """Whether a move is pending for the player with the passed-in handle."""
-        raise NotImplementedError
+        if not self._current:
+            raise ProcessingError(FailureReason.INTERNAL_ERROR, "Illegal state for operation")
+        return handle == self._current.handle
 
     def is_legal_move(self, handle: str, move_id: str) -> bool:
         """Whether the passed-in move id is a legal move for the player."""
-        raise NotImplementedError
+        if not self._current:
+            raise ProcessingError(FailureReason.INTERNAL_ERROR, "Illegal state for operation")
+        return handle == self._current.handle and move_id in self._current.movedict
 
     def execute_move(self, handle: str, move_id: str) -> Tuple[bool, Optional[str]]:
         """Execute a player's move, returning whether the game was completed (and a comment if so)."""
-        raise NotImplementedError
+        if (
+            not self._engine
+            or not self._current
+            or not handle == self._current.handle
+            or handle not in self._colors
+            or move_id not in self._current.movedict
+        ):
+            raise ProcessingError(FailureReason.INTERNAL_ERROR, "Illegal state for operation")
+        color = self._colors[handle]
+        move = self._current.movedict[move_id]
+        done = self._engine.execute_move(color, move)
+        if self._engine.completed:
+            self._current = None
+            character, player = self._engine.winner()  # type: ignore
+            comment = "Player %s (%s) won after %d turns" % (character.name, player.color.name, player.turns)
+            return True, comment
+        if done:  # if the player's turn is done, determine the next player
+            self._current = CurrentTurn.for_engine(self._engine)
+        return False, None
 
 
 # pylint: disable=too-many-instance-attributes,too-many-public-methods
@@ -255,7 +332,7 @@ class TrackedGame:
     cancelled_reason = attr.ib(type=Optional[CancelledReason], default=None)
     completed_comment = attr.ib(type=Optional[str], default=None)
     game_players = attr.ib(type=Dict[str, GamePlayer])
-    engine = attr.ib(type=TrackedEngine)
+    _engine = attr.ib(type=TrackedEngine)
 
     @advertised_date.default
     def _default_advertised_date(self) -> DateTime:
@@ -269,7 +346,7 @@ class TrackedGame:
     def _default_game_players(self) -> Dict[str, GamePlayer]:
         return {}
 
-    @engine.default
+    @_engine.default
     def _default_engine(self) -> TrackedEngine:
         return TrackedEngine()
 
@@ -315,17 +392,17 @@ class TrackedGame:
 
     def get_next_turn(self) -> Tuple[str, PlayerType]:
         """Get the next turn to be played."""
-        handle = self.engine.get_next_turn()
+        handle = self._engine.get_next_turn()
         player = self.game_players[handle]
         return handle, player.player_type
 
     def get_legal_moves(self, handle: str) -> List[Move]:
         """Get the legal moves for the player at this stage in the game."""
-        return self.engine.get_legal_moves(handle)
+        return self._engine.get_legal_moves(handle)
 
     def get_player_view(self, handle: str) -> PlayerView:
         """Get the player's view of the game state."""
-        return self.engine.get_player_view(handle)
+        return self._engine.get_player_view(handle)
 
     def is_available(self, handle: str) -> bool:
         """Whether the game is available to be joined by the passed-in player."""
@@ -357,11 +434,11 @@ class TrackedGame:
 
     def is_move_pending(self, handle: str) -> bool:
         """Whether a move is pending for the player with the passed-in handle."""
-        return self.engine.is_move_pending(handle)
+        return self._engine.is_move_pending(handle)
 
     def is_legal_move(self, handle: str, move_id: str) -> bool:
         """Whether the passed-in move id is a legal move for the player."""
-        return self.engine.is_legal_move(handle, move_id)
+        return self._engine.is_legal_move(handle, move_id)
 
     def mark_active(self) -> None:
         """Mark the game as active."""
@@ -394,7 +471,7 @@ class TrackedGame:
         self.started_date = pendulum.now()
         for _ in range(0, self.players - len(self.game_players)):
             self._mark_joined_programmatic()  # fill in remaining players as necessary
-        colors = self.engine.start_game(self.mode, list(self.game_players.keys()))
+        colors = self._engine.start_game(self.mode, list(self.game_players.keys()))
         for handle in self.game_players:
             self.game_players[handle] = attr.evolve(
                 self.game_players[handle], player_color=colors[handle], player_state=PlayerState.PLAYING
@@ -409,7 +486,7 @@ class TrackedGame:
         self.completed_comment = comment
         for handle in self.game_players:
             self.game_players[handle] = attr.evolve(self.game_players[handle], player_state=PlayerState.FINISHED)
-        self.engine.stop_game()
+        self._engine.stop_game()
 
     def mark_cancelled(self, reason: CancelledReason, comment: Optional[str] = None) -> None:
         """Mark the game as cancelled."""
@@ -421,7 +498,7 @@ class TrackedGame:
         self.completed_comment = comment
         for handle in self.game_players:
             self.game_players[handle] = attr.evolve(self.game_players[handle], player_state=PlayerState.FINISHED)
-        self.engine.stop_game()
+        self._engine.stop_game()
 
     def mark_quit(self, handle: str) -> None:
         """Mark that the player has quit a game."""
@@ -435,7 +512,7 @@ class TrackedGame:
 
     def execute_move(self, handle: str, move_id: str) -> Tuple[bool, Optional[str]]:
         """Execute a player's move, returning an indication of whether the game was completed (and a comment if so)."""
-        return self.engine.execute_move(handle, move_id)
+        return self._engine.execute_move(handle, move_id)
 
     def _mark_joined_programmatic(self) -> None:
         """Create an join a programmatic player, assumed to be called from within a lock."""
