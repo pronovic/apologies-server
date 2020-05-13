@@ -1301,7 +1301,7 @@ class TestEventMethods:
 
     def test_handle_game_next_turn_event(self):
         raise NotImplementedError
-    
+
     def test_handle_game_player_change_event(self):
         game_player = MagicMock()
         player = MagicMock()
