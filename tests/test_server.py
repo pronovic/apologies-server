@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, call
 import pytest
 from asynctest import MagicMock as AsyncMock
 from asynctest import patch
+from websockets.exceptions import ConnectionClosed
 from websockets.http import Headers
 
 from apologiesserver.event import EventHandler, RequestContext
@@ -363,6 +364,21 @@ class TestCoroutines:
         handle_connect.assert_called_once_with(websocket)
         handle_disconnect.assert_called_once_with(websocket)
         handle_exception.assert_called_once_with(exception, websocket)
+
+    @patch("apologiesserver.server._handle_disconnect")
+    @patch("apologiesserver.server._handle_connect")
+    @patch("apologiesserver.server._handle_exception")
+    @patch("apologiesserver.server._handle_data")
+    async def test_handle_connection_shutdown(self, handle_data, handle_exception, handle_connect, handle_disconnect):
+        websocket = AsyncMock()
+        exception = ConnectionClosed(1, "reason")
+        websocket.__aiter__.side_effect = exception  # the wait on the websocket is what throws the connection closed
+        handle_data.side_effect = exception
+        await _handle_connection(websocket, "path")  # path is unused
+        handle_data.assert_not_called()
+        handle_connect.assert_called_once_with(websocket)
+        handle_disconnect.assert_called_once_with(websocket)
+        handle_exception.assert_not_called()
 
     @patch("apologiesserver.server.EventHandler")
     @patch("apologiesserver.server.manager")
