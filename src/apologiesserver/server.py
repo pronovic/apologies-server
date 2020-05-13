@@ -82,7 +82,7 @@ def _handle_message(handler: EventHandler, message: Message, websocket: WebSocke
 
 async def _handle_data(data: Union[str, bytes], websocket: WebSocketServerProtocol) -> None:
     """Handle data received from a websocket client."""
-    log.debug("Received raw data for websocket %s:\n%s", websocket, data)
+    log.debug("Received raw data for websocket %s:\n%s", id(websocket), data)
     message = Message.for_json(str(data))
     with EventHandler(manager()) as handler:
         async with handler.manager.lock:
@@ -164,10 +164,10 @@ async def _handle_shutdown() -> None:
         await handler.execute_tasks()
 
 
-async def _websocket_server(stop: "Future[Any]", host: str = "localhost", port: int = 8765) -> None:
+async def _websocket_server(stop: "Future[Any]", host: str, port: int, close_timeout_sec: float) -> None:
     """Websocket server."""
     log.info("Completed starting websocket server")  # ok, it's a bit of a lie
-    async with websockets.serve(_handle_connection, host, port):
+    async with websockets.serve(_handle_connection, host=host, port=port, close_timeout=close_timeout_sec):
         await stop
         await _handle_shutdown()
 
@@ -189,10 +189,26 @@ def _schedule_tasks(loop: AbstractEventLoop) -> None:
 
 
 def _run_server(loop: AbstractEventLoop, stop: "Future[Any]") -> None:
+
     """Run the websocket server, stopping and closing the event loop when the server completes."""
+
+    # Websockets has this to say about closing connections:
+    #
+    #    The close_timeout parameter defines a maximum wait time in seconds for
+    #    completing the closing handshake and terminating the TCP connection.
+    #    close() completes in at most 4 * close_timeout on the server side and
+    #    5 * close_timeout on the client side.
+    #
+    # Since our configuration specifies a maximum time to wait (in total), we
+    # need to divide by 4 to make sure that time isn't exceeded.
+    #
+    # See also: https://websockets.readthedocs.io/en/stable/api.html#module-websockets.protocol
+    #           https://websockets.readthedocs.io/en/stable/api.html#module-websockets.server
+
     host = config().server_host
     port = config().server_port
-    loop.run_until_complete(_websocket_server(stop=stop, host=host, port=port))
+    close_timeout_sec = config().close_timeout_sec / 4
+    loop.run_until_complete(_websocket_server(stop=stop, host=host, port=port, close_timeout_sec=close_timeout_sec))
     loop.stop()
     loop.close()
 

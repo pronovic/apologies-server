@@ -116,13 +116,13 @@ class TestFunctions:
         # I'm not entirely sure I'm testing this properly.
         # I can't find a good way to prove that _websocket_server(stop) was passed to run_until_complete
         # But, the function is so short that I can eyeball it, and it will either work or it won't when run by hand
-        config.return_value = MagicMock(server_host="host", server_port=1234)
+        config.return_value = MagicMock(server_host="host", server_port=1234, close_timeout_sec=8)
         stop = asyncio.Future()
         stop.set_result(None)
         loop = AsyncMock()
         _run_server(loop, stop)
         loop.run_until_complete.assert_called_once()
-        websocket_server.assert_called_once_with(stop=stop, host="host", port=1234)
+        websocket_server.assert_called_once_with(stop=stop, host="host", port=1234, close_timeout_sec=2)
         loop.stop.assert_called_once()
         loop.close.assert_called_once()
 
@@ -382,7 +382,7 @@ class TestCoroutines:
     async def test_websocket_server(self, serve, handle_connection, handle_shutdown):
         stop = asyncio.Future()
         stop.set_result(None)
-        await _websocket_server(stop, "host", 1234)
-        serve.assert_called_with(handle_connection, "host", 1234)
+        await _websocket_server(stop, "host", 1234, 4)
+        serve.assert_called_with(handle_connection, host="host", port=1234, close_timeout=4)
         handle_shutdown.assert_awaited()
         # unfortunately, we can't prove that stop() was awaited, but in this case it's easy to eyeball in the code

@@ -21,6 +21,7 @@ DEFAULT_CONFIG_PATH = os.path.join(homedir(), ".apologiesrc")
 DEFAULT_LOGFILE_PATH = None
 DEFAULT_SERVER_HOST = "localhost"
 DEFAULT_SERVER_PORT = 8080
+DEFAULT_CLOSE_TIMEOUT_SEC = 10
 DEFAULT_WEBSOCKET_LIMIT = 1000
 DEFAULT_TOTAL_GAME_LIMIT = 1000
 DEFAULT_IN_PROGRESS_GAME_LIMIT = 25
@@ -45,6 +46,7 @@ DEFAULTS = {
     "logfile_path": DEFAULT_LOGFILE_PATH,
     "server_host": DEFAULT_SERVER_HOST,
     "server_port": DEFAULT_SERVER_PORT,
+    "close_timeout_sec": DEFAULT_CLOSE_TIMEOUT_SEC,
     "websocket_limit": DEFAULT_WEBSOCKET_LIMIT,
     "total_game_limit": DEFAULT_TOTAL_GAME_LIMIT,
     "in_progress_game_limit": DEFAULT_IN_PROGRESS_GAME_LIMIT,
@@ -76,6 +78,7 @@ class SystemConfig:
         logfile_path(str): The path to the log file on disk
         server_host(str): The hostname to bind to
         server_port(int): The server port to listen on
+        close_timeout_sec(int): The maximum amount of time to wait when closing a connection
         websocket_limit(int): Limit on the number of websocket connections
         total_game_limit(int): Limit on the total number of tracked games
         in_progress_game_limit(int): Limit on the number of in progress games
@@ -100,6 +103,7 @@ class SystemConfig:
     logfile_path = attr.ib(type=str, default=DEFAULT_LOGFILE_PATH)
     server_host = attr.ib(type=str, default=DEFAULT_SERVER_HOST)
     server_port = attr.ib(type=int, default=DEFAULT_SERVER_PORT)
+    close_timeout_sec = attr.ib(type=int, default=DEFAULT_CLOSE_TIMEOUT_SEC)
     websocket_limit = attr.ib(type=int, default=DEFAULT_WEBSOCKET_LIMIT)
     total_game_limit = attr.ib(type=int, default=DEFAULT_TOTAL_GAME_LIMIT)
     in_progress_game_limit = attr.ib(type=int, default=DEFAULT_IN_PROGRESS_GAME_LIMIT)
@@ -145,6 +149,7 @@ def _parse(
     logfile_path = _get(parser, "logfile_path", overrides, defaults)
     server_host = _get(parser, "server_host", overrides, defaults)
     server_port = int(_get(parser, "server_port", overrides, defaults))
+    close_timeout_sec = int(_get(parser, "close_timeout_sec", overrides, defaults))
     websocket_limit = int(_get(parser, "websocket_limit", overrides, defaults))
     total_game_limit = int(_get(parser, "total_game_limit", overrides, defaults))
     in_progress_game_limit = int(_get(parser, "in_progress_game_limit", overrides, defaults))
@@ -168,6 +173,7 @@ def _parse(
         logfile_path=logfile_path,
         server_host=server_host,
         server_port=server_port,
+        close_timeout_sec=close_timeout_sec,
         websocket_limit=websocket_limit,
         total_game_limit=total_game_limit,
         in_progress_game_limit=in_progress_game_limit,
