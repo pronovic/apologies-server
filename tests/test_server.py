@@ -8,7 +8,6 @@ import signal
 from unittest.mock import MagicMock, call
 
 import pytest
-from asynctest import CoroutineMock
 from asynctest import MagicMock as AsyncMock
 from asynctest import patch
 from websockets.http import Headers
@@ -219,79 +218,79 @@ class TestCoroutines:
 
     pytestmark = pytest.mark.asyncio
 
-    async def test_handle_exception_processing_error(self):
+    @patch("apologiesserver.server.close")
+    @patch("apologiesserver.server.send")
+    async def test_handle_exception_processing_error(self, send, close):
         exception = ProcessingError(FailureReason.INVALID_PLAYER)
         websocket = AsyncMock()
-        websocket.send = CoroutineMock()
-        websocket.close = CoroutineMock()
         context = RequestFailedContext(FailureReason.INVALID_PLAYER, FailureReason.INVALID_PLAYER.value)
         message = Message(MessageType.REQUEST_FAILED, context)
         json = message.to_json()
         await _handle_exception(exception, websocket)
-        websocket.send.assert_awaited_once_with(json)
-        websocket.close.assert_not_awaited()
+        send.assert_awaited_once_with(json, websocket)
+        close.assert_not_awaited()
 
-    async def test_handle_exception_processing_error_websocket_limit(self):
+    @patch("apologiesserver.server.close")
+    @patch("apologiesserver.server.send")
+    async def test_handle_exception_processing_error_websocket_limit(self, send, close):
         exception = ProcessingError(FailureReason.WEBSOCKET_LIMIT)
         websocket = AsyncMock()
-        websocket.send = CoroutineMock()
-        websocket.close = CoroutineMock()
         context = RequestFailedContext(FailureReason.WEBSOCKET_LIMIT, FailureReason.WEBSOCKET_LIMIT.value)
         message = Message(MessageType.REQUEST_FAILED, context)
         json = message.to_json()
         await _handle_exception(exception, websocket)
-        websocket.send.assert_awaited_once_with(json)
-        websocket.close.assert_awaited_once()
+        send.assert_awaited_once_with(json, websocket)
+        close.assert_awaited_once_with(websocket)
 
-    async def test_handle_exception_processing_error_comment(self):
+    @patch("apologiesserver.server.close")
+    @patch("apologiesserver.server.send")
+    async def test_handle_exception_processing_error_comment(self, send, close):
         exception = ProcessingError(FailureReason.INVALID_PLAYER, "comment")
         websocket = AsyncMock()
-        websocket.send = CoroutineMock()
-        websocket.close = CoroutineMock()
         context = RequestFailedContext(FailureReason.INVALID_PLAYER, "comment")
         message = Message(MessageType.REQUEST_FAILED, context)
         json = message.to_json()
         await _handle_exception(exception, websocket)
-        websocket.send.assert_awaited_once_with(json)
-        websocket.close.assert_not_awaited()
+        send.assert_awaited_once_with(json, websocket)
+        close.assert_not_awaited()
 
-    async def test_handle_exception_value_error(self):
+    @patch("apologiesserver.server.close")
+    @patch("apologiesserver.server.send")
+    async def test_handle_exception_value_error(self, send, close):
         exception = ValueError("Hello!")
         websocket = AsyncMock()
-        websocket.send = CoroutineMock()
-        websocket.close = CoroutineMock()
         context = RequestFailedContext(FailureReason.INVALID_REQUEST, "Hello!")
         message = Message(MessageType.REQUEST_FAILED, context)
         json = message.to_json()
         await _handle_exception(exception, websocket)
-        websocket.send.assert_awaited_once_with(json)
-        websocket.close.assert_not_awaited()
+        send.assert_awaited_once_with(json, websocket)
+        close.assert_not_awaited()
 
-    async def test_handle_exception_exception(self):
+    @patch("apologiesserver.server.close")
+    @patch("apologiesserver.server.send")
+    async def test_handle_exception_exception(self, send, close):
         exception = Exception("Hello!")
         websocket = AsyncMock()
-        websocket.send = CoroutineMock()
-        websocket.close = CoroutineMock()
         context = RequestFailedContext(FailureReason.INTERNAL_ERROR, FailureReason.INTERNAL_ERROR.value)
         message = Message(MessageType.REQUEST_FAILED, context)
         json = message.to_json()
         await _handle_exception(exception, websocket)
-        websocket.send.assert_awaited_once_with(json)
-        websocket.close.assert_not_awaited()
+        send.assert_awaited_once_with(json, websocket)
+        close.assert_not_awaited()
 
-    async def test_handle_exception_fail(self):
+    @patch("apologiesserver.server.close")
+    @patch("apologiesserver.server.send")
+    async def test_handle_exception_fail(self, send, close):
         # this just confirms that send failures aren't propogated to the caller (we intentionally ignore them)
         exception = ProcessingError(FailureReason.INVALID_PLAYER)
         websocket = AsyncMock()
-        websocket.send = CoroutineMock()
-        websocket.close = CoroutineMock()
-        websocket.send.side_effect = Exception("Send failed!")
+        send.side_effect = Exception("Send failed!")
         context = RequestFailedContext(FailureReason.INVALID_PLAYER, FailureReason.INVALID_PLAYER.value)
         message = Message(MessageType.REQUEST_FAILED, context)
         json = message.to_json()
         await _handle_exception(exception, websocket)
-        websocket.send.assert_awaited_once_with(json)
-        websocket.close.assert_not_awaited()
+        send.assert_awaited_once_with(json, websocket)
+        close.assert_not_awaited()
 
     @patch("apologiesserver.server._handle_message")
     @patch("apologiesserver.server.EventHandler")

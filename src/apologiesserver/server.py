@@ -12,7 +12,7 @@ import websockets
 from websockets import WebSocketServerProtocol
 
 from .config import config
-from .event import EventHandler, RequestContext
+from .event import EventHandler, RequestContext, close, send
 from .interface import FailureReason, Message, MessageType, ProcessingError, RequestFailedContext
 from .manager import manager
 from .scheduled import scheduled_tasks
@@ -84,7 +84,6 @@ async def _handle_data(data: Union[str, bytes], websocket: WebSocketServerProtoc
     """Handle data received from a websocket client."""
     log.debug("Received raw data for websocket %s:\n%s", websocket, data)
     message = Message.for_json(str(data))
-    log.debug("Extracted message: %s", message)
     with EventHandler(manager()) as handler:
         async with handler.manager.lock:
             _handle_message(handler, message, websocket)
@@ -128,9 +127,9 @@ async def _handle_exception(exception: Exception, websocket: WebSocketServerProt
             # Note: we don't want to expose internal implementation details in the case of an internal error
             context = RequestFailedContext(FailureReason.INTERNAL_ERROR, FailureReason.INTERNAL_ERROR.value)
         message = Message(MessageType.REQUEST_FAILED, context)
-        await websocket.send(message.to_json())
+        await send(message.to_json(), websocket)
         if disconnect:
-            await websocket.close()
+            await close(websocket)
     except Exception as e:
         # We don't propogate errors like this to the caller.  We just ignore them and
         # hope that we can recover for future requests.  If the websocket is dead,
@@ -167,6 +166,7 @@ async def _handle_shutdown() -> None:
 
 async def _websocket_server(stop: "Future[Any]", host: str = "localhost", port: int = 8765) -> None:
     """Websocket server."""
+    log.info("Completed starting websocket server")  # ok, it's a bit of a lie
     async with websockets.serve(_handle_connection, host, port):
         await stop
         await _handle_shutdown()
@@ -192,7 +192,6 @@ def _run_server(loop: AbstractEventLoop, stop: "Future[Any]") -> None:
     """Run the websocket server, stopping and closing the event loop when the server completes."""
     host = config().server_host
     port = config().server_port
-    log.info("Starting websocket server...")
     loop.run_until_complete(_websocket_server(stop=stop, host=host, port=port))
     loop.stop()
     loop.close()
