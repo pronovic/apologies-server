@@ -153,6 +153,11 @@ run_publish() {
 run_server() {
    poetry run python src/scripts/server $*
 }
+
+# Start the demo client
+run_demo() {
+   poetry run python src/scripts/demo $*
+}
    
 # Execute one of the developer tasks
 case $1 in
@@ -199,6 +204,9 @@ case $1 in
    server)
       run_server $*
       ;;
+   demo)
+      run_demo $*
+      ;;
    *)
       echo ""
       echo "------------------------------------"
@@ -219,6 +227,7 @@ case $1 in
       echo "- run docs -o: Build the Spinx documentation and open in a browser"
       echo "- run publish: Tag the current code and publish to PyPI"
       echo "- run server: Start the websockets server"
+      echo "- run demo: Run the demo client (requires running server)"
       echo ""
       exit 1
 esac

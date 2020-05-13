@@ -78,6 +78,8 @@ Usage: run <command>
 - run docs: Build the Spinx documentation for apologies-server.readthedocs.io
 - run docs -o: Build the Spinx documentation and open in a browser
 - run publish: Tag the current code and publish to PyPI
+- run server: Start the websockets server
+- run demo: Run the demo client (requires running server)
 ```
 
 ## Integration with IntelliJ or PyCharm
