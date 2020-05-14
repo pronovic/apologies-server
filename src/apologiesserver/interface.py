@@ -71,6 +71,7 @@ __all__ = [
     "GameCompletedContext",
     "GameIdleContext",
     "GameInactiveContext",
+    "GamePlayerQuitContext",
     "GamePlayerChangeContext",
     "GameStateChangeContext",
     "GamePlayerTurnContext",
@@ -193,6 +194,7 @@ class MessageType(Enum):
     GAME_COMPLETED = "Game Completed"
     GAME_IDLE = "Game Idle"
     GAME_INACTIVE = "Game Inactive"
+    GAME_PLAYER_QUIT = "Game Player Quit"
     GAME_PLAYER_CHANGE = "Game Player Change"
     GAME_STATE_CHANGE = "Game State Change"
     GAME_PLAYER_TURN = "Game Player Turn"
@@ -504,6 +506,14 @@ class GameInactiveContext(Context):
 
 
 @attr.s(frozen=True)
+class GamePlayerQuitContext(Context):
+    """Context for a GAME_PLAYER_LEFT event."""
+
+    handle = attr.ib(type=str)
+    game_id = attr.ib(type=str)
+
+
+@attr.s(frozen=True)
 class GamePlayerChangeContext(Context):
     """Context for a GAME_PLAYER_CHANGE event."""
 
@@ -579,6 +589,7 @@ _PLAYER_ID: Dict[MessageType, bool] = {
     MessageType.GAME_COMPLETED: False,
     MessageType.GAME_IDLE: False,
     MessageType.GAME_INACTIVE: False,
+    MessageType.GAME_PLAYER_QUIT: False,
     MessageType.GAME_PLAYER_CHANGE: False,
     MessageType.GAME_STATE_CHANGE: False,
     MessageType.GAME_PLAYER_TURN: False,
@@ -617,6 +628,7 @@ _CONTEXT: Dict[MessageType, Optional[Type[Context]]] = {
     MessageType.GAME_COMPLETED: GameCompletedContext,
     MessageType.GAME_IDLE: GameIdleContext,
     MessageType.GAME_INACTIVE: GameInactiveContext,
+    MessageType.GAME_PLAYER_QUIT: GamePlayerQuitContext,
     MessageType.GAME_PLAYER_CHANGE: GamePlayerChangeContext,
     MessageType.GAME_STATE_CHANGE: GameStateChangeContext,
     MessageType.GAME_PLAYER_TURN: GamePlayerTurnContext,

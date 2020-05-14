@@ -783,6 +783,17 @@ This event is triggered when a player explicitly quits a game.  A player may
 quit a game any time after they join, regardless of whether the game has been
 started.  This triggers a _Game Player Left_ event.
 
+```json
+{
+  "message": "GAME_PLAYER_QUIT",
+  "context": {
+    "handle": "leela",
+    "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe"
+  }
+}
+```
+
+
 ### Game Player Left
 
 This event is triggered when a player leaves a game, either by quitting or by

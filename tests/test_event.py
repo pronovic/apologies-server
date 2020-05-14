@@ -1260,13 +1260,17 @@ class TestEventMethods:
     def test_handle_game_player_quit_event(self):
         comment = "Player leela quit"
         player = MagicMock(handle="leela")
-        game = MagicMock()
+        game = MagicMock(game_id="game")
+        context = GamePlayerQuitContext(handle="leela", game_id="game")
+        message = Message(MessageType.GAME_PLAYER_QUIT, context=context)
         game.is_viable.return_value = True
         handler = EventHandler(MagicMock())
+        handler.queue.message = MagicMock()
         handler.handle_game_player_left_event = MagicMock()
         handler.handle_game_player_quit_event(player, game)
         game.mark_active.assert_called_once()
         player.mark_quit.assert_called_once()
+        handler.queue.message.assert_called_once_with(message, players=[player])
         handler.handle_game_player_left_event.assert_called_once_with(player, game, comment)
 
     def test_handle_game_player_left_event_advertiser(self):

@@ -957,6 +957,11 @@ class TestEvent:
         message = Message(MessageType.GAME_INACTIVE, context=context)
         roundtrip(message)
 
+    def test_game_player_quit_roundtrip(self) -> None:
+        context = GamePlayerQuitContext("handle", "game")
+        message = Message(MessageType.GAME_PLAYER_QUIT, context=context)
+        roundtrip(message)
+
     def test_game_player_change_roundtrip(self) -> None:
         red = GamePlayer("leela", PlayerColor.RED, PlayerType.HUMAN, PlayerState.QUIT)
         yellow = GamePlayer("Legolas", PlayerColor.YELLOW, PlayerType.PROGRAMMATIC, PlayerState.PLAYING)
