@@ -559,7 +559,9 @@ class EventHandler:
         log.info("Event - GAME PLAYER QUIT - %s quit %s", player.handle, game.game_id)
         game.mark_active()
         player.mark_quit()
-        # TODO: we might want an event here confirming that the player quit?  Because if the game hasn't started, there's nothing?
+        context = GamePlayerQuitContext(handle=player.handle, game_id=game.game_id)
+        message = Message(MessageType.GAME_PLAYER_QUIT, context=context)
+        self.queue.message(message, players=[player])
         comment = "Player %s quit" % player.handle
         self.handle_game_player_left_event(player, game, comment)
 
@@ -633,7 +635,8 @@ class EventHandler:
             players = [player] if player else self.manager.lookup_game_players(game)
             for player in players:
                 view = game.get_player_view(player.handle)
-                context = GameStateChangeContext.for_view(game_id=game.game_id, view=view)
+                history = game.get_recent_history(10)  # the last 10 entries in history
+                context = GameStateChangeContext.for_context(game_id=game.game_id, view=view, history=history)
                 message = Message(MessageType.GAME_STATE_CHANGE, context=context)
                 self.queue.message(message, players=[player])
 

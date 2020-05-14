@@ -302,6 +302,18 @@ class TestTrackedEngine:
         assert engine.get_player_view("handle") is view
         engine._engine.game.create_player_view.assert_called_once_with(PlayerColor.RED)
 
+    def test_get_recent_history(self):
+        engine = TrackedEngine()
+        engine._engine = None
+        with pytest.raises(ProcessingError, match=r"Illegal state for operation"):
+            engine.get_recent_history(10)  # no engine
+        engine._engine = MagicMock()
+        engine._engine.game = None
+        with pytest.raises(ProcessingError, match=r"Illegal state for operation"):
+            engine.get_recent_history(10)  # no game
+        engine._engine.game = MagicMock(history=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])
+        assert engine.get_recent_history(10) == [2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+
     def test_is_move_pending(self):
         engine = TrackedEngine()
         engine._current = None
@@ -486,6 +498,13 @@ class TestTrackedGame:
         game._engine.get_player_view.return_value = view
         assert game.get_player_view("handle") == view
         game._engine.get_player_view.assert_called_once_with("handle")
+
+    def test_get_recent_history(self):
+        history = MagicMock()
+        game = create_test_game()
+        game._engine.get_recent_history.return_value = [history]
+        assert game.get_recent_history(10) == [history]
+        game._engine.get_recent_history.assert_called_once_with(10)
 
     def test_is_available_public(self):
         game = TrackedGame("game_id", "handle", "name", GameMode.STANDARD, 3, Visibility.PUBLIC, ["bender", "fry"])

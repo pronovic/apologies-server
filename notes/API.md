@@ -783,6 +783,17 @@ This event is triggered when a player explicitly quits a game.  A player may
 quit a game any time after they join, regardless of whether the game has been
 started.  This triggers a _Game Player Left_ event.
 
+```json
+{
+  "message": "GAME_PLAYER_QUIT",
+  "context": {
+    "handle": "leela",
+    "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe"
+  }
+}
+```
+
+
 ### Game Player Left
 
 This event is triggered when a player leaves a game, either by quitting or by
@@ -884,7 +895,8 @@ Each player's view of the game is different; for instance, in an `ADULT` mode
 game, a player can only see their own cards, not the cards held by other
 players.  In an `ADULT` mode game, there is no explict message when the player
 draws a card to fill their hand.  Instead, the state change event simply
-reflects the new hand.
+reflects the new hand.  The recent history attribute includes the last 10
+events that took place for the game, in order from oldest to newest.
 
 Example message:
 
@@ -893,6 +905,13 @@ Example message:
   "message": "GAME_STATE_CHANGE",
   "context": {
     "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe",
+    "recent_history": [
+      {
+        "action": "Game Started",
+        "color": "RED",
+        "timestamp": "2020-05-14T13:53:35,334+00:00"
+      }
+    ],
     "player": {
       "color": "RED",
       "turns": 16,

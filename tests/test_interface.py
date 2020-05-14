@@ -5,7 +5,7 @@
 from typing import List
 
 import pytest
-from apologies.game import Card, CardType, GameMode, Pawn, Player, PlayerColor, PlayerView, Position
+from apologies.game import Card, CardType, GameMode, History, Pawn, Player, PlayerColor, PlayerView, Position
 from apologies.rules import Action, ActionType, Move
 
 from apologiesserver.interface import *
@@ -102,10 +102,15 @@ class TestProcessingError:
 
 
 class TestGameStateChangeContext:
-    def test_for_view(self) -> None:
+    def test_for_context(self) -> None:
+        action = "action"
+        color = PlayerColor.RED
+        timestamp = to_date("2020-05-14T13:53:35,334")
         view = create_view()
-        context = GameStateChangeContext.for_view("game", view)
+        history = [History(action, color, timestamp)]
+        context = GameStateChangeContext.for_context("game", view, history)
         assert context.game_id == "game"
+        assert context.recent_history == [GameStateHistory(action, color, timestamp)]
 
         player = context.player
         assert player.color == PlayerColor.RED
@@ -125,6 +130,9 @@ class TestGameStateChangeContext:
         assert opponent.pawns[1] == GameStatePawn(color=PlayerColor.GREEN, id="1", start=False, home=True, safe=None, square=None)
         assert opponent.pawns[2] == GameStatePawn(color=PlayerColor.GREEN, id="2", start=False, home=False, safe=4, square=None)
         assert opponent.pawns[3] == GameStatePawn(color=PlayerColor.GREEN, id="3", start=False, home=False, safe=None, square=19)
+
+        message = Message(MessageType.GAME_STATE_CHANGE, context=context)
+        print(message.to_json())
 
 
 class TestGamePlayerTurnContext:
@@ -957,6 +965,11 @@ class TestEvent:
         message = Message(MessageType.GAME_INACTIVE, context=context)
         roundtrip(message)
 
+    def test_game_player_quit_roundtrip(self) -> None:
+        context = GamePlayerQuitContext("handle", "game")
+        message = Message(MessageType.GAME_PLAYER_QUIT, context=context)
+        roundtrip(message)
+
     def test_game_player_change_roundtrip(self) -> None:
         red = GamePlayer("leela", PlayerColor.RED, PlayerType.HUMAN, PlayerState.QUIT)
         yellow = GamePlayer("Legolas", PlayerColor.YELLOW, PlayerType.PROGRAMMATIC, PlayerState.PLAYING)
@@ -967,7 +980,8 @@ class TestEvent:
 
     def test_game_state_change_roundtrip(self) -> None:
         view = create_view()
-        context = GameStateChangeContext.for_view("game", view)
+        recent_history = [History("action", PlayerColor.RED, to_date("2020-05-14T13:53:35,334"))]
+        context = GameStateChangeContext.for_context("game", view, recent_history)
         message = Message(MessageType.GAME_STATE_CHANGE, context=context)
         roundtrip(message)
 

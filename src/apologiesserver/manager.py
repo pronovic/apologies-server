@@ -41,7 +41,7 @@ from uuid import uuid4
 import attr
 import pendulum
 from apologies.engine import Character, Engine
-from apologies.game import GameMode, PlayerColor, PlayerView
+from apologies.game import GameMode, History, PlayerColor, PlayerView
 from apologies.rules import Move
 from apologies.source import CharacterInputSource
 from ordered_set import OrderedSet  # this makes expected results easier to articulate in test code
@@ -276,6 +276,12 @@ class TrackedEngine:
         color = self._colors[handle]
         return self._engine.game.create_player_view(color)
 
+    def get_recent_history(self, max_entries: int) -> List[History]:
+        """Return up to a certain number of game history entries."""
+        if not self._engine or not self._engine.game:
+            raise ProcessingError(FailureReason.INTERNAL_ERROR, "Illegal state for operation")
+        return self._engine.game.history[-max_entries:]
+
     def is_move_pending(self, handle: str) -> bool:
         """Whether a move is pending for the player with the passed-in handle."""
         if not self._current:
@@ -403,6 +409,10 @@ class TrackedGame:
     def get_player_view(self, handle: str) -> PlayerView:
         """Get the player's view of the game state."""
         return self._engine.get_player_view(handle)
+
+    def get_recent_history(self, max_entries: int) -> List[History]:
+        """Return up to a certain number of game history entries."""
+        return self._engine.get_recent_history(max_entries)
 
     def is_available(self, handle: str) -> bool:
         """Whether the game is available to be joined by the passed-in player."""
