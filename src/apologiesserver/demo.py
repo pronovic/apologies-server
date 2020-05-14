@@ -245,7 +245,7 @@ async def _websocket_client(uri: str) -> None:
 
 def _run_demo(loop: AbstractEventLoop, uri: str) -> None:
 
-    """Run the websocket demo, which opens and closes several websockets."""
+    """Run the websocket demo."""
 
     loop.run_until_complete(_websocket_client(uri=uri))
     loop.stop()
