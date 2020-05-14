@@ -564,10 +564,9 @@ class StateManager:
 
     def mark_active(self, player: TrackedPlayer) -> None:
         """Mark a player and its associated websocket as active."""
-        if not player.websocket or player.websocket not in self._websocket_map:
-            raise ProcessingError(FailureReason.INTERNAL_ERROR, comment="Did not find player websocket", handle=player.handle)
-        websocket = self._websocket_map[player.websocket]
-        websocket.mark_active()
+        if player.websocket and player.websocket not in self._websocket_map:
+            websocket = self._websocket_map[player.websocket]
+            websocket.mark_active()
         player.mark_active()
 
     def track_websocket(self, websocket: WebSocketServerProtocol) -> None:
