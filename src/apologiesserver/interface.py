@@ -546,7 +546,7 @@ class GamePlayerTurnContext(Context):
         return GamePlayerTurnContext(handle, game_id, drawn_card, converted)
 
 
-# Map from MessageType to whether player is allowed/required
+# Map from MessageType to whether player id field is allowed/required
 _PLAYER_ID: Dict[MessageType, bool] = {
     MessageType.REGISTER_PLAYER: False,
     MessageType.REREGISTER_PLAYER: True,
