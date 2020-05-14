@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # vim: set ft=python ts=4 sw=4 expandtab:
-# pylint: disable=unsubscriptable-object,wildcard-import
+# pylint: disable=unsubscriptable-object
 
 """
 Shared utilities.
@@ -16,7 +16,7 @@ from typing import Optional, Union, cast
 from websockets import WebSocketCommonProtocol
 from websockets.typing import Data
 
-from .interface import *
+from .interface import Message, MessageType, ProcessingError, RequestFailedContext
 
 log = logging.getLogger("apologies.util")
 
