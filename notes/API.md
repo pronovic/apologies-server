@@ -45,12 +45,8 @@ Obsolete_ event.
 ## Client Requests
 
 All client requests, except the original _Register Player_ request, must
-contain an `Authorization` header including the player id returned from the
-_Player Registered_ event:
-
-```
-Authorization: Player d669c200-74aa-4deb-ad91-2f5c27e51d74
-```
+contain the player id returned from the _Player Registered_ event, as shown
+in the examples below.
 
 In all cases, if the request is syntactically invalid, if the arguments are
 illegal, or if the request fails for some other reason, a _Request Failed_
@@ -400,7 +396,7 @@ across server restarts, so in-progress games will be interrupted.
 
 This event is triggered when a new client connection is established.  Multiple
 players can conceivably share the same webhook, since the player is identified
-by the Authorization header and not by the webhook itself.  So, we track
+by the player id in the request and not by the webhook itself.  So, we track
 webhooks separately from players.
 
 ### Websocket Disconnected
