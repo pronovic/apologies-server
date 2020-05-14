@@ -1,3 +1,4 @@
 {
-  "message": "LIST_PLAYERS"
+  "message": "LIST_PLAYERS",
+  "player_id": "player_id"
 }
