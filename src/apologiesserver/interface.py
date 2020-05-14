@@ -463,6 +463,7 @@ class GameJoinedContext(Context):
     """Context for a GAME_JOINED event."""
 
     game_id = attr.ib(type=str)
+    handle = attr.ib(type=str)
 
 
 @attr.s(frozen=True)
@@ -517,15 +518,16 @@ class GameStateChangeContext(Context):
     """Context for a GAME_STATE_CHANGE event."""
 
     game_id = attr.ib(type=str)
+    history = attr.ib(type=str)
     player = attr.ib(type=GameStatePlayer)
     opponents = attr.ib(type=List[GameStatePlayer])
 
     @staticmethod
-    def for_view(game_id: str, view: PlayerView) -> GameStateChangeContext:
+    def for_view(game_id: str, history: str, view: PlayerView) -> GameStateChangeContext:
         """Create a GameStateChangeContext based on apologies.game.PlayerView."""
         player = GameStatePlayer.for_player(view.player)
         opponents = [GameStatePlayer.for_player(opponent) for opponent in view.opponents.values()]
-        return GameStateChangeContext(game_id, player, opponents)
+        return GameStateChangeContext(game_id, history, player, opponents)
 
 
 @attr.s(frozen=True)

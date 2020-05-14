@@ -30,6 +30,12 @@ def mask(data: Optional[Union[str, bytes]]) -> str:
     decoded = "" if not data else data.decode("utf-8") if isinstance(data, bytes) else data
     return re.sub(r'"player_id" *: *"[^"]+"', r'"player_id": "<masked>"', decoded)
 
+def extract(data: Union[str, Message]) -> Message:
+    message = Message.for_json(str(data))
+    if message.message == MessageType.REQUEST_FAILED:
+        context = cast(RequestFailedContext, message.context)
+        raise ProcessingError(reason=context.reason, comment=context.comment, handle=context.handle)
+    return message
 
 async def close(websocket: WebSocketCommonProtocol) -> None:
     """Close a websocket."""
@@ -48,11 +54,8 @@ async def send(websocket: WebSocketCommonProtocol, message: Union[str, Message])
 async def receive(websocket: WebSocketCommonProtocol) -> Message:
     data = await websocket.recv()
     log.debug("Received raw data for websocket %s:\n%s", id(websocket), mask(data))
-    message = Message.for_json(str(data))
-    if message.message == MessageType.REQUEST_FAILED:
-        context = cast(RequestFailedContext, message.context)
-        raise ProcessingError(reason=context.reason, comment=context.comment, handle=context.handle)
-    return message
+    return extract(data)
+
 
 
 def setup_logging(quiet: bool, verbose: bool, debug: bool, logfile_path: Optional[str] = None) -> None:

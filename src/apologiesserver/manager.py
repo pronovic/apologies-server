@@ -269,12 +269,14 @@ class TrackedEngine:
             raise ProcessingError(FailureReason.INTERNAL_ERROR, "Illegal state for operation")
         return self._current.movelist[:]
 
-    def get_player_view(self, handle: str) -> PlayerView:
+    def get_player_view(self, handle: str) -> Tuple[str, PlayerView]:
         """Get the player's view of the game state."""
         if not self._engine or handle not in self._colors:
             raise ProcessingError(FailureReason.INTERNAL_ERROR, "Illegal state for operation")
         color = self._colors[handle]
-        return self._engine.game.create_player_view(color)
+        history = "%s" % self._engine.game.history[-1]
+        view = self._engine.game.create_player_view(color)
+        return history, view
 
     def is_move_pending(self, handle: str) -> bool:
         """Whether a move is pending for the player with the passed-in handle."""
@@ -400,7 +402,7 @@ class TrackedGame:
         """Get the legal moves for the player at this stage in the game."""
         return self._engine.get_legal_moves(handle)
 
-    def get_player_view(self, handle: str) -> PlayerView:
+    def get_player_view(self, handle: str) -> Tuple[str, PlayerView]:
         """Get the player's view of the game state."""
         return self._engine.get_player_view(handle)
 

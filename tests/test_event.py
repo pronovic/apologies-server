@@ -1060,7 +1060,7 @@ class TestEventMethods:
         game = MagicMock(game_id="id")
         game.is_available.return_value = True
         game.is_fully_joined.return_value = False
-        context = GameJoinedContext("id")
+        context = GameJoinedContext("handle", "id")
         message = Message(MessageType.GAME_JOINED, context=context)
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
@@ -1080,7 +1080,7 @@ class TestEventMethods:
         game = MagicMock(game_id="id")
         game.is_available.return_value = True
         game.is_fully_joined.return_value = False
-        context = GameJoinedContext("id")
+        context = GameJoinedContext("handle", "id")
         message = Message(MessageType.GAME_JOINED, context=context)
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
@@ -1102,7 +1102,7 @@ class TestEventMethods:
         game = MagicMock(game_id="id")
         game.is_available.return_value = True
         game.is_fully_joined.return_value = True
-        context = GameJoinedContext("id")
+        context = GameJoinedContext("handle", "id")
         message = Message(MessageType.GAME_JOINED, context=context)
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
@@ -1125,7 +1125,7 @@ class TestEventMethods:
         game = MagicMock(game_id="id")
         game.is_available.return_value = True
         game.is_fully_joined.return_value = True
-        context = GameJoinedContext("id")
+        context = GameJoinedContext("handle", "id")
         message = Message(MessageType.GAME_JOINED, context=context)
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
