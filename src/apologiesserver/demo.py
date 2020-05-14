@@ -83,12 +83,14 @@ async def _list_players(websocket: WebSocketClientProtocol, player_id: str) -> N
     context = cast(RegisteredPlayersContext, response.context)
     log.info("Current players: %s", [player.handle for player in context.players])
 
+
 async def _list_games(websocket: WebSocketClientProtocol, player_id: str) -> None:
     request = Message(MessageType.LIST_AVAILABLE_GAMES, player_id=player_id)
     await send(websocket, request)
     response = await receive(websocket)
     context = cast(AvailableGamesContext, response.context)
     log.info("Available games: %s", [game.name for game in context.games])
+
 
 async def _send_message(websocket: WebSocketClientProtocol, player_id: str, recipients: List[str], message: str) -> None:
     context = SendMessageContext(message=message, recipient_handles=recipients)
@@ -98,6 +100,7 @@ async def _send_message(websocket: WebSocketClientProtocol, player_id: str, reci
     response = await receive(websocket)
     context = cast(PlayerMessageReceivedContext, response.context)  # type: ignore
     log.info("Received message '%s' for recipients %s", context.message, context.recipient_handles)
+
 
 async def _register_public_game(websocket: WebSocketClientProtocol, player_id: str) -> str:
     name = "Public Game"
@@ -110,28 +113,29 @@ async def _register_public_game(websocket: WebSocketClientProtocol, player_id: s
 
     await send(websocket, request)
     response1 = await receive(websocket)
-    response2= await receive(websocket)
+    response2 = await receive(websocket)
 
     for response in [response1, response2]:
         if response.message == MessageType.GAME_JOINED:
-            context = cast(GameJoinedContext, response.context) # type: ignore
+            context = cast(GameJoinedContext, response.context)  # type: ignore
             log.info("Player %s joined game %s", context.handle, context.game_id)
 
     for response in [response1, response2]:
         if response.message == MessageType.GAME_ADVERTISED:
-            context = cast(GameAdvertisedContext, response.context) # type: ignore
+            context = cast(GameAdvertisedContext, response.context)  # type: ignore
             log.info("Competed registering public game with id %s", context.game.game_id)
             return context.game.game_id
+
 
 async def _register_private_game(websocket: WebSocketClientProtocol, player_id: str) -> str:
     name = "Private Game"
     mode = GameMode.STANDARD
     players = 4
     visibility = Visibility.PRIVATE
-    invited_handles = [ "leela", "bender" ]
+    invited_handles = ["leela", "bender"]
     context = AdvertiseGameContext(name, mode, players, visibility, invited_handles)
     request = Message(MessageType.ADVERTISE_GAME, player_id=player_id, context=context)
-    
+
     await send(websocket, request)
     response1 = await receive(websocket)
     response2 = await receive(websocket)
@@ -139,50 +143,56 @@ async def _register_private_game(websocket: WebSocketClientProtocol, player_id: 
 
     for response in [response1, response2, response3]:
         if response.message == MessageType.GAME_JOINED:
-            context = cast(GameJoinedContext, response.context) # type: ignore
+            context = cast(GameJoinedContext, response.context)  # type: ignore
             log.info("Player %s joined game %s", context.handle, context.game_id)
 
     for response in [response1, response2, response3]:
         if response.message == MessageType.GAME_INVITATION:
-            context = cast(GameInvitationContext, response.context) # type: ignore
+            context = cast(GameInvitationContext, response.context)  # type: ignore
             log.info("Game %s invited: %s", context.game.name, context.game.invited_handles)
 
     for response in [response1, response2, response3]:
         if response.message == MessageType.GAME_ADVERTISED:
-            context = cast(GameAdvertisedContext, response.context) # type: ignore
+            context = cast(GameAdvertisedContext, response.context)  # type: ignore
             log.info("Competed registering public game with id %s", context.game.game_id)
             return context.game.game_id
+
 
 async def _join_game(websocket: WebSocketClientProtocol, player_id: str, game_id: str) -> None:
     context = JoinGameContext(game_id=game_id)
     request = Message(MessageType.JOIN_GAME, player_id=player_id, context=context)
     await send(websocket, request)
     response = await receive(websocket)
-    context = cast(GameJoinedContext, response.context) # type: ignore
+    context = cast(GameJoinedContext, response.context)  # type: ignore
     log.info("Player %s joined game %s", context.handle, context.game_id)
-    
+
+
 async def _quit_game(websocket: WebSocketClientProtocol, player_id: str) -> None:
     request = Message(MessageType.QUIT_GAME, player_id=player_id)
     await send(websocket, request)
     log.info("Player quit game")
 
+
 async def _cancel_game(websocket: WebSocketClientProtocol, player_id: str) -> None:
     request = Message(MessageType.CANCEL_GAME, player_id=player_id)
     await send(websocket, request)
     response = await receive(websocket)
-    context = cast(GameCancelledContext, response.context) # type: ignore
+    context = cast(GameCancelledContext, response.context)  # type: ignore
     log.info("Game %s was cancelled for reason %s (%s)", context.game_id, context.reason, context.comment)
+
 
 async def _start_game(websocket: WebSocketClientProtocol, player_id: str) -> None:
     request = Message(MessageType.START_GAME, player_id=player_id)
     await send(websocket, request)
     log.info("Started game")
 
+
 async def _play_move(websocket: WebSocketClientProtocol, player_id: str, game_id: str, move: Move) -> None:
     context = ExecuteMoveContext(move_id=move.move_id)
     request = Message(MessageType.EXECUTE_MOVE, player_id=player_id, context=context)
     await send(websocket, request)
     log.info("Playing card %s for move %s", move.card.name, move.move_id)
+
 
 async def _websocket_client(uri: str) -> None:
     log.info("Completed starting websocket client")  # ok, it's a bit of a lie

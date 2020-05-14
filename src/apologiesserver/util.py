@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # vim: set ft=python ts=4 sw=4 expandtab:
-# pylint: disable=unsubscriptable-object,wildcard-import
+# pylint: disable=unsubscriptable-object
 
 """
 Shared utilities.
@@ -11,11 +11,9 @@ import re
 import sys
 import time
 from pathlib import Path
-from typing import Optional, Union, cast
+from typing import Optional, Union
 
 from websockets import WebSocketCommonProtocol
-
-from .interface import *
 
 log = logging.getLogger("apologies.util")
 
@@ -30,12 +28,6 @@ def mask(data: Optional[Union[str, bytes]]) -> str:
     decoded = "" if not data else data.decode("utf-8") if isinstance(data, bytes) else data
     return re.sub(r'"player_id" *: *"[^"]+"', r'"player_id": "<masked>"', decoded)
 
-def extract(data: Union[str, Message]) -> Message:
-    message = Message.for_json(str(data))
-    if message.message == MessageType.REQUEST_FAILED:
-        context = cast(RequestFailedContext, message.context)
-        raise ProcessingError(reason=context.reason, comment=context.comment, handle=context.handle)
-    return message
 
 async def close(websocket: WebSocketCommonProtocol) -> None:
     """Close a websocket."""
@@ -43,19 +35,10 @@ async def close(websocket: WebSocketCommonProtocol) -> None:
     await websocket.close()
 
 
-async def send(websocket: WebSocketCommonProtocol, message: Union[str, Message]) -> None:
+async def send(websocket: WebSocketCommonProtocol, message: str) -> None:
     """Send a response to a websocket."""
-    if message:
-        data = message.to_json() if isinstance(message, Message) else message
-        log.debug("Sending message to websocket: %s\n%s", id(websocket), mask(data))
-        await websocket.send(data)
-
-
-async def receive(websocket: WebSocketCommonProtocol) -> Message:
-    data = await websocket.recv()
-    log.debug("Received raw data for websocket %s:\n%s", id(websocket), mask(data))
-    return extract(data)
-
+    log.debug("Sending message to websocket: %s\n%s", id(websocket), mask(message))
+    await websocket.send(message)
 
 
 def setup_logging(quiet: bool, verbose: bool, debug: bool, logfile_path: Optional[str] = None) -> None:

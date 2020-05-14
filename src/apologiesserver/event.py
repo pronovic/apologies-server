@@ -92,7 +92,7 @@ class TaskQueue:
             await asyncio.wait(tasks)
         tasks = [close(websocket) for websocket in self.disconnects]
         if tasks:
-            await asyncio.wait(tasks)  # TODO: not entirely sure how we handle errors that happen here
+            await asyncio.wait(tasks)
 
 
 # pylint: disable=too-many-public-methods
@@ -473,7 +473,7 @@ class EventHandler:
         game.mark_active()
         player.mark_joined(game)
         game.mark_joined(player.handle)
-        context = GameJoinedContext(handle=player.handle, game_id=game.game_id)
+        context = GameJoinedContext(game_id=game.game_id)
         message = Message(MessageType.GAME_JOINED, context=context)
         self.queue.message(message, players=[player])
         if game.is_fully_joined():
@@ -500,7 +500,6 @@ class EventHandler:
         self.queue.message(message, players=players)
         self.handle_game_player_change_event(game, "Game started")
         self.handle_game_state_change_event(game)
-        self.handle_game_next_turn_event(game)
 
     def handle_game_cancelled_event(
         self, game: TrackedGame, reason: CancelledReason, comment: Optional[str] = None, notify: bool = True
@@ -559,7 +558,6 @@ class EventHandler:
         log.info("Event - GAME PLAYER QUIT - %s quit %s", player.handle, game.game_id)
         game.mark_active()
         player.mark_quit()
-        # TODO: we might want an event here confirming that the player quit?  Because if the game hasn't started, there's nothing?
         comment = "Player %s quit" % player.handle
         self.handle_game_player_left_event(player, game, comment)
 
@@ -585,7 +583,7 @@ class EventHandler:
     def handle_game_programmatic_move_event(self, handle: str, game: TrackedGame) -> None:
         """Handle the Game Programmatic Move event."""
         log.info("Event - GAME PROGRAMMATIC MOVE - %s for %s", handle, game.game_id)
-        _, view = game.get_player_view(handle)
+        view = game.get_player_view(handle)
         moves = game.get_legal_moves(handle)
         move = RewardV1InputSource().choose_move(game.mode, view, moves, Rules.evaluate_move)
         self.handle_game_move_event(handle, game, move.id)
@@ -629,13 +627,12 @@ class EventHandler:
         """Handle the Game State Change event."""
         log.info("Event - GAME STATE CHANGE - %s for %s", game.game_id, player.handle if player else None)
         game.mark_active()
-        if game.is_playing():
-            players = [player] if player else self.manager.lookup_game_players(game)
-            for player in players:
-                history, view = game.get_player_view(player.handle)
-                context = GameStateChangeContext.for_view(game_id=game.game_id, history=history, view=view)
-                message = Message(MessageType.GAME_STATE_CHANGE, context=context)
-                self.queue.message(message, players=[player])
+        players = [player] if player else self.manager.lookup_game_players(game)
+        for player in players:
+            view = game.get_player_view(player.handle)
+            context = GameStateChangeContext.for_view(game_id=game.game_id, view=view)
+            message = Message(MessageType.GAME_STATE_CHANGE, context=context)
+            self.queue.message(message, players=[player])
 
     def handle_game_player_turn_event(self, player: TrackedPlayer, moves: List[Move]) -> None:
         """Handle the Game Player Turn event."""
