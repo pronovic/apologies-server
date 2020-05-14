@@ -7,6 +7,7 @@ import pytest
 from asynctest import CoroutineMock
 from asynctest import MagicMock as AsyncMock
 
+from apologiesserver.interface import Message, MessageType
 from apologiesserver.util import close, homedir, mask, send, setup_logging
 
 
@@ -26,12 +27,28 @@ class TestUtil:
         websocket.close.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_send(self):
+    async def test_send_empty(self):
+        message = ""
+        websocket = AsyncMock()
+        websocket.send = CoroutineMock()
+        await send(websocket, message)
+        websocket.send.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_send_string(self):
         message = "json"
         websocket = AsyncMock()
         websocket.send = CoroutineMock()
         await send(websocket, message)
         websocket.send.assert_awaited_once_with(message)
+
+    @pytest.mark.asyncio
+    async def test_send_message(self):
+        message = Message(MessageType.WEBSOCKET_IDLE)
+        websocket = AsyncMock()
+        websocket.send = CoroutineMock()
+        await send(websocket, message)
+        websocket.send.assert_awaited_once_with(message.to_json())
 
     def test_mask(self):
         assert mask(None) == ""

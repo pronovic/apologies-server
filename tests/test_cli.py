@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from apologiesserver.cli import _example, _lookup_method, cli, run_server
+from apologiesserver.cli import _example, _lookup_method, cli, run_demo, run_server
 
 
 class TestUtil:
@@ -111,3 +111,63 @@ class TestRunServer:
         load_config.assert_called_once_with(None, {"one": "ONE", "two": "TWO", "logfile_path": "/path/to/log"})
         setup_logging.assert_called_once_with(False, False, False, "path")
         server.assert_called_once()
+
+
+@patch("apologiesserver.cli.demo")
+@patch("apologiesserver.cli.setup_logging")
+class TestRunDemo:
+    """
+    Unit tests for the demo CLI.
+    """
+
+    def test_run_demo_defaults(self, setup_logging, demo):
+        argv = []
+        run_demo(argv=argv)
+        setup_logging.assert_called_once_with(False, False, False, None)
+        demo.assert_called_once()
+
+    def test_run_demo_h(self, _setup_logging, _demo):
+        argv = ["-h"]
+        with pytest.raises(SystemExit):
+            run_demo(argv=argv)
+
+    def test_run_demo_help(self, _setup_logging, _demo):
+        argv = ["--help"]
+        with pytest.raises(SystemExit):
+            run_demo(argv=argv)
+
+    def test_run_demo_host(self, setup_logging, demo):
+        argv = ["--host", "server"]
+        run_demo(argv=argv)
+        setup_logging.assert_called_once_with(False, False, False, None)
+        demo.assert_called_once_with(host="server", port=8080)
+
+    def test_run_demo_port(self, setup_logging, demo):
+        argv = ["--port", "9000"]
+        run_demo(argv=argv)
+        setup_logging.assert_called_once_with(False, False, False, None)
+        demo.assert_called_once_with(host="localhost", port=9000)
+
+    def test_run_demo_quiet(self, setup_logging, demo):
+        argv = ["--quiet"]
+        run_demo(argv=argv)
+        setup_logging.assert_called_once_with(True, False, False, None)
+        demo.assert_called_once_with(host="localhost", port=8080)
+
+    def test_run_demo_verbose(self, setup_logging, demo):
+        argv = ["--verbose"]
+        run_demo(argv=argv)
+        setup_logging.assert_called_once_with(False, True, False, None)
+        demo.assert_called_once_with(host="localhost", port=8080)
+
+    def test_run_demo_debug(self, setup_logging, demo):
+        argv = ["--debug"]
+        run_demo(argv=argv)
+        setup_logging.assert_called_once_with(False, False, True, None)
+        demo.assert_called_once_with(host="localhost", port=8080)
+
+    def test_run_demo_logfile(self, setup_logging, demo):
+        argv = ["--logfile", "/path/to/log"]
+        run_demo(argv=argv)
+        setup_logging.assert_called_once_with(False, False, False, "/path/to/log")
+        demo.assert_called_once_with(host="localhost", port=8080)

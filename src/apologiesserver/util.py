@@ -11,9 +11,12 @@ import re
 import sys
 import time
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Union, cast
 
 from websockets import WebSocketCommonProtocol
+from websockets.typing import Data
+
+from .interface import Message, MessageType, ProcessingError, RequestFailedContext
 
 log = logging.getLogger("apologies.util")
 
@@ -29,16 +32,32 @@ def mask(data: Optional[Union[str, bytes]]) -> str:
     return re.sub(r'"player_id" *: *"[^"]+"', r'"player_id": "<masked>"', decoded)
 
 
+def extract(data: Union[str, Message, Data]) -> Message:
+    message = Message.for_json(str(data))
+    if message.message == MessageType.REQUEST_FAILED:
+        context = cast(RequestFailedContext, message.context)
+        raise ProcessingError(reason=context.reason, comment=context.comment, handle=context.handle)
+    return message
+
+
 async def close(websocket: WebSocketCommonProtocol) -> None:
     """Close a websocket."""
     log.debug("Closing websocket: %s", id(websocket))
     await websocket.close()
 
 
-async def send(websocket: WebSocketCommonProtocol, message: str) -> None:
+async def send(websocket: WebSocketCommonProtocol, message: Union[str, Message]) -> None:
     """Send a response to a websocket."""
-    log.debug("Sending message to websocket: %s\n%s", id(websocket), mask(message))
-    await websocket.send(message)
+    if message:
+        data = message.to_json() if isinstance(message, Message) else message
+        log.debug("Sending message to websocket: %s\n%s", id(websocket), mask(data))
+        await websocket.send(data)
+
+
+async def receive(websocket: WebSocketCommonProtocol) -> Message:
+    data = await websocket.recv()
+    log.debug("Received raw data for websocket %s:\n%s", id(websocket), mask(data))
+    return extract(data)
 
 
 def setup_logging(quiet: bool, verbose: bool, debug: bool, logfile_path: Optional[str] = None) -> None:
