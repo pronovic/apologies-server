@@ -863,8 +863,8 @@ class TestEventMethods:
     def test_handle_player_registered_event(self):
         websocket = MagicMock()
         player = MagicMock(player_id="player_id", handle="handle")
-        context = PlayerRegisteredContext(player_id="player_id", handle="handle")
-        message = Message(MessageType.PLAYER_REGISTERED, context=context)
+        context = PlayerRegisteredContext(handle="handle")
+        message = Message(MessageType.PLAYER_REGISTERED, player_id="player_id", context=context)
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
         handler.manager.track_player.return_value = player
@@ -875,8 +875,8 @@ class TestEventMethods:
     def test_handle_player_reregistered_event(self):
         websocket = MagicMock()
         player = MagicMock(player_id="player_id", handle="handle")
-        context = PlayerRegisteredContext(player_id="player_id", handle="handle")
-        message = Message(MessageType.PLAYER_REGISTERED, context=context)
+        context = PlayerRegisteredContext(handle="handle")
+        message = Message(MessageType.PLAYER_REGISTERED, player_id="player_id", context=context)
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
         handler.handle_player_reregistered_event(player, websocket)

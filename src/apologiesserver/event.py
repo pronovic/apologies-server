@@ -375,16 +375,16 @@ class EventHandler:
         """Handle the Player Registered event."""
         log.info("Event - PLAYER REGISTERED - %s on %s", handle, id(websocket))
         player = self.manager.track_player(websocket, handle)
-        context = PlayerRegisteredContext(player_id=player.player_id, handle=player.handle)
-        message = Message(MessageType.PLAYER_REGISTERED, context=context)
+        context = PlayerRegisteredContext(handle=player.handle)
+        message = Message(MessageType.PLAYER_REGISTERED, player_id=player.player_id, context=context)
         self.queue.message(message, websockets=[websocket])
 
     def handle_player_reregistered_event(self, player: TrackedPlayer, websocket: WebSocketServerProtocol) -> None:
         """Handle the Player Registered event."""
         log.info("Event - PLAYER REREGISTERED - %s on %s", player.handle, id(websocket))
         player.websocket = websocket
-        context = PlayerRegisteredContext(player_id=player.player_id, handle=player.handle)
-        message = Message(MessageType.PLAYER_REGISTERED, context=context)
+        context = PlayerRegisteredContext(handle=player.handle)
+        message = Message(MessageType.PLAYER_REGISTERED, player_id=player.player_id, context=context)
         self.queue.message(message, players=[player])
 
     def handle_player_unregistered_event(self, player: TrackedPlayer, game: Optional[TrackedGame] = None) -> None:

@@ -424,7 +424,6 @@ class AvailableGamesContext(Context):
 class PlayerRegisteredContext(Context):
     """Context for a PLAYER_REGISTERED event."""
 
-    player_id = attr.ib(type=str)
     handle = attr.ib(type=str)
 
 
@@ -574,7 +573,7 @@ _PLAYER_ID: Dict[MessageType, bool] = {
     MessageType.WEBSOCKET_INACTIVE: False,
     MessageType.REGISTERED_PLAYERS: False,
     MessageType.AVAILABLE_GAMES: False,
-    MessageType.PLAYER_REGISTERED: False,
+    MessageType.PLAYER_REGISTERED: True,
     MessageType.PLAYER_IDLE: False,
     MessageType.PLAYER_INACTIVE: False,
     MessageType.PLAYER_MESSAGE_RECEIVED: False,
@@ -702,6 +701,8 @@ class Message:
     def to_json(self) -> str:
         """Convert the request to JSON."""
         d = _CONVERTER.unstructure(self)  # pylint: disable=invalid-name
+        if d["player_id"] is None:
+            del d["player_id"]
         if d["context"] is None:
             del d["context"]
         return orjson.dumps(d, option=orjson.OPT_INDENT_2).decode("utf-8")  # type: ignore
