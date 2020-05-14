@@ -15,12 +15,6 @@ we need for events that are only built internally.
 The file notes/API.md includes a detailed discussion of each request and event.
 """
 
-# TODO: well, shit.  you can't set headers using the python, so the whole authentication mechanism
-#       I came up with is useless.  I need to rework the interface to always take a player id as part
-#       of the request, and validate it from there.  I also need to make sure to mask the player id
-#       when logging the raw data, since now it will be in every message we receive.
-
-
 from __future__ import annotations  # see: https://stackoverflow.com/a/33533514/2907667
 
 from abc import ABC
