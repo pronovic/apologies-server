@@ -23,9 +23,10 @@ def homedir() -> str:
     return str(Path.home())
 
 
-def mask(data: Union[str, bytes]) -> str:
+def mask(data: Optional[Union[str, bytes]]) -> str:
     """Mask the player id in JSON data, since it's a secret we don't want logged."""
-    return re.sub(r'"player_id" *: *"[^"]*"', r'"player_id": "<masked>"', str(data))
+    decoded = "" if not data else data.decode("utf-8") if isinstance(data, bytes) else data
+    return re.sub(r'"player_id" *: *"[^"]+"', r'"player_id": "<masked>"', decoded)
 
 
 async def close(websocket: WebSocketCommonProtocol) -> None:

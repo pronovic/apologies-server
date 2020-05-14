@@ -7,7 +7,7 @@ import pytest
 from asynctest import CoroutineMock
 from asynctest import MagicMock as AsyncMock
 
-from apologiesserver.util import close, homedir, send, setup_logging
+from apologiesserver.util import close, homedir, mask, send, setup_logging
 
 
 class TestUtil:
@@ -32,6 +32,55 @@ class TestUtil:
         websocket.send = CoroutineMock()
         await send(websocket, message)
         websocket.send.assert_awaited_once_with(message)
+
+    def test_mask(self):
+        assert mask(None) == ""
+        assert mask("") == ""
+        assert mask(b"") == ""
+        assert mask("hello") == "hello"
+        assert mask(b"hello") == "hello"
+        assert (
+            mask(
+                """
+        {
+          "player_id": null,
+        }
+        """
+            )
+            == """
+        {
+          "player_id": null,
+        }
+        """
+        )
+        assert (
+            mask(
+                """
+        {
+          "player_id": "",
+        }
+        """
+            )
+            == """
+        {
+          "player_id": "",
+        }
+        """
+        )
+        assert (
+            mask(
+                """
+        {
+          "player_id": "id",
+        }
+        """
+            )
+            == """
+        {
+          "player_id": "<masked>",
+        }
+        """
+        )
 
     def test_setup_logging(self):
         setup_logging(quiet=True, verbose=False, debug=False)  # just confirm that it runs
