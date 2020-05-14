@@ -39,6 +39,7 @@ class TestUtil:
         assert mask(b"") == ""
         assert mask("hello") == "hello"
         assert mask(b"hello") == "hello"
+
         assert (
             mask(
                 """
@@ -53,6 +54,7 @@ class TestUtil:
         }
         """
         )
+
         assert (
             mask(
                 """
@@ -67,6 +69,7 @@ class TestUtil:
         }
         """
         )
+
         assert (
             mask(
                 """
@@ -80,6 +83,21 @@ class TestUtil:
           "player_id": "<masked>",
         }
         """
+        )
+
+        assert (
+            mask(
+                """
+            {
+                 "player_id"    :     "id"  ,
+            }
+            """
+            )
+            == """
+            {
+                 "player_id": "<masked>"  ,
+            }
+            """
         )
 
     def test_setup_logging(self):
