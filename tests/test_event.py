@@ -1150,6 +1150,7 @@ class TestEventMethods:
         handler.queue.message = MagicMock()
         handler.handle_game_player_change_event = MagicMock()
         handler.handle_game_state_change_event = MagicMock()
+        handler.handle_game_next_turn_event = MagicMock()
         handler.manager.lookup_game_players.return_value = [player]
         handler.handle_game_started_event(game)
         game.mark_active.assert_called_once()
@@ -1159,6 +1160,7 @@ class TestEventMethods:
         handler.queue.message.assert_called_once_with(message, players=[player])
         handler.handle_game_player_change_event.assert_called_once_with(game, "Game started")
         handler.handle_game_state_change_event.assert_called_once_with(game)
+        handler.handle_game_next_turn_event.assert_called_once_with(game)
 
     def test_handle_game_cancelled_event_notify(self):
         player = MagicMock()
@@ -1480,12 +1482,24 @@ class TestEventMethods:
         handler.queue.message.assert_called_once_with(message, players=[player])
         handler.manager.lookup_game_players.assert_not_called()
 
+    def test_handle_game_state_change_event_game_not_playing(self):
+        game = MagicMock(game_id="game")
+        game.is_playing.return_value = False
+        handler = EventHandler(MagicMock())
+        handler.queue.message = MagicMock()
+        handler.handle_game_state_change_event(game)
+        game.mark_active.assert_called_once()
+        game.get_player_view.assert_not_called()
+        handler.queue.message.assert_not_called()
+        handler.manager.lookup_game_players.assert_not_called()
+
     @patch("apologiesserver.event.GameStateChangeContext")
     def test_handle_game_state_change_event_game_players(self, game_state_change_context):
         context = GameStateChangeContext(game_id="game", player=None, opponents=None)
         player = MagicMock(handle="handle")
         view = MagicMock()
         game = MagicMock(game_id="game")
+        game.is_playing.return_value = True
         game.get_player_view.return_value = view
         game_state_change_context.for_view.return_value = context
         message = Message(MessageType.GAME_STATE_CHANGE, context=context)
