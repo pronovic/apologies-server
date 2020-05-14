@@ -6,10 +6,12 @@
 Shared utilities.
 """
 
+import asyncio
 import logging
 import re
 import sys
 import time
+from asyncio import TimeoutError  # pylint: disable=redefined-builtin
 from pathlib import Path
 from typing import Optional, Union, cast
 
@@ -54,10 +56,14 @@ async def send(websocket: WebSocketCommonProtocol, message: Union[str, Message])
         await websocket.send(data)
 
 
-async def receive(websocket: WebSocketCommonProtocol) -> Message:
-    data = await websocket.recv()
-    log.debug("Received raw data for websocket %s:\n%s", id(websocket), mask(data))
-    return extract(data)
+async def receive(websocket: WebSocketCommonProtocol, timeout_sec: Optional[int] = None) -> Optional[Message]:
+    try:
+        data = await websocket.recv() if not timeout_sec else await asyncio.wait_for(websocket.recv(), timeout=timeout_sec)
+        log.debug("Received raw data for websocket %s:\n%s", id(websocket), mask(data))
+        return extract(data)
+    except TimeoutError:
+        log.debug("Timed out waiting for raw data for websocket %s", id(websocket))
+        return None
 
 
 def setup_logging(quiet: bool, verbose: bool, debug: bool, logfile_path: Optional[str] = None) -> None:

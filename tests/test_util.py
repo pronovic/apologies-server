@@ -8,7 +8,7 @@ from asynctest import CoroutineMock
 from asynctest import MagicMock as AsyncMock
 
 from apologiesserver.interface import Message, MessageType
-from apologiesserver.util import close, homedir, mask, send, setup_logging
+from apologiesserver.util import close, homedir, mask, receive, send, setup_logging
 
 
 class TestUtil:
@@ -49,6 +49,24 @@ class TestUtil:
         websocket.send = CoroutineMock()
         await send(websocket, message)
         websocket.send.assert_awaited_once_with(message.to_json())
+
+    @pytest.mark.asyncio
+    async def test_receive_no_timeout(self):
+        message = Message(MessageType.WEBSOCKET_INACTIVE)
+        data = message.to_json()
+        websocket = AsyncMock()
+        websocket.recv = CoroutineMock()
+        websocket.recv.return_value = data
+        assert await receive(websocket, timeout_sec=None) == message
+
+    @pytest.mark.asyncio
+    async def test_receive_with_timeout(self):
+        message = Message(MessageType.WEBSOCKET_INACTIVE)
+        data = message.to_json()
+        websocket = AsyncMock()
+        websocket.recv = CoroutineMock()
+        websocket.recv.return_value = data
+        assert await receive(websocket, timeout_sec=3) == message
 
     def test_mask(self):
         assert mask(None) == ""

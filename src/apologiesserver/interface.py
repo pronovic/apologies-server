@@ -479,6 +479,7 @@ class GameJoinedContext(Context):
     """Context for a GAME_JOINED event."""
 
     game_id = attr.ib(type=str)
+    # TODO: we need the handle of the player that joined, in case multiple players share the same websocket
 
 
 @attr.s(frozen=True)
