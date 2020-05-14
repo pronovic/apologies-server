@@ -7,15 +7,37 @@ Shared utilities.
 """
 
 import logging
+import re
 import sys
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
+
+from websockets import WebSocketCommonProtocol
+
+log = logging.getLogger("apologies.util")
 
 
 def homedir() -> str:
     """Get the current user's home directory."""
     return str(Path.home())
+
+
+def mask(data: Union[str, bytes]) -> str:
+    """Mask the player id in JSON data, since it's a secret we don't want logged."""
+    return re.sub(r'"player_id" *: *"[^"]*"', r'"player_id": "<masked>"', str(data))
+
+
+async def close(websocket: WebSocketCommonProtocol) -> None:
+    """Close a websocket."""
+    log.debug("Closing websocket: %s", id(websocket))
+    await websocket.close()
+
+
+async def send(websocket: WebSocketCommonProtocol, message: str) -> None:
+    """Send a response to a websocket."""
+    log.debug("Sending message to websocket: %s\n%s", id(websocket), mask(message))
+    await websocket.send(message)
 
 
 def setup_logging(quiet: bool, verbose: bool, debug: bool, logfile_path: Optional[str] = None) -> None:

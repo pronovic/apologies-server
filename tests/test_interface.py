@@ -181,19 +181,29 @@ class TestGeneral:
 
     def test_message_invalid_type(self) -> None:
         with pytest.raises(ValueError, match=r"'message' must be a MessageType"):
-            Message(None, "Hello")  # type: ignore
+            Message(None, "id", "Hello")  # type: ignore
         with pytest.raises(ValueError, match=r"'message' must be a MessageType"):
-            Message("", "Hello")  # type: ignore
+            Message("", "id", "Hello")  # type: ignore
         with pytest.raises(ValueError, match=r"'message' must be a MessageType"):
-            Message(PlayerType.HUMAN, "Hello")  # type: ignore
+            Message(PlayerType.HUMAN, "id", "Hello")  # type: ignore
+
+    def test_message_invalid_player_id(self) -> None:
+        with pytest.raises(ValueError, match=r"Message type JOIN_GAME requires a player id"):
+            Message(MessageType.JOIN_GAME, None, GameJoinedContext(game_id="id"))
+        with pytest.raises(ValueError, match=r"Message type REGISTER_PLAYER does not allow a player id"):
+            Message(MessageType.REGISTER_PLAYER, "id", "Hello")
+        with pytest.raises(ValueError, match=r"Message type REQUEST_FAILED does not allow a player id"):
+            Message(MessageType.REQUEST_FAILED, "id", RequestFailedContext(FailureReason.INTERNAL_ERROR, "comment"))
 
     def test_message_invalid_context(self) -> None:
         with pytest.raises(ValueError, match=r"Message type REGISTER_PLAYER requires a context"):
-            Message(MessageType.REGISTER_PLAYER, None)
+            Message(MessageType.REGISTER_PLAYER, None, None)
+        with pytest.raises(ValueError, match=r"Message type JOIN_GAME requires a context"):
+            Message(MessageType.JOIN_GAME, "id", None)
         with pytest.raises(ValueError, match=r"Message type GAME_JOINED does not support this context"):
-            Message(MessageType.GAME_JOINED, "Hello")
+            Message(MessageType.GAME_JOINED, None, "Hello")
         with pytest.raises(ValueError, match=r"Message type WEBSOCKET_INACTIVE does not allow a context"):
-            Message(MessageType.WEBSOCKET_INACTIVE, "Hello")
+            Message(MessageType.WEBSOCKET_INACTIVE, None, "Hello")
 
     def test_from_json_missing_message(self) -> None:
         data = """
@@ -205,6 +215,31 @@ class TestGeneral:
         }
         """
         with pytest.raises(ValueError, match=r"Message type is required"):
+            Message.for_json(data)
+
+    def test_from_json_extra_player_id(self) -> None:
+        data = """
+        {
+          "message": "REGISTER_PLAYER",
+          "player_id": "id",
+          "context": {
+            "handle": "leela"
+          }
+        }
+        """
+        with pytest.raises(ValueError, match=r"Message type REGISTER_PLAYER does not allow a player id"):
+            Message.for_json(data)
+
+    def test_from_json_missing_player_id(self) -> None:
+        data = """
+        {
+          "message": "REREGISTER_PLAYER",
+          "context": {
+            "handle": "leela"
+          }
+        }
+        """
+        with pytest.raises(ValueError, match=r"Message type REREGISTER_PLAYER requires a player id"):
             Message.for_json(data)
 
     def test_from_json_missing_context(self) -> None:
@@ -220,6 +255,7 @@ class TestGeneral:
         data = """
         {
           "message": "REREGISTER_PLAYER",
+          "player_id": "id",
           "context": {
             "handle": "leela"
           }
@@ -232,6 +268,7 @@ class TestGeneral:
         data = """
         {
           "message": "ADVERTISE_GAME",
+          "player_id": "id",
           "context": {
             "handle": "leela"
           }
@@ -244,6 +281,7 @@ class TestGeneral:
         data = """
         {
           "message": "BOGUS",
+          "player_id": "id",
           "context": {
             "handle": "leela"
           }
@@ -257,10 +295,24 @@ class TestRequest:
 
     """Test cases for request messages."""
 
-    def test_register_player_valid(self) -> None:
+    def test_register_player_valid_no_player_id(self) -> None:
         data = """
         {
           "message": "REGISTER_PLAYER",
+          "context": {
+            "handle": "1234567890123456789012345"
+          }
+        }
+        """
+        message = Message.for_json(data)
+        assert message.message == MessageType.REGISTER_PLAYER
+        assert message.context.handle == "1234567890123456789012345"
+
+    def test_register_player_valid_null_player_id(self) -> None:
+        data = """
+        {
+          "message": "REGISTER_PLAYER",
+          "player_id": null,
           "context": {
             "handle": "1234567890123456789012345"
           }
@@ -310,6 +362,7 @@ class TestRequest:
         data = """
         {
           "message": "ADVERTISE_GAME",
+          "player_id": "id",
           "context": {
             "name": "Leela's Game",
             "mode": "STANDARD",
@@ -331,6 +384,7 @@ class TestRequest:
         data = """
         {
           "message": "ADVERTISE_GAME",
+          "player_id": "id",
           "context": {
             "name": "Leela's Game",
             "mode": "STANDARD",
@@ -352,6 +406,7 @@ class TestRequest:
         data = """
         {
           "message": "ADVERTISE_GAME",
+          "player_id": "id",
           "context": {
             "name": null,
             "mode": "STANDARD",
@@ -368,6 +423,7 @@ class TestRequest:
         data = """
         {
           "message": "ADVERTISE_GAME",
+          "player_id": "id",
           "context": {
             "name": "",
             "mode": "STANDARD",
@@ -384,6 +440,7 @@ class TestRequest:
         data = """
         {
           "message": "ADVERTISE_GAME",
+          "player_id": "id",
           "context": {
             "name": "Leela's Game",
             "mode": null,
@@ -400,6 +457,7 @@ class TestRequest:
         data = """
         {
           "message": "ADVERTISE_GAME",
+          "player_id": "id",
           "context": {
             "name": "Leela's Game",
             "mode": "",
@@ -416,6 +474,7 @@ class TestRequest:
         data = """
         {
           "message": "ADVERTISE_GAME",
+          "player_id": "id",
           "context": {
             "name": "Leela's Game",
             "mode": "BOGUS",
@@ -432,6 +491,7 @@ class TestRequest:
         data = """
         {
           "message": "ADVERTISE_GAME",
+          "player_id": "id",
           "context": {
             "name": "Leela's Game",
             "mode": "STANDARD",
@@ -448,6 +508,7 @@ class TestRequest:
         data = """
         {
           "message": "ADVERTISE_GAME",
+          "player_id": "id",
           "context": {
             "name": "Leela's Game",
             "mode": "STANDARD",
@@ -464,6 +525,7 @@ class TestRequest:
         data = """
         {
           "message": "ADVERTISE_GAME",
+          "player_id": "id",
           "context": {
             "name": "Leela's Game",
             "mode": "STANDARD",
@@ -480,6 +542,7 @@ class TestRequest:
         data = """
         {
           "message": "ADVERTISE_GAME",
+          "player_id": "id",
           "context": {
             "name": "Leela's Game",
             "mode": "STANDARD",
@@ -496,6 +559,7 @@ class TestRequest:
         data = """
         {
           "message": "ADVERTISE_GAME",
+          "player_id": "id",
           "context": {
             "name": "Leela's Game",
             "mode": "STANDARD",
@@ -512,6 +576,7 @@ class TestRequest:
         data = """
         {
           "message": "ADVERTISE_GAME",
+          "player_id": "id",
           "context": {
             "name": "Leela's Game",
             "mode": "STANDARD",
@@ -528,6 +593,7 @@ class TestRequest:
         data = """
         {
           "message": "ADVERTISE_GAME",
+          "player_id": "id",
           "context": {
             "name": "Leela's Game",
             "mode": "STANDARD",
@@ -544,6 +610,7 @@ class TestRequest:
         data = """
         {
           "message": "ADVERTISE_GAME",
+          "player_id": "id",
           "context": {
             "name": "Leela's Game",
             "mode": "STANDARD",
@@ -560,6 +627,7 @@ class TestRequest:
         data = """
         {
           "message": "JOIN_GAME",
+          "player_id": "id",
           "context": {
             "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe"
           }
@@ -573,6 +641,7 @@ class TestRequest:
         data = """
         {
           "message": "JOIN_GAME",
+          "player_id": "id",
           "context": {
             "game_id": null
           }
@@ -585,6 +654,7 @@ class TestRequest:
         data = """
         {
           "message": "JOIN_GAME",
+          "player_id": "id",
           "context": {
             "game_id": ""
           }
@@ -597,6 +667,7 @@ class TestRequest:
         data = """
         {
           "message": "EXECUTE_MOVE",
+          "player_id": "id",
           "context": {
             "move_id": "4"
           }
@@ -610,6 +681,7 @@ class TestRequest:
         data = """
         {
           "message": "EXECUTE_MOVE",
+          "player_id": "id",
           "context": {
             "move_id": null
           }
@@ -622,6 +694,7 @@ class TestRequest:
         data = """
         {
           "message": "EXECUTE_MOVE",
+          "player_id": "id",
           "context": {
             "move_id": ""
           }
@@ -634,6 +707,7 @@ class TestRequest:
         data = """
         {
           "message": "SEND_MESSAGE",
+          "player_id": "id",
           "context": {
             "message": "Hello!",
             "recipient_handles": [ "hermes", "nibbler" ]
@@ -649,6 +723,7 @@ class TestRequest:
         data = """
         {
           "message": "SEND_MESSAGE",
+          "player_id": "id",
           "context": {
             "message": null,
             "recipient_handles": [ "hermes", "nibbler" ]
@@ -662,6 +737,7 @@ class TestRequest:
         data = """
         {
           "message": "SEND_MESSAGE",
+          "player_id": "id",
           "context": {
             "message": "",
             "recipient_handles": [ "hermes", "nibbler" ]
@@ -675,6 +751,7 @@ class TestRequest:
         data = """
         {
           "message": "SEND_MESSAGE",
+          "player_id": "id",
           "context": {
             "message": "Hello!",
             "recipient_handles": null
@@ -688,6 +765,7 @@ class TestRequest:
         data = """
         {
           "message": "SEND_MESSAGE",
+          "player_id": "id",
           "context": {
             "message": "Hello!",
             "recipient_handles": []
@@ -701,6 +779,7 @@ class TestRequest:
         data = """
         {
           "message": "SEND_MESSAGE",
+          "player_id": "id",
           "context": {
             "message": "Hello!",
             "recipient_handles": [ "hermes", null ]
@@ -714,6 +793,7 @@ class TestRequest:
         data = """
         {
           "message": "SEND_MESSAGE",
+          "player_id": "id",
           "context": {
             "message": "Hello!",
             "recipient_handles": [ "hermes", "" ]
@@ -725,66 +805,66 @@ class TestRequest:
 
     def test_register_player_roundtrip(self) -> None:
         context = RegisterPlayerContext(handle="leela")
-        message = Message(MessageType.REGISTER_PLAYER, context)
+        message = Message(MessageType.REGISTER_PLAYER, context=context)
         roundtrip(message)
 
     def test_reregister_player_roundtrip(self) -> None:
-        message = Message(MessageType.REREGISTER_PLAYER)
+        message = Message(MessageType.REREGISTER_PLAYER, player_id="id")
         roundtrip(message)
 
     def test_unregister_player_roundtrip(self) -> None:
-        message = Message(MessageType.UNREGISTER_PLAYER)
+        message = Message(MessageType.UNREGISTER_PLAYER, player_id="id")
         roundtrip(message)
 
     def test_list_players_roundtrip(self) -> None:
-        message = Message(MessageType.LIST_PLAYERS)
+        message = Message(MessageType.LIST_PLAYERS, player_id="id")
         roundtrip(message)
 
     def test_advertise_game_roundtrip(self) -> None:
         context = AdvertiseGameContext("Leela's Game", GameMode.STANDARD, 3, Visibility.PRIVATE, ["fry", "bender"])
-        message = Message(MessageType.ADVERTISE_GAME, context)
+        message = Message(MessageType.ADVERTISE_GAME, player_id="id", context=context)
         roundtrip(message)
 
     def test_list_available_games_roundtrip(self) -> None:
-        message = Message(MessageType.LIST_AVAILABLE_GAMES)
+        message = Message(MessageType.LIST_AVAILABLE_GAMES, player_id="id")
         roundtrip(message)
 
     def test_join_game_roundtrip(self) -> None:
         context = JoinGameContext("game")
-        message = Message(MessageType.JOIN_GAME, context)
+        message = Message(MessageType.JOIN_GAME, player_id="id", context=context)
         roundtrip(message)
 
     def test_quit_game_roundtrip(self) -> None:
-        message = Message(MessageType.QUIT_GAME)
+        message = Message(MessageType.QUIT_GAME, player_id="id")
         roundtrip(message)
 
     def test_start_game_roundtrip(self) -> None:
-        message = Message(MessageType.START_GAME)
+        message = Message(MessageType.START_GAME, player_id="id")
         roundtrip(message)
 
     def test_cancel_game_roundtrip(self) -> None:
-        message = Message(MessageType.CANCEL_GAME)
+        message = Message(MessageType.CANCEL_GAME, player_id="id")
         roundtrip(message)
 
     def test_execute_move_roundtrip(self) -> None:
         context = ExecuteMoveContext("move")
-        message = Message(MessageType.EXECUTE_MOVE, context)
+        message = Message(MessageType.EXECUTE_MOVE, player_id="id", context=context)
         roundtrip(message)
 
     def test_retrieve_game_state_roundtrip(self) -> None:
-        message = Message(MessageType.RETRIEVE_GAME_STATE)
+        message = Message(MessageType.RETRIEVE_GAME_STATE, player_id="id")
         roundtrip(message)
 
     def test_send_message_roundtrip(self) -> None:
         context = SendMessageContext("Hello", ["fry", "bender"])
-        message = Message(MessageType.SEND_MESSAGE, context)
+        message = Message(MessageType.SEND_MESSAGE, player_id="id", context=context)
         roundtrip(message)
 
 
 class TestEvent:
     def test_request_failed_roundtrip(self) -> None:
         context = RequestFailedContext(FailureReason.INTERNAL_ERROR, "it didn't work", "handle")
-        message = Message(MessageType.REQUEST_FAILED, context)
+        message = Message(MessageType.REQUEST_FAILED, context=context)
         roundtrip(message)
 
     def test_websocket_idle_roundtrip(self) -> None:
@@ -806,18 +886,18 @@ class TestEvent:
             "game",
         )
         context = RegisteredPlayersContext(players=[player])
-        message = Message(MessageType.REGISTERED_PLAYERS, context)
+        message = Message(MessageType.REGISTERED_PLAYERS, context=context)
         roundtrip(message)
 
     def test_available_games_roundtrip(self) -> None:
         game = AdvertisedGame("game", "name", GameMode.STANDARD, "leela", 3, 2, Visibility.PUBLIC, ["fry", "bender"])
         context = AvailableGamesContext(games=[game])
-        message = Message(MessageType.AVAILABLE_GAMES, context)
+        message = Message(MessageType.AVAILABLE_GAMES, context=context)
         roundtrip(message)
 
     def test_player_registered_roundtrip(self) -> None:
         context = PlayerRegisteredContext("player", "handle")
-        message = Message(MessageType.PLAYER_REGISTERED, context)
+        message = Message(MessageType.PLAYER_REGISTERED, context=context)
         roundtrip(message)
 
     def test_player_idle_roundtrip(self) -> None:
@@ -832,24 +912,24 @@ class TestEvent:
 
     def test_player_message_received_roundtrip(self) -> None:
         context = PlayerMessageReceivedContext("leela", ["hermes", "bender"], "Hello")
-        message = Message(MessageType.PLAYER_MESSAGE_RECEIVED, context)
+        message = Message(MessageType.PLAYER_MESSAGE_RECEIVED, context=context)
         roundtrip(message)
 
     def test_game_advertised_roundtrip(self) -> None:
         game = AdvertisedGame("game", "name", GameMode.STANDARD, "leela", 3, 2, Visibility.PUBLIC, ["fry", "bender"])
         context = GameAdvertisedContext(game)
-        message = Message(MessageType.GAME_ADVERTISED, context)
+        message = Message(MessageType.GAME_ADVERTISED, context=context)
         roundtrip(message)
 
     def test_game_invitation_roundtrip(self) -> None:
         game = AdvertisedGame("game", "name", GameMode.STANDARD, "leela", 3, 2, Visibility.PUBLIC, ["fry", "bender"])
         context = GameInvitationContext(game)
-        message = Message(MessageType.GAME_INVITATION, context)
+        message = Message(MessageType.GAME_INVITATION, context=context)
         roundtrip(message)
 
     def test_game_joined_roundtrip(self) -> None:
         context = GameJoinedContext("game")
-        message = Message(MessageType.GAME_JOINED, context)
+        message = Message(MessageType.GAME_JOINED, context=context)
         roundtrip(message)
 
     def test_game_started_roundtrip(self) -> None:
@@ -859,12 +939,12 @@ class TestEvent:
 
     def test_game_cancelled_roundtrip(self) -> None:
         context = GameCancelledContext("game", CancelledReason.CANCELLED, "YELLOW player (nibbler) quit")
-        message = Message(MessageType.GAME_CANCELLED, context)
+        message = Message(MessageType.GAME_CANCELLED, context=context)
         roundtrip(message)
 
     def test_game_completed_roundtrip(self) -> None:
         context = GameCompletedContext("game", "YELLOW player (nibbler) won after 46 turns")
-        message = Message(MessageType.GAME_COMPLETED, context)
+        message = Message(MessageType.GAME_COMPLETED, context=context)
         roundtrip(message)
 
     def test_game_idle_roundtrip(self) -> None:
@@ -882,17 +962,17 @@ class TestEvent:
         yellow = GamePlayer("Legolas", PlayerColor.YELLOW, PlayerType.PROGRAMMATIC, PlayerState.PLAYING)
         players = [red, yellow]
         context = GamePlayerChangeContext("game", "YELLOW player (leela) quit", players)
-        message = Message(MessageType.GAME_PLAYER_CHANGE, context)
+        message = Message(MessageType.GAME_PLAYER_CHANGE, context=context)
         roundtrip(message)
 
     def test_game_state_change_roundtrip(self) -> None:
         view = create_view()
         context = GameStateChangeContext.for_view("game", view)
-        message = Message(MessageType.GAME_STATE_CHANGE, context)
+        message = Message(MessageType.GAME_STATE_CHANGE, context=context)
         roundtrip(message)
 
     def test_game_player_turn_roundtrip(self) -> None:
         moves = create_moves_complex()
         context = GamePlayerTurnContext.for_moves("handle", "game", moves)
-        message = Message(MessageType.GAME_PLAYER_TURN, context)
+        message = Message(MessageType.GAME_PLAYER_TURN, context=context)
         roundtrip(message)

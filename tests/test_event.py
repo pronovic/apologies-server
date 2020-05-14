@@ -11,31 +11,10 @@ from asynctest import CoroutineMock
 from asynctest import MagicMock as AsyncMock
 from asynctest import patch
 
-from apologiesserver.event import EventHandler, RequestContext, TaskQueue, close, send
+from apologiesserver.event import EventHandler, RequestContext, TaskQueue
 from apologiesserver.interface import *
 
 from .util import to_date
-
-
-class TestFunctions:
-    """
-    Test the event functions.
-    """
-
-    @pytest.mark.asyncio
-    async def test_close(self):
-        websocket = AsyncMock()
-        websocket.close = CoroutineMock()
-        await close(websocket)
-        websocket.close.assert_awaited_once()
-
-    @pytest.mark.asyncio
-    async def test_send(self):
-        message = "json"
-        websocket = AsyncMock()
-        websocket.send = CoroutineMock()
-        await send(message, websocket)
-        websocket.send.assert_awaited_once_with(message)
 
 
 class TestTaskQueue:
@@ -369,7 +348,7 @@ class TestRequestMethods:
     def test_handle_reregister_player_request(self):
         handler = EventHandler(MagicMock())
         handler.handle_player_reregistered_event = MagicMock()
-        message = Message(MessageType.REREGISTER_PLAYER)
+        message = Message(MessageType.REREGISTER_PLAYER, player_id="id")
         websocket = MagicMock()
         player = MagicMock()
         game = MagicMock()
@@ -380,7 +359,7 @@ class TestRequestMethods:
     def test_handle_unregister_player_request(self):
         handler = EventHandler(MagicMock())
         handler.handle_player_unregistered_event = MagicMock()
-        message = Message(MessageType.UNREGISTER_PLAYER)
+        message = Message(MessageType.UNREGISTER_PLAYER, player_id="id")
         websocket = MagicMock()
         player = MagicMock()
         game = MagicMock()
@@ -391,7 +370,7 @@ class TestRequestMethods:
     def test_handle_list_players_request(self):
         handler = EventHandler(MagicMock())
         handler.handle_registered_players_event = MagicMock()
-        message = Message(MessageType.LIST_PLAYERS)
+        message = Message(MessageType.LIST_PLAYERS, player_id="id")
         websocket = MagicMock()
         player = MagicMock()
         game = MagicMock()
@@ -403,7 +382,7 @@ class TestRequestMethods:
         handler = EventHandler(MagicMock())
         handler.handle_game_advertised_event = MagicMock()
         context = AdvertiseGameContext("name", GameMode.STANDARD, 3, Visibility.PUBLIC, ["fry", "bender"])
-        message = Message(MessageType.ADVERTISE_GAME, context=context)
+        message = Message(MessageType.ADVERTISE_GAME, player_id="id", context=context)
         websocket = MagicMock()
         player = MagicMock()
         game = MagicMock()
@@ -419,7 +398,7 @@ class TestRequestMethods:
         handler.manager.get_total_game_count.return_value = 4
         handler.handle_game_advertised_event = MagicMock()
         context = AdvertiseGameContext("name", GameMode.STANDARD, 3, Visibility.PUBLIC, ["fry", "bender"])
-        message = Message(MessageType.ADVERTISE_GAME, context=context)
+        message = Message(MessageType.ADVERTISE_GAME, player_id="id", context=context)
         websocket = MagicMock()
         player = MagicMock()
         game = None
@@ -434,7 +413,7 @@ class TestRequestMethods:
         handler.manager.get_total_game_count.return_value = 5
         handler.handle_game_advertised_event = MagicMock()
         context = AdvertiseGameContext("name", GameMode.STANDARD, 3, Visibility.PUBLIC, ["fry", "bender"])
-        message = Message(MessageType.ADVERTISE_GAME, context=context)
+        message = Message(MessageType.ADVERTISE_GAME, player_id="id", context=context)
         websocket = MagicMock()
         player = MagicMock()
         game = None
@@ -446,7 +425,7 @@ class TestRequestMethods:
     def test_handle_list_available_games_request(self):
         handler = EventHandler(MagicMock())
         handler.handle_available_games_event = MagicMock()
-        message = Message(MessageType.LIST_AVAILABLE_GAMES)
+        message = Message(MessageType.LIST_AVAILABLE_GAMES, player_id="id")
         websocket = MagicMock()
         player = MagicMock()
         game = MagicMock()
@@ -458,7 +437,7 @@ class TestRequestMethods:
         handler = EventHandler(MagicMock())
         handler.handle_game_joined_event = MagicMock()
         context = JoinGameContext(game_id="game")
-        message = Message(MessageType.JOIN_GAME, context=context)
+        message = Message(MessageType.JOIN_GAME, player_id="id", context=context)
         websocket = MagicMock()
         player = MagicMock()
         game = MagicMock()
@@ -471,7 +450,7 @@ class TestRequestMethods:
         handler = EventHandler(MagicMock())
         handler.handle_game_joined_event = MagicMock()
         context = JoinGameContext(game_id="game")
-        message = Message(MessageType.JOIN_GAME, context=context)
+        message = Message(MessageType.JOIN_GAME, player_id="id", context=context)
         websocket = MagicMock()
         player = MagicMock()
         game = None
@@ -482,7 +461,7 @@ class TestRequestMethods:
     def test_handle_quit_game_request_not_playing(self):
         handler = EventHandler(MagicMock())
         handler.handle_game_player_quit_event = MagicMock()
-        message = Message(MessageType.QUIT_GAME)
+        message = Message(MessageType.QUIT_GAME, player_id="id")
         websocket = MagicMock()
         player = MagicMock()
         game = None
@@ -494,7 +473,7 @@ class TestRequestMethods:
     def test_handle_quit_game_request_not_in_progress(self):
         handler = EventHandler(MagicMock())
         handler.handle_game_player_quit_event = MagicMock()
-        message = Message(MessageType.QUIT_GAME)
+        message = Message(MessageType.QUIT_GAME, player_id="id")
         websocket = MagicMock()
         player = MagicMock()
         game = MagicMock()
@@ -507,7 +486,7 @@ class TestRequestMethods:
     def test_handle_quit_game_request_advertiser(self):
         handler = EventHandler(MagicMock())
         handler.handle_game_player_quit_event = MagicMock()
-        message = Message(MessageType.QUIT_GAME)
+        message = Message(MessageType.QUIT_GAME, player_id="id")
         websocket = MagicMock()
         player = MagicMock(handle="leela")
         game = MagicMock(advertiser_handle="leela")
@@ -519,7 +498,7 @@ class TestRequestMethods:
     def test_handle_quit_game_request(self):
         handler = EventHandler(MagicMock())
         handler.handle_game_player_quit_event = MagicMock()
-        message = Message(MessageType.QUIT_GAME)
+        message = Message(MessageType.QUIT_GAME, player_id="id")
         websocket = MagicMock()
         player = MagicMock()
         game = MagicMock()
@@ -530,7 +509,7 @@ class TestRequestMethods:
     def test_handle_start_game_request_not_playing(self):
         handler = EventHandler(MagicMock())
         handler.handle_game_started_event = MagicMock()
-        message = Message(MessageType.START_GAME)
+        message = Message(MessageType.START_GAME, player_id="id")
         websocket = MagicMock()
         player = MagicMock()
         game = None
@@ -542,7 +521,7 @@ class TestRequestMethods:
     def test_handle_start_game_request_already_played(self):
         handler = EventHandler(MagicMock())
         handler.handle_game_started_event = MagicMock()
-        message = Message(MessageType.START_GAME)
+        message = Message(MessageType.START_GAME, player_id="id")
         websocket = MagicMock()
         player = MagicMock()
         game = MagicMock()
@@ -555,7 +534,7 @@ class TestRequestMethods:
     def test_handle_start_game_request_not_advertiser(self):
         handler = EventHandler(MagicMock())
         handler.handle_game_started_event = MagicMock()
-        message = Message(MessageType.START_GAME)
+        message = Message(MessageType.START_GAME, player_id="id")
         websocket = MagicMock()
         player = MagicMock(handle="leela")
         game = MagicMock(advertiser_handle="bender")
@@ -571,7 +550,7 @@ class TestRequestMethods:
         handler = EventHandler(MagicMock())
         handler.manager.get_in_progress_game_count.return_value = 4
         handler.handle_game_started_event = MagicMock()
-        message = Message(MessageType.START_GAME)
+        message = Message(MessageType.START_GAME, player_id="id")
         websocket = MagicMock()
         player = MagicMock(handle="leela")
         game = MagicMock(advertiser_handle="leela")
@@ -586,7 +565,7 @@ class TestRequestMethods:
         handler = EventHandler(MagicMock())
         handler.manager.get_in_progress_game_count.return_value = 5
         handler.handle_game_started_event = MagicMock()
-        message = Message(MessageType.START_GAME)
+        message = Message(MessageType.START_GAME, player_id="id")
         websocket = MagicMock()
         player = MagicMock(handle="leela")
         game = MagicMock(advertiser_handle="leela")
@@ -599,7 +578,7 @@ class TestRequestMethods:
     def test_handle_cancel_game_request_not_playing(self):
         handler = EventHandler(MagicMock())
         handler.handle_game_cancelled_event = MagicMock()
-        message = Message(MessageType.CANCEL_GAME)
+        message = Message(MessageType.CANCEL_GAME, player_id="id")
         websocket = MagicMock()
         player = MagicMock()
         game = None
@@ -611,7 +590,7 @@ class TestRequestMethods:
     def test_handle_cancel_game_request_not_in_progress(self):
         handler = EventHandler(MagicMock())
         handler.handle_game_cancelled_event = MagicMock()
-        message = Message(MessageType.CANCEL_GAME)
+        message = Message(MessageType.CANCEL_GAME, player_id="id")
         websocket = MagicMock()
         player = MagicMock()
         game = MagicMock()
@@ -624,7 +603,7 @@ class TestRequestMethods:
     def test_handle_cancel_game_request_not_advertiser(self):
         handler = EventHandler(MagicMock())
         handler.handle_game_cancelled_event = MagicMock()
-        message = Message(MessageType.CANCEL_GAME)
+        message = Message(MessageType.CANCEL_GAME, player_id="id")
         websocket = MagicMock()
         player = MagicMock(handle="leela")
         game = MagicMock(advertiser_handle="bender")
@@ -636,7 +615,7 @@ class TestRequestMethods:
     def test_handle_cancel_game_request(self):
         handler = EventHandler(MagicMock())
         handler.handle_game_cancelled_event = MagicMock()
-        message = Message(MessageType.CANCEL_GAME)
+        message = Message(MessageType.CANCEL_GAME, player_id="id")
         websocket = MagicMock()
         player = MagicMock(handle="leela")
         game = MagicMock(advertiser_handle="leela")
@@ -648,7 +627,7 @@ class TestRequestMethods:
         handler = EventHandler(MagicMock())
         handler.handle_game_player_move_event = MagicMock()
         context = ExecuteMoveContext(move_id="move")
-        message = Message(MessageType.EXECUTE_MOVE, context=context)
+        message = Message(MessageType.EXECUTE_MOVE, player_id="id", context=context)
         websocket = MagicMock()
         player = MagicMock()
         game = None
@@ -661,7 +640,7 @@ class TestRequestMethods:
         handler = EventHandler(MagicMock())
         handler.handle_game_player_move_event = MagicMock()
         context = ExecuteMoveContext(move_id="move")
-        message = Message(MessageType.EXECUTE_MOVE, context=context)
+        message = Message(MessageType.EXECUTE_MOVE, player_id="id", context=context)
         websocket = MagicMock()
         player = MagicMock()
         game = MagicMock()
@@ -675,7 +654,7 @@ class TestRequestMethods:
         handler = EventHandler(MagicMock())
         handler.handle_game_player_move_event = MagicMock()
         context = ExecuteMoveContext(move_id="move")
-        message = Message(MessageType.EXECUTE_MOVE, context=context)
+        message = Message(MessageType.EXECUTE_MOVE, player_id="id", context=context)
         websocket = MagicMock()
         player = MagicMock(handle="leela")
         game = MagicMock()
@@ -691,7 +670,7 @@ class TestRequestMethods:
         handler = EventHandler(MagicMock())
         handler.handle_game_player_move_event = MagicMock()
         context = ExecuteMoveContext(move_id="move")
-        message = Message(MessageType.EXECUTE_MOVE, context=context)
+        message = Message(MessageType.EXECUTE_MOVE, player_id="id", context=context)
         websocket = MagicMock()
         player = MagicMock(handle="leela")
         game = MagicMock()
@@ -708,7 +687,7 @@ class TestRequestMethods:
         handler = EventHandler(MagicMock())
         handler.handle_game_player_move_event = MagicMock()
         context = ExecuteMoveContext(move_id="move")
-        message = Message(MessageType.EXECUTE_MOVE, context=context)
+        message = Message(MessageType.EXECUTE_MOVE, player_id="id", context=context)
         websocket = MagicMock()
         player = MagicMock(handle="leela")
         game = MagicMock()
@@ -721,7 +700,7 @@ class TestRequestMethods:
     def test_handle_retrieve_game_state_request_not_playing(self):
         handler = EventHandler(MagicMock())
         handler.handle_game_state_change_event = MagicMock()
-        message = Message(MessageType.RETRIEVE_GAME_STATE)
+        message = Message(MessageType.RETRIEVE_GAME_STATE, player_id="id")
         websocket = MagicMock()
         player = MagicMock()
         game = None
@@ -733,7 +712,7 @@ class TestRequestMethods:
     def test_handle_retrieve_game_state_request_not_being_played(self):
         handler = EventHandler(MagicMock())
         handler.handle_game_state_change_event = MagicMock()
-        message = Message(MessageType.RETRIEVE_GAME_STATE)
+        message = Message(MessageType.RETRIEVE_GAME_STATE, player_id="id")
         websocket = MagicMock()
         player = MagicMock()
         game = MagicMock()
@@ -746,7 +725,7 @@ class TestRequestMethods:
     def test_handle_retrieve_game_state_request(self):
         handler = EventHandler(MagicMock())
         handler.handle_game_state_change_event = MagicMock()
-        message = Message(MessageType.RETRIEVE_GAME_STATE)
+        message = Message(MessageType.RETRIEVE_GAME_STATE, player_id="id")
         websocket = MagicMock()
         player = MagicMock()
         game = MagicMock()
@@ -759,7 +738,7 @@ class TestRequestMethods:
         handler = EventHandler(MagicMock())
         handler.handle_player_message_received_event = MagicMock()
         context = SendMessageContext(message="hello", recipient_handles=["fry", "bender"])
-        message = Message(MessageType.SEND_MESSAGE, context=context)
+        message = Message(MessageType.SEND_MESSAGE, player_id="id", context=context)
         websocket = MagicMock()
         player = MagicMock()
         game = MagicMock()
