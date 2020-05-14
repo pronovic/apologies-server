@@ -189,7 +189,7 @@ class TestGeneral:
 
     def test_message_invalid_player_id(self) -> None:
         with pytest.raises(ValueError, match=r"Message type JOIN_GAME requires a player id"):
-            Message(MessageType.JOIN_GAME, None, GameJoinedContext(handle="handle", game_id="id"))
+            Message(MessageType.JOIN_GAME, None, GameJoinedContext(game_id="id"))
         with pytest.raises(ValueError, match=r"Message type REGISTER_PLAYER does not allow a player id"):
             Message(MessageType.REGISTER_PLAYER, "id", "Hello")
         with pytest.raises(ValueError, match=r"Message type REQUEST_FAILED does not allow a player id"):
@@ -928,7 +928,7 @@ class TestEvent:
         roundtrip(message)
 
     def test_game_joined_roundtrip(self) -> None:
-        context = GameJoinedContext("handle", "game")
+        context = GameJoinedContext("game")
         message = Message(MessageType.GAME_JOINED, context=context)
         roundtrip(message)
 

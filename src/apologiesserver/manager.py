@@ -269,14 +269,12 @@ class TrackedEngine:
             raise ProcessingError(FailureReason.INTERNAL_ERROR, "Illegal state for operation")
         return self._current.movelist[:]
 
-    def get_player_view(self, handle: str) -> Tuple[str, PlayerView]:
+    def get_player_view(self, handle: str) -> PlayerView:
         """Get the player's view of the game state."""
         if not self._engine or handle not in self._colors:
             raise ProcessingError(FailureReason.INTERNAL_ERROR, "Illegal state for operation")
         color = self._colors[handle]
-        history = "%s" % self._engine.game.history[-1]
-        view = self._engine.game.create_player_view(color)
-        return history, view
+        return self._engine.game.create_player_view(color)
 
     def is_move_pending(self, handle: str) -> bool:
         """Whether a move is pending for the player with the passed-in handle."""
@@ -402,7 +400,7 @@ class TrackedGame:
         """Get the legal moves for the player at this stage in the game."""
         return self._engine.get_legal_moves(handle)
 
-    def get_player_view(self, handle: str) -> Tuple[str, PlayerView]:
+    def get_player_view(self, handle: str) -> PlayerView:
         """Get the player's view of the game state."""
         return self._engine.get_player_view(handle)
 
@@ -566,9 +564,10 @@ class StateManager:
 
     def mark_active(self, player: TrackedPlayer) -> None:
         """Mark a player and its associated websocket as active."""
-        if player.websocket and player.websocket not in self._websocket_map:
-            websocket = self._websocket_map[player.websocket]
-            websocket.mark_active()
+        if not player.websocket or player.websocket not in self._websocket_map:
+            raise ProcessingError(FailureReason.INTERNAL_ERROR, comment="Did not find player websocket", handle=player.handle)
+        websocket = self._websocket_map[player.websocket]
+        websocket.mark_active()
         player.mark_active()
 
     def track_websocket(self, websocket: WebSocketServerProtocol) -> None:

@@ -473,7 +473,7 @@ class EventHandler:
         game.mark_active()
         player.mark_joined(game)
         game.mark_joined(player.handle)
-        context = GameJoinedContext(handle=player.handle, game_id=game.game_id)
+        context = GameJoinedContext(game_id=game.game_id)
         message = Message(MessageType.GAME_JOINED, context=context)
         self.queue.message(message, players=[player])
         if game.is_fully_joined():
@@ -585,7 +585,7 @@ class EventHandler:
     def handle_game_programmatic_move_event(self, handle: str, game: TrackedGame) -> None:
         """Handle the Game Programmatic Move event."""
         log.info("Event - GAME PROGRAMMATIC MOVE - %s for %s", handle, game.game_id)
-        _, view = game.get_player_view(handle)
+        view = game.get_player_view(handle)
         moves = game.get_legal_moves(handle)
         move = RewardV1InputSource().choose_move(game.mode, view, moves, Rules.evaluate_move)
         self.handle_game_move_event(handle, game, move.id)
@@ -632,8 +632,8 @@ class EventHandler:
         if game.is_playing():
             players = [player] if player else self.manager.lookup_game_players(game)
             for player in players:
-                history, view = game.get_player_view(player.handle)
-                context = GameStateChangeContext.for_view(game_id=game.game_id, history=history, view=view)
+                view = game.get_player_view(player.handle)
+                context = GameStateChangeContext.for_view(game_id=game.game_id, view=view)
                 message = Message(MessageType.GAME_STATE_CHANGE, context=context)
                 self.queue.message(message, players=[player])
 
