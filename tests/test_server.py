@@ -11,7 +11,6 @@ import pytest
 from asynctest import MagicMock as AsyncMock
 from asynctest import patch
 from websockets.exceptions import ConnectionClosed
-from websockets.http import Headers
 
 from apologiesserver.event import EventHandler, RequestContext
 from apologiesserver.interface import FailureReason, Message, MessageType, ProcessingError, RequestFailedContext
@@ -25,7 +24,6 @@ from apologiesserver.server import (
     _handle_message,
     _handle_shutdown,
     _lookup_method,
-    _parse_authorization,
     _run_server,
     _schedule_tasks,
     _websocket_server,
@@ -52,44 +50,6 @@ class TestFunctions:
     """
     Test Python functions.
     """
-
-    def test_parse_authorization_empty(self):
-        headers = Headers()
-        headers["Authorization"] = "bogus"
-        websocket = MagicMock(request_headers=headers)
-        with pytest.raises(ProcessingError, match=r"Missing or invalid authorization header"):
-            _parse_authorization(websocket)
-
-    def test_parse_authorization_invalid(self):
-        headers = Headers()
-        headers["Authorization"] = "bogus"
-        websocket = MagicMock(request_headers=headers)
-        with pytest.raises(ProcessingError, match=r"Missing or invalid authorization header"):
-            _parse_authorization(websocket)
-
-    def test_parse_authorization_valid_upper(self):
-        headers = Headers()
-        headers["AUTHORIZATION"] = "PLAYER abcde"
-        websocket = MagicMock(request_headers=headers)
-        assert _parse_authorization(websocket) == "abcde"
-
-    def test_parse_authorization_valid_lower(self):
-        headers = Headers()
-        headers["authorization"] = "player abcde"
-        websocket = MagicMock(request_headers=headers)
-        assert _parse_authorization(websocket) == "abcde"
-
-    def test_parse_authorization_mixed(self):
-        headers = Headers()
-        headers["Authorization"] = "Player abcde"
-        websocket = MagicMock(request_headers=headers)
-        assert _parse_authorization(websocket) == "abcde"
-
-    def test_parse_authorization_whitespace(self):
-        headers = Headers()
-        headers["authorization"] = "  Player    abcde    "
-        websocket = MagicMock(request_headers=headers)
-        assert _parse_authorization(websocket) == "abcde"
 
     def test_add_signal_handlers(self):
         stop = AsyncMock()
@@ -153,21 +113,18 @@ class TestFunctions:
         handler.handle_register_player_request.assert_called_once_with(message, websocket)
 
     @patch("apologiesserver.server._lookup_method")
-    @patch("apologiesserver.server._parse_authorization")
-    def test_handle_message(self, parse_authorization, lookup_method):
+    def test_handle_message(self, lookup_method):
         method = MagicMock()
         lookup_method.return_value = method
         handler = MagicMock()
-        message = MagicMock(message=MessageType.LIST_PLAYERS)  # anything other than REGISTER_PLAYER
+        message = MagicMock(message=MessageType.LIST_PLAYERS, player_id="player_id")  # anything other than REGISTER_PLAYER
         websocket = MagicMock()
         player = MagicMock(game_id="game_id")
         game = MagicMock()
         request = RequestContext(message, websocket, player, game)
-        parse_authorization.return_value = "player_id"
         handler.manager.lookup_player.return_value = player
         handler.manager.lookup_game.return_value = game
         _handle_message(handler, message, websocket)
-        parse_authorization.assert_called_once_with(websocket)
         handler.manager.lookup_player.assert_called_once_with(player_id="player_id")
         handler.manager.mark_active.assert_called_once_with(player)
         handler.manager.lookup_game.assert_called_once_with(game_id="game_id")
@@ -175,16 +132,13 @@ class TestFunctions:
         method.assert_called_once_with(request)
 
     @patch("apologiesserver.server._lookup_method")
-    @patch("apologiesserver.server._parse_authorization")
-    def test_handle_message_no_player(self, parse_authorization, lookup_method):
+    def test_handle_message_no_player(self, lookup_method):
         handler = MagicMock()
-        message = MagicMock(message=MessageType.LIST_PLAYERS)  # anything other than REGISTER_PLAYER
+        message = MagicMock(message=MessageType.LIST_PLAYERS, player_id="player_id")  # anything other than REGISTER_PLAYER
         websocket = MagicMock()
-        parse_authorization.return_value = "player_id"
         handler.manager.lookup_player.return_value = None
         with pytest.raises(ProcessingError, match=r"Unknown or invalid player"):
             _handle_message(handler, message, websocket)
-        parse_authorization.assert_called_once_with(websocket)
         handler.manager.lookup_player.assert_called_once_with(player_id="player_id")
         handler.manager.lookup_game.assert_not_called()
         lookup_method.assert_not_called()
@@ -225,10 +179,10 @@ class TestCoroutines:
         exception = ProcessingError(FailureReason.INVALID_PLAYER)
         websocket = AsyncMock()
         context = RequestFailedContext(FailureReason.INVALID_PLAYER, FailureReason.INVALID_PLAYER.value)
-        message = Message(MessageType.REQUEST_FAILED, context)
+        message = Message(MessageType.REQUEST_FAILED, context=context)
         json = message.to_json()
         await _handle_exception(exception, websocket)
-        send.assert_awaited_once_with(json, websocket)
+        send.assert_awaited_once_with(websocket, json)
         close.assert_not_awaited()
 
     @patch("apologiesserver.server.close")
@@ -237,10 +191,10 @@ class TestCoroutines:
         exception = ProcessingError(FailureReason.WEBSOCKET_LIMIT)
         websocket = AsyncMock()
         context = RequestFailedContext(FailureReason.WEBSOCKET_LIMIT, FailureReason.WEBSOCKET_LIMIT.value)
-        message = Message(MessageType.REQUEST_FAILED, context)
+        message = Message(MessageType.REQUEST_FAILED, context=context)
         json = message.to_json()
         await _handle_exception(exception, websocket)
-        send.assert_awaited_once_with(json, websocket)
+        send.assert_awaited_once_with(websocket, json)
         close.assert_awaited_once_with(websocket)
 
     @patch("apologiesserver.server.close")
@@ -249,10 +203,10 @@ class TestCoroutines:
         exception = ProcessingError(FailureReason.INVALID_PLAYER, "comment")
         websocket = AsyncMock()
         context = RequestFailedContext(FailureReason.INVALID_PLAYER, "comment")
-        message = Message(MessageType.REQUEST_FAILED, context)
+        message = Message(MessageType.REQUEST_FAILED, context=context)
         json = message.to_json()
         await _handle_exception(exception, websocket)
-        send.assert_awaited_once_with(json, websocket)
+        send.assert_awaited_once_with(websocket, json)
         close.assert_not_awaited()
 
     @patch("apologiesserver.server.close")
@@ -261,10 +215,10 @@ class TestCoroutines:
         exception = ValueError("Hello!")
         websocket = AsyncMock()
         context = RequestFailedContext(FailureReason.INVALID_REQUEST, "Hello!")
-        message = Message(MessageType.REQUEST_FAILED, context)
+        message = Message(MessageType.REQUEST_FAILED, context=context)
         json = message.to_json()
         await _handle_exception(exception, websocket)
-        send.assert_awaited_once_with(json, websocket)
+        send.assert_awaited_once_with(websocket, json)
         close.assert_not_awaited()
 
     @patch("apologiesserver.server.close")
@@ -273,10 +227,10 @@ class TestCoroutines:
         exception = Exception("Hello!")
         websocket = AsyncMock()
         context = RequestFailedContext(FailureReason.INTERNAL_ERROR, FailureReason.INTERNAL_ERROR.value)
-        message = Message(MessageType.REQUEST_FAILED, context)
+        message = Message(MessageType.REQUEST_FAILED, context=context)
         json = message.to_json()
         await _handle_exception(exception, websocket)
-        send.assert_awaited_once_with(json, websocket)
+        send.assert_awaited_once_with(websocket, json)
         close.assert_not_awaited()
 
     @patch("apologiesserver.server.close")
@@ -287,10 +241,10 @@ class TestCoroutines:
         websocket = AsyncMock()
         send.side_effect = Exception("Send failed!")
         context = RequestFailedContext(FailureReason.INVALID_PLAYER, FailureReason.INVALID_PLAYER.value)
-        message = Message(MessageType.REQUEST_FAILED, context)
+        message = Message(MessageType.REQUEST_FAILED, context=context)
         json = message.to_json()
         await _handle_exception(exception, websocket)
-        send.assert_awaited_once_with(json, websocket)
+        send.assert_awaited_once_with(websocket, json)
         close.assert_not_awaited()
 
     @patch("apologiesserver.server._handle_message")

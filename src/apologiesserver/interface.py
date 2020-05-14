@@ -418,7 +418,6 @@ class AvailableGamesContext(Context):
 class PlayerRegisteredContext(Context):
     """Context for a PLAYER_REGISTERED event."""
 
-    player_id = attr.ib(type=str)
     handle = attr.ib(type=str)
 
 
@@ -547,6 +546,44 @@ class GamePlayerTurnContext(Context):
         return GamePlayerTurnContext(handle, game_id, drawn_card, converted)
 
 
+# Map from MessageType to whether player id field is allowed/required
+_PLAYER_ID: Dict[MessageType, bool] = {
+    MessageType.REGISTER_PLAYER: False,
+    MessageType.REREGISTER_PLAYER: True,
+    MessageType.UNREGISTER_PLAYER: True,
+    MessageType.LIST_PLAYERS: True,
+    MessageType.ADVERTISE_GAME: True,
+    MessageType.LIST_AVAILABLE_GAMES: True,
+    MessageType.JOIN_GAME: True,
+    MessageType.QUIT_GAME: True,
+    MessageType.START_GAME: True,
+    MessageType.CANCEL_GAME: True,
+    MessageType.EXECUTE_MOVE: True,
+    MessageType.RETRIEVE_GAME_STATE: True,
+    MessageType.SEND_MESSAGE: True,
+    MessageType.SERVER_SHUTDOWN: False,
+    MessageType.REQUEST_FAILED: False,
+    MessageType.WEBSOCKET_IDLE: False,
+    MessageType.WEBSOCKET_INACTIVE: False,
+    MessageType.REGISTERED_PLAYERS: False,
+    MessageType.AVAILABLE_GAMES: False,
+    MessageType.PLAYER_REGISTERED: True,
+    MessageType.PLAYER_IDLE: False,
+    MessageType.PLAYER_INACTIVE: False,
+    MessageType.PLAYER_MESSAGE_RECEIVED: False,
+    MessageType.GAME_ADVERTISED: False,
+    MessageType.GAME_INVITATION: False,
+    MessageType.GAME_JOINED: False,
+    MessageType.GAME_STARTED: False,
+    MessageType.GAME_CANCELLED: False,
+    MessageType.GAME_COMPLETED: False,
+    MessageType.GAME_IDLE: False,
+    MessageType.GAME_INACTIVE: False,
+    MessageType.GAME_PLAYER_CHANGE: False,
+    MessageType.GAME_STATE_CHANGE: False,
+    MessageType.GAME_PLAYER_TURN: False,
+}
+
 # Map from MessageType to context
 _CONTEXT: Dict[MessageType, Optional[Type[Context]]] = {
     MessageType.REGISTER_PLAYER: RegisterPlayerContext,
@@ -627,12 +664,22 @@ class Message:
     """A message that is part of the public interface, either a client request or a published event."""
 
     message = attr.ib(type=MessageType)
+    player_id = attr.ib(type=Optional[str], default=None, repr=False)  # this is a secret, so we don't want it printed or logged
     context = attr.ib(type=Any, default=None)
 
     @message.validator
     def _validate_message(self, attribute: Attribute[MessageType], value: MessageType) -> None:
         if value is None or not isinstance(value, MessageType):
             raise ValueError("'%s' must be a MessageType" % attribute.name)
+
+    @player_id.validator
+    def _validate_player_id(self, _attribute: Attribute[str], value: str) -> None:
+        if _PLAYER_ID[self.message]:
+            if value is None:
+                raise ValueError("Message type %s requires a player id" % self.message.name)
+        else:
+            if value is not None:
+                raise ValueError("Message type %s does not allow a player id" % self.message.name)
 
     @context.validator
     def _validate_context(self, _attribute: Attribute[Context], value: Context) -> None:
@@ -648,6 +695,8 @@ class Message:
     def to_json(self) -> str:
         """Convert the request to JSON."""
         d = _CONVERTER.unstructure(self)  # pylint: disable=invalid-name
+        if d["player_id"] is None:
+            del d["player_id"]
         if d["context"] is None:
             del d["context"]
         return orjson.dumps(d, option=orjson.OPT_INDENT_2).decode("utf-8")  # type: ignore
@@ -662,6 +711,14 @@ class Message:
             message = MessageType[d["message"]]
         except KeyError:
             raise ValueError("Unknown message type: %s" % d["message"])
+        if _PLAYER_ID[message]:
+            if "player_id" not in d or d["player_id"] is None:
+                raise ValueError("Message type %s requires a player id" % message.name)
+            player_id = d["player_id"]
+        else:
+            if "player_id" in d and d["player_id"] is not None:
+                raise ValueError("Message type %s does not allow a player id" % message.name)
+            player_id = None
         if _CONTEXT[message] is None:
             if "context" in d and d["context"] is not None:
                 raise ValueError("Message type %s does not allow a context" % message.name)
@@ -675,4 +732,4 @@ class Message:
                 raise ValueError("Invalid value %s" % str(e))
             except TypeError as e:
                 raise ValueError("Message type %s does not support this context" % message.name, e)
-        return Message(message, context)
+        return Message(message, player_id, context)

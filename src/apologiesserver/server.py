@@ -3,7 +3,6 @@
 
 import asyncio
 import logging
-import re
 import signal
 from asyncio import AbstractEventLoop, Future  # pylint: disable=unused-import
 from typing import Any, Callable, Coroutine, Union  # pylint: disable=unused-import
@@ -12,25 +11,15 @@ import websockets
 from websockets import WebSocketServerProtocol
 
 from .config import config
-from .event import EventHandler, RequestContext, close, send
+from .event import EventHandler, RequestContext
 from .interface import FailureReason, Message, MessageType, ProcessingError, RequestFailedContext
 from .manager import manager
 from .scheduled import scheduled_tasks
+from .util import close, mask, send
 
 log = logging.getLogger("apologies.server")
 
 SHUTDOWN_SIGNALS = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
-
-
-def _parse_authorization(websocket: WebSocketServerProtocol) -> str:
-    """Return the player id from the authorization header, raising ProcessingError if missing or invalid."""
-    try:
-        # For most requests, we expect a header like "Authorization: Player d669c200-74aa-4deb-ad91-2f5c27e51d74"
-        authorization = websocket.request_headers["Authorization"]
-        return re.fullmatch(r"( *)(Player  *)([^ ]+)( *)", authorization, flags=re.IGNORECASE).group(3)  # type: ignore
-    except:
-        raise ProcessingError(FailureReason.INVALID_AUTH)
-
 
 # pylint: disable=too-many-return-statements,too-many-branches
 def _lookup_method(handler: EventHandler, message: MessageType) -> Callable[[RequestContext], None]:
@@ -68,8 +57,7 @@ def _handle_message(handler: EventHandler, message: Message, websocket: WebSocke
     if message.message == MessageType.REGISTER_PLAYER:
         handler.handle_register_player_request(message, websocket)
     else:
-        player_id = _parse_authorization(websocket)
-        player = handler.manager.lookup_player(player_id=player_id)
+        player = handler.manager.lookup_player(player_id=message.player_id)
         if not player:
             raise ProcessingError(FailureReason.INVALID_PLAYER)
         handler.manager.mark_active(player)  # marks both the player and its websocket as active
@@ -82,7 +70,7 @@ def _handle_message(handler: EventHandler, message: Message, websocket: WebSocke
 
 async def _handle_data(data: Union[str, bytes], websocket: WebSocketServerProtocol) -> None:
     """Handle data received from a websocket client."""
-    log.debug("Received raw data for websocket %s:\n%s", id(websocket), data)
+    log.debug("Received raw data for websocket %s:\n%s", id(websocket), mask(data))
     message = Message.for_json(str(data))
     with EventHandler(manager()) as handler:
         async with handler.manager.lock:
@@ -126,8 +114,8 @@ async def _handle_exception(exception: Exception, websocket: WebSocketServerProt
         except Exception as e:
             # Note: we don't want to expose internal implementation details in the case of an internal error
             context = RequestFailedContext(FailureReason.INTERNAL_ERROR, FailureReason.INTERNAL_ERROR.value)
-        message = Message(MessageType.REQUEST_FAILED, context)
-        await send(message.to_json(), websocket)
+        message = Message(MessageType.REQUEST_FAILED, context=context)
+        await send(websocket, message.to_json())
         if disconnect:
             await close(websocket)
     except Exception as e:

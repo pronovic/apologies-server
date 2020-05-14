@@ -45,12 +45,8 @@ Obsolete_ event.
 ## Client Requests
 
 All client requests, except the original _Register Player_ request, must
-contain an `Authorization` header including the player id returned from the
-_Player Registered_ event:
-
-```
-Authorization: Player d669c200-74aa-4deb-ad91-2f5c27e51d74
-```
+contain the player id returned from the _Player Registered_ event, as shown
+in the examples below.
 
 In all cases, if the request is syntactically invalid, if the arguments are
 illegal, or if the request fails for some other reason, a _Request Failed_
@@ -93,7 +89,8 @@ Example request:
 
 ```json
 {
-  "message": "REREGISTER_PLAYER"
+  "message": "REREGISTER_PLAYER",
+  "player_id": "247179aa-e516-4eed-b68f-7daaa54c0625"
 }
 ```
 
@@ -108,7 +105,8 @@ Example request:
 
 ```json
 {
-  "message": "UNREGISTER_PLAYER"
+  "message": "UNREGISTER_PLAYER",
+  "player_id": "247179aa-e516-4eed-b68f-7daaa54c0625"
 }
 ```
 
@@ -122,7 +120,8 @@ Example request:
 
 ```json
 {
-  "message": "LIST_PLAYERS"
+  "message": "LIST_PLAYERS",
+  "player_id": "247179aa-e516-4eed-b68f-7daaa54c0625"
 }
 ```
 
@@ -147,6 +146,7 @@ Example requests:
 ```json
 {
   "message": "ADVERTISE_GAME",
+  "player_id": "247179aa-e516-4eed-b68f-7daaa54c0625",
   "context": {
     "name": "Leela's Game",
     "mode": "STANDARD",
@@ -160,6 +160,7 @@ Example requests:
 ```json
 {
   "message": "ADVERTISE_GAME",
+  "player_id": "247179aa-e516-4eed-b68f-7daaa54c0625",
   "context": {
     "name": "Bender's Game",
     "mode": "ADULT",
@@ -185,7 +186,8 @@ Example request:
 
 ```json
 {
-  "message": "LIST_AVAILABLE_GAMES"
+  "message": "LIST_AVAILABLE_GAMES",
+  "player_id": "247179aa-e516-4eed-b68f-7daaa54c0625"
 }
 ```
 
@@ -208,6 +210,7 @@ Example request:
 ```json
 {
   "message": "JOIN_GAME",
+  "player_id": "247179aa-e516-4eed-b68f-7daaa54c0625",
   "context": {
     "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe"
   }
@@ -229,7 +232,8 @@ Example request:
 
 ```json
 {
-  "message": "QUIT_GAME"
+  "message": "QUIT_GAME",
+  "player_id": "247179aa-e516-4eed-b68f-7daaa54c0625"
 }
 ```
 
@@ -247,7 +251,8 @@ Example request:
 
 ```json
 {
-  "message": "START_GAME"
+  "message": "START_GAME",
+  "player_id": "247179aa-e516-4eed-b68f-7daaa54c0625"
 }
 ```
 
@@ -262,7 +267,8 @@ Example request:
 
 ```json
 {
-  "message": "CANCEL_GAME"
+  "message": "CANCEL_GAME",
+  "player_id": "247179aa-e516-4eed-b68f-7daaa54c0625"
 }
 ```
 
@@ -286,6 +292,7 @@ Example request:
 ```json
 {
   "message": "EXECUTE_MOVE",
+  "player_id": "247179aa-e516-4eed-b68f-7daaa54c0625",
   "context": {
     "move_id": "4"
   }
@@ -307,7 +314,8 @@ Example request:
 
 ```json
 {
-  "message": "RETRIEVE_GAME_STATE"
+  "message": "RETRIEVE_GAME_STATE",
+  "player_id": "247179aa-e516-4eed-b68f-7daaa54c0625"
 }
 ```
 
@@ -326,6 +334,7 @@ Example request:
 ```json
 {
   "message": "SEND_MESSAGE",
+  "player_id": "247179aa-e516-4eed-b68f-7daaa54c0625",
   "context": {
     "message": "Hello!",
     "recipient_handles": [ "hermes", "nibbler" ]
@@ -387,7 +396,7 @@ across server restarts, so in-progress games will be interrupted.
 
 This event is triggered when a new client connection is established.  Multiple
 players can conceivably share the same webhook, since the player is identified
-by the Authorization header and not by the webhook itself.  So, we track
+by the player id in the request and not by the webhook itself.  So, we track
 webhooks separately from players.
 
 ### Websocket Disconnected
@@ -508,8 +517,8 @@ Example message:
 ```json
 {
   "message": "PLAYER_REGISTERED",
+  "player_id": "247179aa-e516-4eed-b68f-7daaa54c0625",
   "context": {
-    "player_id": "8fc4a03b-3e4d-438c-a3fc-b6913e829ab3",
     "handle": "leela" 
   }
 }

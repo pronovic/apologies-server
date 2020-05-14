@@ -18,7 +18,6 @@ from __future__ import annotations  # see: https://stackoverflow.com/a/33533514/
 
 import asyncio
 import logging
-import re
 from typing import List, Optional, Set, Tuple, cast
 
 import attr
@@ -31,21 +30,9 @@ from websockets import WebSocketServerProtocol
 from .config import config
 from .interface import *
 from .manager import StateManager, TrackedGame, TrackedPlayer, TrackedWebsocket
+from .util import close, send
 
 log = logging.getLogger("apologies.event")
-
-
-async def close(websocket: WebSocketServerProtocol) -> None:
-    """Close a websocket."""
-    log.debug("Closing websocket: %s", id(websocket))
-    await websocket.close()
-
-
-async def send(message: str, websocket: WebSocketServerProtocol) -> None:
-    """Send a response to a websocket."""
-    masked = re.sub(r'"player_id" *: *"[^"]*"', r'"player_id": "<masked>"', message)  # this is a secret, so mask it out
-    log.debug("Sending message to websocket: %s\n%s", id(websocket), masked)
-    await websocket.send(message)
 
 
 @attr.s(frozen=True)
@@ -100,7 +87,7 @@ class TaskQueue:
 
     async def execute(self) -> None:
         """Execute all tasks in the queue, sending messages first and then disconnecting websockets."""
-        tasks = [send(message, websocket) for message, websocket in self.messages]
+        tasks = [send(websocket, message) for message, websocket in self.messages]
         if tasks:
             await asyncio.wait(tasks)
         tasks = [close(websocket) for websocket in self.disconnects]
@@ -373,7 +360,7 @@ class EventHandler:
         log.info("Event - REGISTERED PLAYERS - %s", player.handle)
         players = [player.to_registered_player() for player in self.manager.lookup_all_players()]
         context = RegisteredPlayersContext(players=players)
-        message = Message(MessageType.REGISTERED_PLAYERS, context)
+        message = Message(MessageType.REGISTERED_PLAYERS, context=context)
         self.queue.message(message, players=[player])
 
     def handle_available_games_event(self, player: TrackedPlayer) -> None:
@@ -381,23 +368,23 @@ class EventHandler:
         log.info("Event - AVAILABLE GAMES - %s", player.handle)
         games = [game.to_advertised_game() for game in self.manager.lookup_available_games(player)]
         context = AvailableGamesContext(games=games)
-        message = Message(MessageType.AVAILABLE_GAMES, context)
+        message = Message(MessageType.AVAILABLE_GAMES, context=context)
         self.queue.message(message, players=[player])
 
     def handle_player_registered_event(self, websocket: WebSocketServerProtocol, handle: str) -> None:
         """Handle the Player Registered event."""
         log.info("Event - PLAYER REGISTERED - %s on %s", handle, id(websocket))
         player = self.manager.track_player(websocket, handle)
-        context = PlayerRegisteredContext(player_id=player.player_id, handle=player.handle)
-        message = Message(MessageType.PLAYER_REGISTERED, context)
+        context = PlayerRegisteredContext(handle=player.handle)
+        message = Message(MessageType.PLAYER_REGISTERED, player_id=player.player_id, context=context)
         self.queue.message(message, websockets=[websocket])
 
     def handle_player_reregistered_event(self, player: TrackedPlayer, websocket: WebSocketServerProtocol) -> None:
         """Handle the Player Registered event."""
         log.info("Event - PLAYER REREGISTERED - %s on %s", player.handle, id(websocket))
         player.websocket = websocket
-        context = PlayerRegisteredContext(player_id=player.player_id, handle=player.handle)
-        message = Message(MessageType.PLAYER_REGISTERED, context)
+        context = PlayerRegisteredContext(handle=player.handle)
+        message = Message(MessageType.PLAYER_REGISTERED, player_id=player.player_id, context=context)
         self.queue.message(message, players=[player])
 
     def handle_player_unregistered_event(self, player: TrackedPlayer, game: Optional[TrackedGame] = None) -> None:
@@ -449,7 +436,7 @@ class EventHandler:
             len(recipient_handles),
         )
         context = PlayerMessageReceivedContext(sender_handle, recipient_handles, sender_message)
-        message = Message(MessageType.PLAYER_MESSAGE_RECEIVED, context)
+        message = Message(MessageType.PLAYER_MESSAGE_RECEIVED, context=context)
         players = [self.manager.lookup_player(handle=handle) for handle in recipient_handles]
         self.queue.message(message, players=[player for player in players if player])
 
@@ -460,7 +447,7 @@ class EventHandler:
         self.handle_game_joined_event(player, game=game)
         self.handle_game_invitation_event(game)
         context = GameAdvertisedContext(game=game.to_advertised_game())  # get result here so it shows advertiser as joined
-        message = Message(MessageType.GAME_ADVERTISED, context)
+        message = Message(MessageType.GAME_ADVERTISED, context=context)
         self.queue.message(message, players=[player])
 
     def handle_game_invitation_event(self, game: TrackedGame) -> None:
@@ -468,7 +455,7 @@ class EventHandler:
         log.info("Event - GAME INVITATION - %s", game.game_id)
         if game.invited_handles:
             context = GameInvitationContext(game=game.to_advertised_game())
-            message = Message(MessageType.GAME_INVITATION, context)
+            message = Message(MessageType.GAME_INVITATION, context=context)
             players = [self.manager.lookup_player(handle=handle) for handle in game.invited_handles]
             self.queue.message(message, players=[player for player in players if player])
 
@@ -487,7 +474,7 @@ class EventHandler:
         player.mark_joined(game)
         game.mark_joined(player.handle)
         context = GameJoinedContext(game_id=game.game_id)
-        message = Message(MessageType.GAME_JOINED, context)
+        message = Message(MessageType.GAME_JOINED, context=context)
         self.queue.message(message, players=[player])
         if game.is_fully_joined():
             if self.manager.get_in_progress_game_count() >= config().in_progress_game_limit:
@@ -520,7 +507,7 @@ class EventHandler:
         """Handle the Game Cancelled event."""
         log.info("Event - GAME CANCELLED - %s for %s (%s)", game.game_id, reason, "'%s'" % comment if comment else None)
         context = GameCancelledContext(game_id=game.game_id, reason=reason, comment=comment)
-        message = Message(MessageType.GAME_CANCELLED, context)
+        message = Message(MessageType.GAME_CANCELLED, context=context)
         players = self.manager.lookup_game_players(game)
         for player in players:
             player.mark_quit()
@@ -533,7 +520,7 @@ class EventHandler:
         """Handle the Game Completed event."""
         log.info("Event - GAME COMPLETED - %s (%s)", game.game_id, "'%s'" % comment if comment else None)
         context = GameCompletedContext(game_id=game.game_id, comment=comment)
-        message = Message(MessageType.GAME_COMPLETED, context)
+        message = Message(MessageType.GAME_COMPLETED, context=context)
         players = self.manager.lookup_game_players(game)
         for player in players:
             player.mark_quit()
@@ -651,5 +638,5 @@ class EventHandler:
         """Handle the Game Player Turn event."""
         log.info("Event - GAME PLAYER TURN - %s for %s (%d moves)", player.handle, player.game_id, len(moves))
         context = GamePlayerTurnContext.for_moves(handle=player.handle, game_id=player.game_id, moves=moves)  # type: ignore
-        message = Message(MessageType.GAME_PLAYER_TURN, context)
+        message = Message(MessageType.GAME_PLAYER_TURN, context=context)
         self.queue.message(message, players=[player])
