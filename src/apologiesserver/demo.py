@@ -8,6 +8,7 @@ Implements a quick'n'dirty game-playing client as a demo.
 
 import asyncio
 import logging
+import random
 import signal
 from asyncio import AbstractEventLoop, CancelledError
 from typing import List, Optional, cast
@@ -91,15 +92,16 @@ def _handle_game_state_change(_player_id: str, message: Message) -> None:
 def _handle_game_player_change(_player_id: str, message: Message) -> None:
     """Handle the game player change event."""
     context = cast(GamePlayerChangeContext, message.context)
-    players = [player.handle for player in context.players]
+    players = ["%s (%s)" % (player.handle, player.player_color.value) for player in context.players]  # type: ignore
     log.info("Game players are: %s", players)
 
 
-def _handle_game_player_turn(_player_id: str, message: Message) -> Optional[Message]:
+def _handle_game_player_turn(player_id: str, message: Message) -> Optional[Message]:
     """Handle the game player turn event."""
     context = cast(GamePlayerTurnContext, message.context)
-    log.info("Turn for %s, %d moves available", context.handle, len(context.moves))
-    return None
+    move: GameMove = random.choice(list(context.moves.values()))
+    log.info("Demo player turn, %d move(s), chose %s for card %s", len(context.moves), move.move_id, move.card.name)
+    return Message(MessageType.EXECUTE_MOVE, player_id=player_id, context=ExecuteMoveContext(move_id=move.move_id))
 
 
 def _handle_message(player_id: str, message: Message) -> Optional[Message]:
