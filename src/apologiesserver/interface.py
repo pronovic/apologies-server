@@ -24,7 +24,7 @@ from typing import Any, Dict, List, Optional, Type
 import attr
 import cattr
 import orjson
-from apologies.game import CardType, GameMode, Pawn, Player, PlayerColor, PlayerView, Position
+from apologies.game import CardType, GameMode, History, Pawn, Player, PlayerColor, PlayerView, Position
 from apologies.rules import Action, ActionType, Move
 from attr import Attribute
 from attr.validators import and_, in_
@@ -49,6 +49,7 @@ __all__ = [
     "AdvertisedGame",
     "GameStatePawn",
     "GameStatePlayer",
+    "GameStateHistory",
     "GameAction",
     "GameMove",
     "RegisterPlayerContext",
@@ -305,6 +306,19 @@ class GameStatePlayer:
         return GameStatePlayer(color, turns, hand, pawns)
 
 
+@attr.s
+class GameStateHistory:
+    """History for a game."""
+
+    action = attr.ib(type=str)
+    color = attr.ib(type=Optional[PlayerColor])
+    timestamp = attr.ib(type=DateTime)
+
+    @staticmethod
+    def for_history(history: History) -> GameStateHistory:
+        return GameStateHistory(action=history.action, color=history.color, timestamp=history.timestamp)
+
+
 @attr.s(frozen=True)
 class GameAction:
     """An action applied to a pawn in a game."""
@@ -527,15 +541,17 @@ class GameStateChangeContext(Context):
     """Context for a GAME_STATE_CHANGE event."""
 
     game_id = attr.ib(type=str)
+    recent_history = attr.ib(type=List[GameStateHistory])
     player = attr.ib(type=GameStatePlayer)
     opponents = attr.ib(type=List[GameStatePlayer])
 
     @staticmethod
-    def for_view(game_id: str, view: PlayerView) -> GameStateChangeContext:
+    def for_context(game_id: str, view: PlayerView, history: List[History]) -> GameStateChangeContext:
         """Create a GameStateChangeContext based on apologies.game.PlayerView."""
         player = GameStatePlayer.for_player(view.player)
+        recent_history = [GameStateHistory.for_history(entry) for entry in history]
         opponents = [GameStatePlayer.for_player(opponent) for opponent in view.opponents.values()]
-        return GameStateChangeContext(game_id, player, opponents)
+        return GameStateChangeContext(game_id, recent_history, player, opponents)
 
 
 @attr.s(frozen=True)

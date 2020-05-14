@@ -1471,18 +1471,21 @@ class TestEventMethods:
 
     @patch("apologiesserver.event.GameStateChangeContext")
     def test_handle_game_state_change_event_specific_player(self, game_state_change_context):
-        context = GameStateChangeContext(game_id="game", player=None, opponents=None)
+        history = MagicMock()
+        context = GameStateChangeContext(game_id="game", player=None, opponents=None, recent_history=[history])
         player = MagicMock(handle="handle")
         view = MagicMock()
         game = MagicMock(game_id="game")
         game.get_player_view.return_value = view
-        game_state_change_context.for_view.return_value = context
+        game.get_recent_history.return_value = [history]
+        game_state_change_context.for_context.return_value = context
         message = Message(MessageType.GAME_STATE_CHANGE, context=context)
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
         handler.handle_game_state_change_event(game, player)
         game.mark_active.assert_called_once()
         game.get_player_view.assert_called_with("handle")
+        game.get_recent_history.assert_called_once_with(10)
         handler.queue.message.assert_called_once_with(message, players=[player])
         handler.manager.lookup_game_players.assert_not_called()
 
@@ -1499,13 +1502,15 @@ class TestEventMethods:
 
     @patch("apologiesserver.event.GameStateChangeContext")
     def test_handle_game_state_change_event_game_players(self, game_state_change_context):
-        context = GameStateChangeContext(game_id="game", player=None, opponents=None)
+        history = MagicMock()
+        context = GameStateChangeContext(game_id="game", player=None, opponents=None, recent_history=[history])
         player = MagicMock(handle="handle")
         view = MagicMock()
         game = MagicMock(game_id="game")
         game.is_playing.return_value = True
         game.get_player_view.return_value = view
-        game_state_change_context.for_view.return_value = context
+        game.get_recent_history.return_value = [history]
+        game_state_change_context.for_context.return_value = context
         message = Message(MessageType.GAME_STATE_CHANGE, context=context)
         handler = EventHandler(MagicMock())
         handler.manager.lookup_game_players.return_value = [player]
@@ -1513,6 +1518,7 @@ class TestEventMethods:
         handler.handle_game_state_change_event(game)
         game.mark_active.assert_called_once()
         game.get_player_view.assert_called_with("handle")
+        game.get_recent_history.assert_called_once_with(10)
         handler.queue.message.assert_called_once_with(message, players=[player])
         handler.manager.lookup_game_players.assert_called_once_with(game)
 

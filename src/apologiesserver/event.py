@@ -635,7 +635,8 @@ class EventHandler:
             players = [player] if player else self.manager.lookup_game_players(game)
             for player in players:
                 view = game.get_player_view(player.handle)
-                context = GameStateChangeContext.for_view(game_id=game.game_id, view=view)
+                history = game.get_recent_history(10)  # the last 10 entries in history
+                context = GameStateChangeContext.for_context(game_id=game.game_id, view=view, history=history)
                 message = Message(MessageType.GAME_STATE_CHANGE, context=context)
                 self.queue.message(message, players=[player])
 
