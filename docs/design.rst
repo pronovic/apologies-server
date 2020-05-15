@@ -10,7 +10,7 @@ these checks. A future design that is intended to horizontally scale will need
 a separate scheduling component.
 
 Idle Websocket Check
---------------------
+~~~~~~~~~~~~~~~~~~~~
 
 On a periodic basis, the server will check how long it has been since the most
 recent activity for each connected websocket.  A websocket which has no
@@ -22,7 +22,7 @@ is ignored for the purposes of this check, because we want the players to be
 marked idle before their associated connection.
 
 Idle Game Check
----------------
+~~~~~~~~~~~~~~~
 
 On a periodic basis, the server will check how long it has been since the most
 recent activity for each tracked game.  A game which exceeds the idle threshold
@@ -31,7 +31,7 @@ idle and exceeds the inactive threshold will be terminated, triggering a `Game
 Inactive` event.  
 
 Idle Player Check
------------------
+~~~~~~~~~~~~~~~~~
 
 On a periodic basis, the server will check how long it has been since the most
 recent activity for each registered player.  A player which exceeds the idle
@@ -41,7 +41,7 @@ which was already idle and exceeds the inactive threshold, will be terminated,
 triggering a `Player Inactive` event.
 
 Obsolete Game Check
--------------------
+~~~~~~~~~~~~~~~~~~~
 
 On a periodic basis, the server will check how long it has been since each
 completed or cancelled game has finished.  A game which exceeds the game
