@@ -15,7 +15,7 @@ Release v\ |version|
 .. image:: https://github.com/pronovic/apologies-server/workflows/Test%20Suite/badge.svg
     :target: https://github.com/pronovic/apologies-server
 
-.. image:: https://readthedocs.org/projects/apologies-server/badge/?version=latest&style=plastic
+.. image:: https://readthedocs.org/projects/apologies-server/badge/?version=latest&style=flat
     :target: https://apologies-server.readthedocs.io/en/latest/
 
 

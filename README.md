@@ -4,7 +4,7 @@
 ![](https://img.shields.io/pypi/wheel/apologies-server.svg)
 ![](https://img.shields.io/pypi/pyversions/apologies-server.svg)
 ![](https://github.com/pronovic/apologies-server/workflows/Test%20Suite/badge.svg)
-![](https://readthedocs.org/projects/apologies-server/badge/?version=latest&style=plastic)
+![](https://readthedocs.org/projects/apologies-server/badge/?version=latest&style=flat)
 
 [Apologies Server](https://gitub.com/pronovic/apologies-server) is a [Websocket](https://en.wikipedia.org/wiki/WebSocket) server interface used to interactively play a multi-player game using the [Apologies](https://gitub.com/pronovic/apologies) library.  The Apologies library implements a game similar to the [Sorry](https://en.wikipedia.org/wiki/Sorry!_(game)) board game.
 
