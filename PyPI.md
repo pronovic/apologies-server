@@ -6,7 +6,7 @@
 ![](https://github.com/pronovic/apologies-server/workflows/Test%20Suite/badge.svg)
 ![](https://readthedocs.org/projects/apologies-server/badge/?version=latest&style=flat)
 
-[Apologies Server](https://gitub.com/pronovic/apologies-server) is a [Websocket](https://en.wikipedia.org/wiki/WebSocket) server interface used to interactively play a multi-player game using the [Apologies](https://gitub.com/pronovic/apologies) library.  The Apologies library implements a game similar to the [Sorry](https://en.wikipedia.org/wiki/Sorry!_(game)) board game.  See the [documentation](https://apologies-server.readthedocs.io/en/latest) for notes about the public interface and the event model.
+[Apologies Server](https://github.com/pronovic/apologies-server) is a [Websocket](https://en.wikipedia.org/wiki/WebSocket) server interface used to interactively play a multi-player game using the [Apologies](https://github.com/pronovic/apologies) library.  The Apologies library implements a game similar to the [Sorry](https://en.wikipedia.org/wiki/Sorry!_(game)) board game.  See the [documentation](https://apologies-server.readthedocs.io/en/latest) for notes about the public interface and the event model.
 
 _Note:_ At present, the Apologies Server runs as a single stateful process that
 maintains game state in memory.  It cannot be horizontally scaled, and there is
