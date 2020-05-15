@@ -12,9 +12,9 @@ Developer documentation is found in [DEVELOPER.md](DEVELOPER.md).  See that
 file for notes about how the code is structured, how to set up a development
 environment, etc.  
 
-The API and event model are discussed in [API.md](notes/API.md).  See that
-files for information about scheduled jobs, all messages in the public API, and
-what you can expect when each event is triggered.
+The API and event model are discussed in [design.rst](docs/design.rst).  See
+that files for information about scheduled jobs, all messages in the public
+API, and what you can expect when each event is triggered.
 
 There is a quick'n'dirty websocket client demo implemented in [demo.py](src/apologiesserver/demo.py). See
 [DEVELOPER.md](DEVELOPER.md) for notes about how to run it.  
