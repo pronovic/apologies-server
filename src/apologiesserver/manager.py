@@ -219,13 +219,20 @@ class CurrentTurn:
     movelist = attr.ib(type=List[Move])
     movedict = attr.ib(type=Dict[str, Move])
 
+    def draw_again(self, engine: Engine) -> CurrentTurn:
+        return CurrentTurn.for_handle(engine, self.handle, self.color)
+
     @staticmethod
-    def for_engine(engine: Engine) -> CurrentTurn:
+    def next_player(engine: Engine) -> CurrentTurn:
         color, character = engine.next_turn()
+        return CurrentTurn.for_handle(engine, character.name, color)
+
+    @staticmethod
+    def for_handle(engine: Engine, handle: str, color: PlayerColor) -> CurrentTurn:
         view = engine.game.create_player_view(color)
         _, movelist = engine.construct_legal_moves(view)
         movedict = {move.id: move for move in movelist}
-        return CurrentTurn(handle=character.name, color=color, view=view, movelist=movelist, movedict=movedict)
+        return CurrentTurn(handle=handle, color=color, view=view, movelist=movelist, movedict=movedict)
 
 
 @attr.s
@@ -248,7 +255,7 @@ class TrackedEngine:
         self._engine = Engine(mode, characters=characters)
         self._engine.start_game()
         self._colors = {character.name: color for color, character in self._engine.colors.items()}
-        self._current = CurrentTurn.for_engine(self._engine)
+        self._current = CurrentTurn.next_player(self._engine)
         return self._colors.copy()  # copy so caller can't mess with internal state
 
     def stop_game(self) -> None:
@@ -312,8 +319,7 @@ class TrackedEngine:
             character, player = self._engine.winner()  # type: ignore
             comment = "Player %s (%s) won after %d turns" % (character.name, player.color.name, player.turns)
             return True, comment
-        if done:  # if the player's turn is done, determine the next player
-            self._current = CurrentTurn.for_engine(self._engine)
+        self._current = CurrentTurn.next_player(self._engine) if done else self._current.draw_again(self._engine)
         return False, None
 
 

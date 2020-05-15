@@ -3,6 +3,7 @@
 # pylint: disable=redefined-outer-name,wildcard-import,protected-access,too-many-lines
 
 import random
+from typing import Dict, List
 from unittest.mock import MagicMock, patch
 
 import pendulum
@@ -210,7 +211,23 @@ class TestCurrentTurn:
     Test the CurrentTurn class.
     """
 
-    def test_for_engine(self):
+    def test_draw_again(self):
+        current = CurrentTurn(handle="handle", color=PlayerColor.RED, view=None, movelist=None, movedict=None)
+        move = MagicMock(id="move_id")
+        view = MagicMock()
+        engine = MagicMock()
+        engine.game.create_player_view.return_value = view
+        engine.construct_legal_moves.return_value = (None, [move])
+        turn = current.draw_again(engine)
+        engine.game.create_player_view.assert_called_once_with(PlayerColor.RED)
+        engine.construct_legal_moves.assert_called_once_with(view)
+        assert turn.handle == "handle"
+        assert turn.color == PlayerColor.RED
+        assert turn.view is view
+        assert turn.movelist == [move]
+        assert turn.movedict == {"move_id": move}
+
+    def test_next_player(self):
         move = MagicMock(id="move_id")
         character = MagicMock()
         character.configure_mock(name="handle")  # the "name" attribute means something special in the constructor
@@ -219,7 +236,7 @@ class TestCurrentTurn:
         engine.next_turn.return_value = (PlayerColor.RED, character)
         engine.game.create_player_view.return_value = view
         engine.construct_legal_moves.return_value = (None, [move])
-        turn = CurrentTurn.for_engine(engine)
+        turn = CurrentTurn.next_player(engine)
         engine.next_turn.assert_called_once()
         engine.game.create_player_view.assert_called_once_with(PlayerColor.RED)
         engine.construct_legal_moves.assert_called_once_with(view)
@@ -239,7 +256,7 @@ class TestTrackedEngine:
     @patch("apologiesserver.manager.CurrentTurn")
     def test_start_game(self, current_turn):
         replacement = MagicMock()
-        current_turn.for_engine.return_value = replacement
+        current_turn.next_player.return_value = replacement
         mode = GameMode.STANDARD
         handles = ["leela", "bender"]
         engine = TrackedEngine()
@@ -259,7 +276,7 @@ class TestTrackedEngine:
         assert engine._engine.started is True
         assert "leela" in engine._colors and "bender" in engine._colors and engine._colors["leela"] != engine._colors["bender"]
         assert engine._current is replacement
-        current_turn.for_engine.assert_called_with(engine._engine)
+        current_turn.next_player.assert_called_with(engine._engine)
 
     def test_stop_game(self):
         engine = TrackedEngine()
@@ -398,7 +415,7 @@ class TestTrackedEngine:
         move = MagicMock()
         current = MagicMock(handle="handle")
         replacement = MagicMock()
-        current_turn.for_engine.return_value = replacement
+        current_turn.next_player.return_value = replacement
         engine = TrackedEngine()
         engine._engine = MagicMock(completed=False)
         engine._current = current
@@ -1137,19 +1154,26 @@ class TestGame:
     makes everything a lot easier to deal with if debugging is required.
     """
 
+    def test_complete_game_standard(self):
+        TestGame.play_game(mode=GameMode.STANDARD, player_count=4, handles=["leela"])
+
+    def test_complete_game_adult(self):
+        TestGame.play_game(mode=GameMode.ADULT, player_count=3, handles=["leela"])
+
     # pylint: disable=too-many-locals
-    def test_complete_game(self):
-        print("Testing complete game")
+
+    @staticmethod
+    def play_game(mode: GameMode, player_count: int, handles: List[str]) -> None:
+        assert len(handles) >= 1
+
+        print("Testing complete game with mode %s and 'human' players %s" % (mode, handles))
 
         websocket = MagicMock()
-        handle = "leela"
 
         name = "Demo Game"
-        mode = GameMode.STANDARD
-        players = 4
         visibility = Visibility.PUBLIC
         invited_handles: List[str] = []
-        advertised = AdvertiseGameContext(name, mode, players, visibility, invited_handles)
+        advertised = AdvertiseGameContext(name, mode, player_count, visibility, invited_handles)
 
         mgr = StateManager()
         print("Created state manager.")
@@ -1157,19 +1181,25 @@ class TestGame:
         mgr.track_websocket(websocket)
         print("Tracked simulated websocket")
 
-        player = mgr.track_player(websocket, handle)
-        print("Created player %s with id %s" % (player.handle, player.player_id))
+        players: Dict[str, TrackedPlayer] = {}
+        for handle in handles:
+            player = mgr.track_player(websocket, handle)
+            players[handle] = player
+            print("Created player %s with id %s" % (player.handle, player.player_id))
 
-        game = mgr.track_game(player, advertised)
+        game = mgr.track_game(players[handles[0]], advertised)
         print("Advertised game '%s' with id %s" % (game.name, game.game_id))
 
-        game.mark_joined("leela")
+        for handle in handles:
+            game.mark_joined(handle)
         game.mark_started()
-        player.mark_playing()
-        print("Started game (one 'human' player and 3 programmatic players)")
-
-        players = ["%s (%s)" % (player.handle, player.player_color.value) for player in game.get_game_players()]
-        print("Game players are: %s" % players)
+        for player in players.values():
+            player.mark_playing()
+        print("Started game")
+        print(
+            "Players: %s"
+            % ["%s (%s)" % (player.handle, player.player_color.value) for player in game.get_game_players()]  # type: ignore
+        )
 
         completed = False
         while not completed:
@@ -1181,7 +1211,7 @@ class TestGame:
                 (completed, comment) = game.execute_move(handle, move.id)
             else:
                 moves = game.get_legal_moves(handle)
-                context = GamePlayerTurnContext.for_moves(handle=player.handle, game_id=game.game_id, moves=moves)
+                context = GamePlayerTurnContext.for_moves(handle=handle, game_id=game.game_id, moves=moves)
                 move_id = random.choice(list(context.moves.keys()))  # simulates input from the websocket client
                 (completed, comment) = game.execute_move(handle, move_id)
             history = game.get_recent_history(1)
@@ -1190,12 +1220,13 @@ class TestGame:
                 action = history[0].action
                 print("%s - %s" % (color, action))
             if completed:
-                player.mark_quit()
+                for player in players.values():
+                    player.mark_quit()
                 game.mark_completed(comment)
                 print("%s" % comment)
 
-        player.mark_quit()
-        mgr.delete_player(player)
+        for player in players.values():
+            mgr.delete_player(player)
         mgr.delete_game(game)
         mgr.delete_websocket(websocket)
 
