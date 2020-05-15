@@ -397,15 +397,18 @@ class TestTrackedEngine:
         character.configure_mock(name="handle")  # the "name" attribute means something special in the constructor
         move = MagicMock()
         current = MagicMock(handle="handle")
+        again = MagicMock()
         engine = TrackedEngine()
         engine._engine = MagicMock(completed=False)
         engine._current = current
+        engine._current.draw_again.return_value = again
         engine._current.movedict = {"move_id": move}
         engine._colors = {"handle": PlayerColor.RED}
         engine._engine.winner.return_value = None  # only set if the game is completed
         engine._engine.execute_move.return_value = False  # player's turn is not done yet, so current does not change
         assert engine.execute_move("handle", "move_id") == (False, None)
-        assert engine._current is current
+        assert engine._current is again
+        current.draw_again.assert_called_once_with(engine._engine)
         engine._engine.execute_move.assert_called_once_with(PlayerColor.RED, move)
 
     @patch("apologiesserver.manager.CurrentTurn")
