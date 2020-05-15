@@ -45,6 +45,13 @@ async def _register_player(websocket: WebSocketClientProtocol) -> str:
     return response.player_id  # type: ignore
 
 
+async def _unregister_player(websocket: WebSocketClientProtocol, player_id: str) -> None:
+    """Register a player."""
+    request = Message(MessageType.UNREGISTER_PLAYER, player_id=player_id)
+    await send(websocket, request)
+    log.info("Completed unregistering handle=leela")
+
+
 async def _advertise_game(websocket: WebSocketClientProtocol, player_id: str) -> None:
     """Advertise a game."""
     name = "Demo Game"
@@ -149,6 +156,7 @@ async def _handle_connection(websocket: WebSocketClientProtocol) -> None:
                 await send(websocket, response)
             if completed:
                 break
+    await _unregister_player(websocket, player_id)
 
 
 async def _websocket_client(uri: str) -> None:
