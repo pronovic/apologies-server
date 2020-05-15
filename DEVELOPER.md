@@ -226,3 +226,55 @@ tools as described below.
 |Make console active on message in stdout|_Checked_|
 |Make console active on message in stderr|_Checked_|
 |Output filters|`$FILE_PATH$:$LINE$:$COLUMN.*`|
+
+
+## Running the Demo
+
+While this is primarily a websockets server, it includes a quick'n'dirty demo
+that plays a game as a websockets client, to demonstrate the protocol.
+
+```
+$ run demo --help
+usage: demo [-h] [--quiet] [--verbose] [--debug] [--logfile LOGFILE]
+            [--host HOST] [--port PORT]
+
+Start the apologies server demo client.
+
+optional arguments:
+  -h, --help         show this help message and exit
+  --quiet            decrease log verbosity from INFO to ERROR
+  --verbose          increase log verbosity from INFO to DEBUG
+  --debug            like --verbose but also include websockets logs
+  --logfile LOGFILE  path to logfile on disk (default is stdout)
+  --host HOST        host where the server is running
+  --port PORT        port where the server is running on the host
+
+The client requires that you already have the server running. By default, the
+client writes logs to stdout. If you prefer, you can specify the path to a
+logfile, and logs will be written there instead.
+```
+
+To run the demo, you must also have a server running elsewhere.  Your
+simplest option is to start the server in one window:
+
+```
+$ run server
+```
+
+and the demo in another window:
+
+```
+$ run demo
+```
+
+The demo registers a "human" player, starts a 4-player game (getting 3
+programmatic players as opponents), and then runs through the entire game until
+it completes.  To simulate "human" game play, each time it is the human
+player's turn, a move is chosen randomly.  The programmatic opponents are
+played as usual by the server using its reward-based play choice algorithm.
+
+The demo assumes it can register a player with handle `leela`.  You should be
+able to run the demo multiple times in a row against the server without any
+problems, because it cleans up after itself properly.  However, if you have
+been making changes to the demo - or if it crashed or was interrupted - and the
+`leela` handle is still registered, the demo will fail to run.

@@ -2,12 +2,16 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=redefined-outer-name,wildcard-import,protected-access,too-many-lines
 
+import random
+from typing import Dict, List
 from unittest.mock import MagicMock, patch
 
 import pendulum
 import pytest
 from apologies.engine import Character
 from apologies.game import GameMode, PlayerColor
+from apologies.rules import Rules
+from apologies.source import RewardV1InputSource
 from ordered_set import OrderedSet
 
 from apologiesserver.interface import *
@@ -207,7 +211,23 @@ class TestCurrentTurn:
     Test the CurrentTurn class.
     """
 
-    def test_for_engine(self):
+    def test_draw_again(self):
+        current = CurrentTurn(handle="handle", color=PlayerColor.RED, view=None, movelist=None, movedict=None)
+        move = MagicMock(id="move_id")
+        view = MagicMock()
+        engine = MagicMock()
+        engine.game.create_player_view.return_value = view
+        engine.construct_legal_moves.return_value = (None, [move])
+        turn = current.draw_again(engine)
+        engine.game.create_player_view.assert_called_once_with(PlayerColor.RED)
+        engine.construct_legal_moves.assert_called_once_with(view)
+        assert turn.handle == "handle"
+        assert turn.color == PlayerColor.RED
+        assert turn.view is view
+        assert turn.movelist == [move]
+        assert turn.movedict == {"move_id": move}
+
+    def test_next_player(self):
         move = MagicMock(id="move_id")
         character = MagicMock()
         character.configure_mock(name="handle")  # the "name" attribute means something special in the constructor
@@ -216,7 +236,7 @@ class TestCurrentTurn:
         engine.next_turn.return_value = (PlayerColor.RED, character)
         engine.game.create_player_view.return_value = view
         engine.construct_legal_moves.return_value = (None, [move])
-        turn = CurrentTurn.for_engine(engine)
+        turn = CurrentTurn.next_player(engine)
         engine.next_turn.assert_called_once()
         engine.game.create_player_view.assert_called_once_with(PlayerColor.RED)
         engine.construct_legal_moves.assert_called_once_with(view)
@@ -236,7 +256,7 @@ class TestTrackedEngine:
     @patch("apologiesserver.manager.CurrentTurn")
     def test_start_game(self, current_turn):
         replacement = MagicMock()
-        current_turn.for_engine.return_value = replacement
+        current_turn.next_player.return_value = replacement
         mode = GameMode.STANDARD
         handles = ["leela", "bender"]
         engine = TrackedEngine()
@@ -256,7 +276,7 @@ class TestTrackedEngine:
         assert engine._engine.started is True
         assert "leela" in engine._colors and "bender" in engine._colors and engine._colors["leela"] != engine._colors["bender"]
         assert engine._current is replacement
-        current_turn.for_engine.assert_called_with(engine._engine)
+        current_turn.next_player.assert_called_with(engine._engine)
 
     def test_stop_game(self):
         engine = TrackedEngine()
@@ -377,15 +397,18 @@ class TestTrackedEngine:
         character.configure_mock(name="handle")  # the "name" attribute means something special in the constructor
         move = MagicMock()
         current = MagicMock(handle="handle")
+        again = MagicMock()
         engine = TrackedEngine()
         engine._engine = MagicMock(completed=False)
         engine._current = current
+        engine._current.draw_again.return_value = again
         engine._current.movedict = {"move_id": move}
         engine._colors = {"handle": PlayerColor.RED}
         engine._engine.winner.return_value = None  # only set if the game is completed
         engine._engine.execute_move.return_value = False  # player's turn is not done yet, so current does not change
         assert engine.execute_move("handle", "move_id") == (False, None)
-        assert engine._current is current
+        assert engine._current is again
+        current.draw_again.assert_called_once_with(engine._engine)
         engine._engine.execute_move.assert_called_once_with(PlayerColor.RED, move)
 
     @patch("apologiesserver.manager.CurrentTurn")
@@ -395,7 +418,7 @@ class TestTrackedEngine:
         move = MagicMock()
         current = MagicMock(handle="handle")
         replacement = MagicMock()
-        current_turn.for_engine.return_value = replacement
+        current_turn.next_player.return_value = replacement
         engine = TrackedEngine()
         engine._engine = MagicMock(completed=False)
         engine._current = current
@@ -1122,3 +1145,92 @@ class TestStateManager:
         mgr._game_map["1"] = tracked1
         mgr._game_map["2"] = tracked2
         assert mgr.lookup_game_completion() == [(tracked2, date)]
+
+
+class TestGame:
+    """
+    Test a complete game via the StateManager interface.
+    
+    This basically covers the steps that would happen in a real game via the
+    public interface, except directly against the manager interface instead.
+    Unlike the public interface, the manager interface is synchronous, which
+    makes everything a lot easier to deal with if debugging is required.
+    """
+
+    def test_complete_game_standard(self):
+        TestGame.play_game(mode=GameMode.STANDARD, player_count=4, handles=["leela"])
+
+    def test_complete_game_adult(self):
+        TestGame.play_game(mode=GameMode.ADULT, player_count=3, handles=["leela"])
+
+    # pylint: disable=too-many-locals
+
+    @staticmethod
+    def play_game(mode: GameMode, player_count: int, handles: List[str]) -> None:
+        assert len(handles) >= 1
+
+        print("Testing complete game with mode %s and 'human' players %s" % (mode, handles))
+
+        websocket = MagicMock()
+
+        name = "Demo Game"
+        visibility = Visibility.PUBLIC
+        invited_handles: List[str] = []
+        advertised = AdvertiseGameContext(name, mode, player_count, visibility, invited_handles)
+
+        mgr = StateManager()
+        print("Created state manager.")
+
+        mgr.track_websocket(websocket)
+        print("Tracked simulated websocket")
+
+        players: Dict[str, TrackedPlayer] = {}
+        for handle in handles:
+            player = mgr.track_player(websocket, handle)
+            players[handle] = player
+            print("Created player %s with id %s" % (player.handle, player.player_id))
+
+        game = mgr.track_game(players[handles[0]], advertised)
+        print("Advertised game '%s' with id %s" % (game.name, game.game_id))
+
+        for handle in handles:
+            game.mark_joined(handle)
+        game.mark_started()
+        for player in players.values():
+            player.mark_playing()
+        print("Started game")
+        print(
+            "Players: %s"
+            % ["%s (%s)" % (player.handle, player.player_color.value) for player in game.get_game_players()]  # type: ignore
+        )
+
+        completed = False
+        while not completed:
+            handle, player_type = game.get_next_turn()
+            if player_type == PlayerType.PROGRAMMATIC:
+                view = game.get_player_view(handle)
+                moves = game.get_legal_moves(handle)
+                move = RewardV1InputSource().choose_move(game.mode, view, moves, Rules.evaluate_move)
+                (completed, comment) = game.execute_move(handle, move.id)
+            else:
+                moves = game.get_legal_moves(handle)
+                context = GamePlayerTurnContext.for_moves(handle=handle, game_id=game.game_id, moves=moves)
+                move_id = random.choice(list(context.moves.keys()))  # simulates input from the websocket client
+                (completed, comment) = game.execute_move(handle, move_id)
+            history = game.get_recent_history(1)
+            if history:
+                color = "General" if not history[0].color else history[0].color.value
+                action = history[0].action
+                print("%s - %s" % (color, action))
+            if completed:
+                for player in players.values():
+                    player.mark_quit()
+                game.mark_completed(comment)
+                print("%s" % comment)
+
+        for player in players.values():
+            mgr.delete_player(player)
+        mgr.delete_game(game)
+        mgr.delete_websocket(websocket)
+
+        print("Test completed")

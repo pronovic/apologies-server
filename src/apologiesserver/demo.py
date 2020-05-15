@@ -4,6 +4,16 @@
 
 """
 Implements a quick'n'dirty game-playing client as a demo.
+
+Because this is part of the apologiesserver codebase, it can use all
+of the interface classes.  That greatly simplifies the implementation.
+But, the entire demo takes place over a network connection, so it is
+a real test of the websockets server.
+
+See also: the TestGame class in test_manager.py, which implements a 
+similar flow of control synchronously against the internal manager
+interface.  If you need to debug something, that's probably easier
+to work with.
 """
 
 import asyncio
@@ -11,7 +21,7 @@ import logging
 import random
 import signal
 from asyncio import AbstractEventLoop, CancelledError
-from typing import List, Optional, cast
+from typing import List, Optional, Tuple, cast
 
 import websockets
 from apologies.game import GameMode
@@ -33,6 +43,13 @@ async def _register_player(websocket: WebSocketClientProtocol) -> str:
     response = await receive(websocket)
     log.info("Completed registering handle=leela, got player_id=%s", response.player_id)  # type: ignore
     return response.player_id  # type: ignore
+
+
+async def _unregister_player(websocket: WebSocketClientProtocol, player_id: str) -> None:
+    """Register a player."""
+    request = Message(MessageType.UNREGISTER_PLAYER, player_id=player_id)
+    await send(websocket, request)
+    log.info("Completed unregistering handle=leela")
 
 
 async def _advertise_game(websocket: WebSocketClientProtocol, player_id: str) -> None:
@@ -80,13 +97,11 @@ def _handle_game_completed(_player_id: str, message: Message) -> None:
 def _handle_game_state_change(_player_id: str, message: Message) -> None:
     "Handle the game state change event"
     context = cast(GameStateChangeContext, message.context)
-    comment: Optional[str] = None
     if context.recent_history:
         history = context.recent_history[-1]
         color = "General" if not history.color else history.color.value
         action = history.action
-        comment = "%s - %s" % (color, action)
-    log.info("%s", comment if comment else "")
+        log.info("%s - %s", color, action)
 
 
 def _handle_game_player_change(_player_id: str, message: Message) -> None:
@@ -104,8 +119,9 @@ def _handle_game_player_turn(player_id: str, message: Message) -> Optional[Messa
     return Message(MessageType.EXECUTE_MOVE, player_id=player_id, context=ExecuteMoveContext(move_id=move.move_id))
 
 
-def _handle_message(player_id: str, message: Message) -> Optional[Message]:
+def _handle_message(player_id: str, message: Message) -> Tuple[bool, Optional[Message]]:
     """Handle any message received from the connection."""
+    completed = False
     response = None
     if message.message == MessageType.GAME_JOINED:
         _handle_game_joined(player_id, message)
@@ -115,6 +131,7 @@ def _handle_message(player_id: str, message: Message) -> Optional[Message]:
         _handle_game_started(player_id, message)
     elif message.message == MessageType.GAME_COMPLETED:
         _handle_game_completed(player_id, message)
+        completed = True
     elif message.message == MessageType.GAME_STATE_CHANGE:
         _handle_game_state_change(player_id, message)
     elif message.message == MessageType.GAME_PLAYER_CHANGE:
@@ -123,7 +140,7 @@ def _handle_message(player_id: str, message: Message) -> Optional[Message]:
         response = _handle_game_player_turn(player_id, message)
     else:
         log.info("Ignored message with type %s", message.message.name)
-    return response
+    return completed, response
 
 
 async def _handle_connection(websocket: WebSocketClientProtocol) -> None:
@@ -134,9 +151,12 @@ async def _handle_connection(websocket: WebSocketClientProtocol) -> None:
     while True:
         message = await receive(websocket, timeout_sec=30)
         if message:
-            response = _handle_message(player_id, message)
+            completed, response = _handle_message(player_id, message)
             if response:
                 await send(websocket, response)
+            if completed:
+                break
+    await _unregister_player(websocket, player_id)
 
 
 async def _websocket_client(uri: str) -> None:

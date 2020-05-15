@@ -9,13 +9,18 @@
 
 Developer documentation is found in [DEVELOPER.md](DEVELOPER.md).  See that
 file for notes about how the code is structured, how to set up a development
-environment, etc.
+environment, etc.  
 
-_Note_: This library is alpha quality.  It is under active development and
-the interface can be expected to change over time.
+The API and event model are discussed in [API.md](notes/API.md).  See that
+files for information about scheduled jobs, all messages in the public API, and
+what you can expect when each event is triggered.
+
+There is a quick'n'dirty websocket client demo implemented in [demo.py](src/apologiesserver/demo.py). See
+[DEVELOPER.md](DEVELOPER.md) for notes about how to run it.  
 
 _Note:_ At present, the Apologies Server runs as a single stateful process that
 maintains game state in memory.  It cannot be horizontally scaled, and there is
-no option for an external data store.  Further, there is no support for
-authentication or authorization.  These features will eventually be layered
-into the system in an incremental fashion.  
+no option for an external data store.  There is also only limited support for
+authentication and authorization - basically, any player can register any
+available handle.  We do enforce resource limits (open connections, registered
+users, in-progress games) to limit the amount of damage abusive clients can do.
