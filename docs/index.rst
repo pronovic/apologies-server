@@ -3,14 +3,14 @@ Apologies Server Python Library
 
 Release v\ |version|
 
-.. image:: https://img.shields.io/pypi/l/apologies-server.svg
-    :target: https://pypi.org/project/apologies-server/
+.. image:: https://img.shields.io/pypi/l/apologiesserver.svg
+    :target: https://pypi.org/project/apologiesserver/
 
-.. image:: https://img.shields.io/pypi/wheel/apologies-server.svg
-    :target: https://pypi.org/project/apologies-server/
+.. image:: https://img.shields.io/pypi/wheel/apologiesserver.svg
+    :target: https://pypi.org/project/apologiesserver/
 
-.. image:: https://img.shields.io/pypi/pyversions/apologies-server.svg
-    :target: https://pypi.org/project/apologies-server/
+.. image:: https://img.shields.io/pypi/pyversions/apologiesserver.svg
+    :target: https://pypi.org/project/apologiesserver/
 
 .. image:: https://github.com/pronovic/apologies-server/workflows/Test%20Suite/badge.svg
     :target: https://github.com/pronovic/apologies-server
@@ -36,7 +36,7 @@ Installation
 
 Install the package with pip::
 
-    $ pip install apologies-server
+    $ pip install apologiesserver
 
 
 Design Documentation
@@ -52,6 +52,6 @@ Design Documentation
 
 .. _Docs: design.rst
 .. _Apologies: https://pypi.org/project/apologies
-.. _ApologiesServer: https://pypi.org/project/apologies-server
+.. _ApologiesServer: https://pypi.org/project/apologiesserver
 .. _Sorry: https://en.wikipedia.org/wiki/Sorry!_(game)
 .. _Websocket: https://en.wikipedia.org/wiki/WebSocket

@@ -1,8 +1,8 @@
 # Apologies Server
 
-![](https://img.shields.io/pypi/l/apologies-server.svg)
-![](https://img.shields.io/pypi/wheel/apologies-server.svg)
-![](https://img.shields.io/pypi/pyversions/apologies-server.svg)
+![](https://img.shields.io/pypi/l/apologiesserver.svg)
+![](https://img.shields.io/pypi/wheel/apologiesserver.svg)
+![](https://img.shields.io/pypi/pyversions/apologiesserver.svg)
 ![](https://github.com/pronovic/apologies-server/workflows/Test%20Suite/badge.svg)
 ![](https://readthedocs.org/projects/apologies-server/badge/?version=latest&style=flat)
 
