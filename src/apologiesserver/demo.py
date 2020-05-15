@@ -80,13 +80,11 @@ def _handle_game_completed(_player_id: str, message: Message) -> None:
 def _handle_game_state_change(_player_id: str, message: Message) -> None:
     "Handle the game state change event"
     context = cast(GameStateChangeContext, message.context)
-    comment: Optional[str] = None
     if context.recent_history:
         history = context.recent_history[-1]
         color = "General" if not history.color else history.color.value
         action = history.action
-        comment = "%s - %s" % (color, action)
-    log.info("%s", comment if comment else "")
+        log.info("%s - %s", color, action)
 
 
 def _handle_game_player_change(_player_id: str, message: Message) -> None:

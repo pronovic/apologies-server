@@ -2,12 +2,15 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=redefined-outer-name,wildcard-import,protected-access,too-many-lines
 
+import random
 from unittest.mock import MagicMock, patch
 
 import pendulum
 import pytest
 from apologies.engine import Character
 from apologies.game import GameMode, PlayerColor
+from apologies.rules import Rules
+from apologies.source import RewardV1InputSource
 from ordered_set import OrderedSet
 
 from apologiesserver.interface import *
@@ -1122,3 +1125,78 @@ class TestStateManager:
         mgr._game_map["1"] = tracked1
         mgr._game_map["2"] = tracked2
         assert mgr.lookup_game_completion() == [(tracked2, date)]
+
+
+class TestGame:
+    """
+    Test a complete game via the StateManager interface.
+    
+    This basically covers the steps that would happen in a real game via the
+    public interface, except directly against the manager interface instead.
+    Unlike the public interface, the manager interface is synchronous, which
+    makes everything a lot easier to deal with if debugging is required.
+    """
+
+    # pylint: disable=too-many-locals
+    def test_complete_game(self):
+        print("Testing complete game")
+
+        websocket = MagicMock()
+        handle = "leela"
+
+        name = "Demo Game"
+        mode = GameMode.STANDARD
+        players = 4
+        visibility = Visibility.PUBLIC
+        invited_handles: List[str] = []
+        advertised = AdvertiseGameContext(name, mode, players, visibility, invited_handles)
+
+        mgr = StateManager()
+        print("Created state manager.")
+
+        mgr.track_websocket(websocket)
+        print("Tracked simulated websocket")
+
+        player = mgr.track_player(websocket, handle)
+        print("Created player %s with id %s" % (player.handle, player.player_id))
+
+        game = mgr.track_game(player, advertised)
+        print("Advertised game '%s' with id %s" % (game.name, game.game_id))
+
+        game.mark_joined("leela")
+        game.mark_started()
+        player.mark_playing()
+        print("Started game (one 'human' player and 3 programmatic players)")
+
+        players = ["%s (%s)" % (player.handle, player.player_color.value) for player in game.get_game_players()]
+        print("Game players are: %s" % players)
+
+        completed = False
+        while not completed:
+            handle, player_type = game.get_next_turn()
+            if player_type == PlayerType.PROGRAMMATIC:
+                view = game.get_player_view(handle)
+                moves = game.get_legal_moves(handle)
+                move = RewardV1InputSource().choose_move(game.mode, view, moves, Rules.evaluate_move)
+                (completed, comment) = game.execute_move(handle, move.id)
+            else:
+                moves = game.get_legal_moves(handle)
+                context = GamePlayerTurnContext.for_moves(handle=player.handle, game_id=game.game_id, moves=moves)
+                move_id = random.choice(list(context.moves.keys()))  # simulates input from the websocket client
+                (completed, comment) = game.execute_move(handle, move_id)
+            history = game.get_recent_history(1)
+            if history:
+                color = "General" if not history[0].color else history[0].color.value
+                action = history[0].action
+                print("%s - %s" % (color, action))
+            if completed:
+                player.mark_quit()
+                game.mark_completed(comment)
+                print("%s" % comment)
+
+        player.mark_quit()
+        mgr.delete_player(player)
+        mgr.delete_game(game)
+        mgr.delete_websocket(websocket)
+
+        print("Test completed")
