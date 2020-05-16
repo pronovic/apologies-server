@@ -35,7 +35,7 @@ from __future__ import annotations  # see: https://stackoverflow.com/a/33533514/
 import asyncio
 import logging
 import random
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 from uuid import uuid4
 
 import attr
@@ -43,7 +43,7 @@ import pendulum
 from apologies.engine import Character, Engine
 from apologies.game import GameMode, History, PlayerColor, PlayerView
 from apologies.rules import Move
-from apologies.source import CharacterInputSource
+from apologies.source import NoOpInputSource
 from ordered_set import OrderedSet  # this makes expected results easier to articulate in test code
 from pendulum.datetime import DateTime
 from websockets import WebSocketServerProtocol
@@ -192,22 +192,6 @@ class TrackedPlayer:
         self.websocket = None
         self.activity_state = ActivityState.IDLE
         self.connection_state = ConnectionState.DISCONNECTED
-
-
-@attr.s
-class NoOpInputSource(CharacterInputSource):
-    """A no-op input source, which raises an error if ever used."""
-
-    # The Apologies library is designed with a synchronous callback model in mind.
-    # Since this server uses Python's asyncio instead, we ignore the callback and
-    # trigger individual steps in the game play process when events are received.
-    # This implementation throws an error if it's ever used, to make it clear if
-    # we do something wrong.
-
-    def choose_move(
-        self, _mode: GameMode, _view: PlayerView, _moves: List[Move], _evaluator: Callable[[PlayerView, Move], PlayerView]
-    ) -> Move:
-        raise NotImplementedError
 
 
 @attr.s(frozen=True)

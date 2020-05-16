@@ -11,7 +11,7 @@ import pytest
 from apologies.engine import Character
 from apologies.game import GameMode, PlayerColor
 from apologies.rules import Rules
-from apologies.source import RewardV1InputSource
+from apologies.source import NoOpInputSource, RewardV1InputSource
 from ordered_set import OrderedSet
 
 from apologiesserver.interface import *
@@ -19,7 +19,6 @@ from apologiesserver.manager import (
     _MANAGER,
     _NAMES,
     CurrentTurn,
-    NoOpInputSource,
     StateManager,
     TrackedEngine,
     TrackedGame,
@@ -193,17 +192,6 @@ class TestTrackedPlayer:
         assert player.activity_state == ActivityState.IDLE
         assert player.connection_state == ConnectionState.DISCONNECTED
         assert player.player_state == PlayerState.WAITING  # they move through QUIT and back to WAITING
-
-
-class TestNoOpInputSource:
-    """
-    Test the NoOpInputSource class.
-    """
-
-    def test_choose_move(self):
-        source = NoOpInputSource()
-        with pytest.raises(NotImplementedError):
-            source.choose_move(MagicMock(), MagicMock, MagicMock(), MagicMock())
 
 
 class TestCurrentTurn:
