@@ -3,8 +3,10 @@
 ## Development Environment
 
 My primary development environment is IntelliJ (or just Vim) on MacOS, but the
-code and the development process should be portable. I've tested on Windows 10
-and on Debian buster.
+code and the development process also work in a Linux environment (I've tested
+on Debian buster).  As of now, I do not do any software development on Windows,
+and there are known problems on that platform.  Fixing this is not a high
+priority for me. 
 
 ## Packaging and Dependencies
 
@@ -26,12 +28,9 @@ checks, so the build will fail.
 ## Prequisites
 
 Nearly all prerequisites are managed by Poetry.  All you need to do is make
-sure that you have a working Python 3 enviroment and install Poetry itself.  
+sure that you have a working Python 3 enviroment and install Poetry itself.
 
-The underlying Apologies library works on MacOS, Linux, and Windows.  Since
-my primary development environment for Apologies ML is MacOS, that's all I
-have documented below.  It should be possible to make it work on other 
-platforms, but I haven't tried it.
+### MacOS
 
 On MacOS, it's easiest to use [Homebrew](https://brew.sh/):
 
@@ -43,6 +42,25 @@ $ brew install poetry
 When you're done, make sure that the `python` on your `$PATH` is Python 3 from
 Homebrew (in `/usr/local`).  By default, you'll get the standard Python 2 that
 comes with MacOS.
+
+### Debian
+
+First, install Python 3 and related tools:
+
+```
+$ sudo apt-get install python3 python3-venv python3-pip
+```
+
+Once that's done, make sure Python 3 is the default on your system.  There are
+a couple of ways to do this, but using `update-alternatives` as discussed
+on [StackOverflow](https://unix.stackexchange.com/a/410851) is probably
+the best.
+
+Then, install Poetry in your home directory:
+
+```
+$ curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
+```
 
 ## Activating the Virtual Environment
 
