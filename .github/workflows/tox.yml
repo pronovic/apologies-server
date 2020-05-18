@@ -7,13 +7,13 @@ on:
     branches:
       - master
   schedule:
-    - cron: '05 17 15 * *'  # 15th of the month at 5:05pm UTC
+    - cron: '10 17 15 * *'  # 15th of the month at 5:10pm UTC
 jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest]
         python: [3.7, 3.8]
     steps: 
       - name: Check out code
