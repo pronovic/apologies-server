@@ -53,6 +53,7 @@ __all__ = [
     "GameAction",
     "GameMove",
     "RegisterPlayerContext",
+    "ReregisterPlayerContext",
     "AdvertiseGameContext",
     "JoinGameContext",
     "ExecuteMoveContext",
@@ -377,6 +378,13 @@ class RegisterPlayerContext(Context):
 
 
 @attr.s(frozen=True)
+class ReregisterPlayerContext(Context):
+    """Context for a REREGISTER_PLAYER request."""
+
+    handle = attr.ib(type=str, validator=and_(string, length(MAX_HANDLE)))
+
+
+@attr.s(frozen=True)
 class AdvertiseGameContext(Context):
     """Context for an ADVERTISE_GAME request."""
 
@@ -625,7 +633,7 @@ _PLAYER_ID: Dict[MessageType, bool] = {
 # Map from MessageType to context
 _CONTEXT: Dict[MessageType, Optional[Type[Context]]] = {
     MessageType.REGISTER_PLAYER: RegisterPlayerContext,
-    MessageType.REREGISTER_PLAYER: None,
+    MessageType.REREGISTER_PLAYER: ReregisterPlayerContext,
     MessageType.UNREGISTER_PLAYER: None,
     MessageType.LIST_PLAYERS: None,
     MessageType.ADVERTISE_GAME: AdvertiseGameContext,

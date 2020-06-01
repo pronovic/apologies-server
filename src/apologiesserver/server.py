@@ -59,13 +59,16 @@ def _handle_message(handler: EventHandler, message: Message, websocket: WebSocke
     else:
         player = handler.manager.lookup_player(player_id=message.player_id)
         if not player:
-            raise ProcessingError(FailureReason.INVALID_PLAYER)
-        handler.manager.mark_active(player)  # marks both the player and its websocket as active
-        log.debug("Request is for player: %s", player)
-        game = handler.manager.lookup_game(game_id=player.game_id)
-        request = RequestContext(message, websocket, player, game)
-        method = _lookup_method(handler, request.message.message)
-        method(request)
+            if message.message != MessageType.REREGISTER_PLAYER:
+                raise ProcessingError(FailureReason.INVALID_PLAYER)
+            handler.handle_register_player_request(message, websocket)  # fall back and treat this as a register request
+        else:
+            handler.manager.mark_active(player)  # marks both the player and its websocket as active
+            log.debug("Request is for player: %s", player)
+            game = handler.manager.lookup_game(game_id=player.game_id)
+            request = RequestContext(message, websocket, player, game)
+            method = _lookup_method(handler, request.message.message)
+            method(request)
 
 
 async def _handle_data(data: Union[str, bytes], websocket: WebSocketServerProtocol) -> None:

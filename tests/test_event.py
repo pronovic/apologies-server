@@ -348,7 +348,8 @@ class TestRequestMethods:
     def test_handle_reregister_player_request(self):
         handler = EventHandler(MagicMock())
         handler.handle_player_reregistered_event = MagicMock()
-        message = Message(MessageType.REREGISTER_PLAYER, player_id="id")
+        context = ReregisterPlayerContext(handle="leela")
+        message = Message(MessageType.REREGISTER_PLAYER, player_id="id", context=context)
         websocket = MagicMock()
         player = MagicMock()
         game = MagicMock()

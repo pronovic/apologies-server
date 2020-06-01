@@ -834,9 +834,8 @@ class TestStateManager:
     def test_mark_active_no_websocket(self):
         player = MagicMock(websocket=None)
         mgr = StateManager()
-        with pytest.raises(ProcessingError, match=r"Did not find player websocket"):
-            mgr.mark_active(player)
-        player.mark_active.assert_not_called()
+        mgr.mark_active(player)
+        player.mark_active.assert_called_once()
 
     def test_mark_active_unknown_websocket(self):
         websocket = MagicMock()

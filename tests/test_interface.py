@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # vim: set ft=python ts=4 sw=4 expandtab:
-# pylint: disable=wildcard-import,too-many-public-methods
+# pylint: disable=wildcard-import,too-many-public-methods,too-many-lines
 
 from typing import List
 
@@ -262,14 +262,14 @@ class TestGeneral:
     def test_from_json_extra_context(self) -> None:
         data = """
         {
-          "message": "REREGISTER_PLAYER",
+          "message": "LIST_AVAILABLE_GAMES",
           "player_id": "id",
           "context": {
             "handle": "leela"
           }
         }
         """
-        with pytest.raises(ValueError, match=r"Message type REREGISTER_PLAYER does not allow a context"):
+        with pytest.raises(ValueError, match=r"Message type LIST_AVAILABLE_GAMES does not allow a context"):
             Message.for_json(data)
 
     def test_from_json_wrong_context(self) -> None:
@@ -358,6 +358,59 @@ class TestRequest:
         data = """
         {
           "message": "REGISTER_PLAYER",
+          "context": {
+            "handle": "12345678901234567890123456"
+          }
+        }
+        """
+        with pytest.raises(ValueError, match=r"'handle' must not exceed length 25"):
+            Message.for_json(data)
+
+    def test_reregister_player_valid(self) -> None:
+        data = """
+        {
+          "message": "REREGISTER_PLAYER",
+          "player_id": "id",
+          "context": {
+            "handle": "leela"
+          }
+        }
+        """
+        message = Message.for_json(data)
+        assert message.message == MessageType.REREGISTER_PLAYER
+        assert message.context.handle == "leela"
+
+    def test_reregister_player_invalid_handle_none(self) -> None:
+        data = """
+        {
+          "message": "REREGISTER_PLAYER",
+          "player_id": "id",
+          "context": {
+            "handle": null
+          }
+        }
+        """
+        with pytest.raises(ValueError, match=r"'handle' must be a non-empty string"):
+            Message.for_json(data)
+
+    def test_reregister_player_invalid_handle_empty(self) -> None:
+        data = """
+        {
+          "message": "REREGISTER_PLAYER",
+          "player_id": "id",
+          "context": {
+            "handle": ""
+          }
+        }
+        """
+        with pytest.raises(ValueError, match=r"'handle' must be a non-empty string"):
+            Message.for_json(data)
+
+    def test_reregister_player_invalid_handle_length(self) -> None:
+        data = """
+        {
+          "message": "REREGISTER_PLAYER",
+          "player_id": "id",
           "context": {
             "handle": "12345678901234567890123456"
           }
@@ -817,7 +870,8 @@ class TestRequest:
         roundtrip(message)
 
     def test_reregister_player_roundtrip(self) -> None:
-        message = Message(MessageType.REREGISTER_PLAYER, player_id="id")
+        context = ReregisterPlayerContext(handle="leela")
+        message = Message(MessageType.REREGISTER_PLAYER, player_id="id", context=context)
         roundtrip(message)
 
     def test_unregister_player_roundtrip(self) -> None:

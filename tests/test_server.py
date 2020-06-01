@@ -143,6 +143,18 @@ class TestFunctions:
         handler.manager.lookup_game.assert_not_called()
         lookup_method.assert_not_called()
 
+    @patch("apologiesserver.server._lookup_method")
+    def test_handle_message_no_player_reregister(self, lookup_method):
+        handler = MagicMock()
+        message = MagicMock(message=MessageType.REREGISTER_PLAYER, player_id="player_id")  # special case
+        websocket = MagicMock()
+        handler.manager.lookup_player.return_value = None
+        _handle_message(handler, message, websocket)
+        handler.handle_register_player_request.assert_called_once_with(message, websocket)
+        handler.manager.lookup_player.assert_called_once_with(player_id="player_id")
+        handler.manager.lookup_game.assert_not_called()
+        lookup_method.assert_not_called()
+
     def test_lookup_method_invalid(self):
         with pytest.raises(ProcessingError, match=r"Invalid request REGISTER_PLAYER"):
             _lookup_method(MagicMock(), MessageType.REGISTER_PLAYER)  # this is a special case
