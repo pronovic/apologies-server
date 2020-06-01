@@ -346,9 +346,43 @@ Request Failed
 
 This event is triggered if a player request is syntactically invalid, if the
 arguments are illegal, or if the request fails for some other reason.   The
-message provides context to the sender, telling them what happened.  If possible,
-the handle of the associated player is provided.  If the handle can't be
-established, then it will be ``null``.
+message provides context to the sender, telling them what happened via a reason
+code.  If possible, the handle of the associated player is provided.  If the
+handle can't be established, then it will be ``null``. 
+
++-----------------------------+-------------------------------------------------+
+| Reason Code                 | Description                                     |
++=============================+=================================================+
+| ``INVALID_REQUEST``         | Invalid request                                 |
++-----------------------------+-------------------------------------------------+
+| ``DUPLICATE_USER``          | Handle is already in use                        |
++-----------------------------+-------------------------------------------------+
+| ``INVALID_AUTH``            | Missing or invalid authorization header         |
++-----------------------------+-------------------------------------------------+
+| ``WEBSOCKET_LIMIT``         | Connection limit reached; try again later       |
++-----------------------------+-------------------------------------------------+
+| ``USER_LIMIT``              | System user limit reached; try again later      |
++-----------------------------+-------------------------------------------------+
+| ``GAME_LIMIT``              | System game limit reached; try again later      |
++-----------------------------+-------------------------------------------------+
+| ``INVALID_PLAYER``          | Unknown or invalid player                       |
++-----------------------------+-------------------------------------------------+
+| ``INVALID_GAME``            | Unknown or invalid game                         |
++-----------------------------+-------------------------------------------------+
+| ``NOT_PLAYING``             | Player is not playing a game                    |
++-----------------------------+-------------------------------------------------+
+| ``NOT_ADVERTISER``          | Player did not advertise this game              |
++-----------------------------+-------------------------------------------------+
+| ``ALREADY_PLAYING``         | Player is already playing a game                |
++-----------------------------+-------------------------------------------------+
+| ``NO_MOVE_PENDING``         | No move is pending for this player              |
++-----------------------------+-------------------------------------------------+
+| ``ILLEGAL_MOVE``            | The chosen move is not legal                    |
++-----------------------------+-------------------------------------------------+
+| ``ADVERTISER_MAY_NOT_QUIT`` | Advertiser may not quit a game (cancel instead) |
++-----------------------------+-------------------------------------------------+
+| ``INTERNAL_ERROR``          | Internal error                                  |
++-----------------------------+-------------------------------------------------+
 
 Example messages::
 
