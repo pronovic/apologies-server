@@ -394,6 +394,9 @@ class EventHandler:
         if game:
             comment = "Player %s unregistered" % player.handle
             self.handle_game_player_left_event(player, game, comment)
+        context = PlayerUnregisteredContext(handle=player.handle)
+        message = Message(MessageType.PLAYER_UNREGISTERED, context=context)
+        self.queue.message(message, players=[player])
         self.manager.delete_player(player)
 
     def handle_player_disconnected_event(self, player: TrackedPlayer) -> None:

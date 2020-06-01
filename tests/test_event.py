@@ -884,24 +884,32 @@ class TestEventMethods:
         handler.queue.message.assert_called_once_with(message, players=[player])
 
     def test_handle_player_unregistered_event_no_game(self):
-        player = MagicMock()
+        player = MagicMock(player_id="player_id", handle="leela")
+        context = PlayerUnregisteredContext(handle="leela")
+        message = Message(MessageType.PLAYER_UNREGISTERED, context=context)
         handler = EventHandler(MagicMock())
+        handler.queue.message = MagicMock()
         handler.handle_game_player_left_event = MagicMock()
         handler.handle_player_unregistered_event(player)
         player.mark_quit.assert_called_once()
         handler.handle_game_player_left_event.assert_not_called()
+        handler.queue.message.assert_called_once_with(message, players=[player])
         handler.manager.delete_player.assert_called_once_with(player)
 
     def test_handle_player_unregistered_event_with_game(self):
         comment = "Player leela unregistered"
-        player = MagicMock(handle="leela")
+        player = MagicMock(player_id="player_id", handle="leela")
+        context = PlayerUnregisteredContext(handle="leela")
+        message = Message(MessageType.PLAYER_UNREGISTERED, context=context)
         game = MagicMock()
         game.is_viable.return_value = True
         handler = EventHandler(MagicMock())
+        handler.queue.message = MagicMock()
         handler.handle_game_player_left_event = MagicMock()
         handler.handle_player_unregistered_event(player, game)
         player.mark_quit.assert_called_once()
         handler.handle_game_player_left_event.assert_called_once_with(player, game, comment)
+        handler.queue.message.assert_called_once_with(message, players=[player])
         handler.manager.delete_player.assert_called_once_with(player)
 
     def test_handle_player_disconnected_event_no_game(self):

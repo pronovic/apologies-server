@@ -569,6 +569,15 @@ Player Unregistered
 This event is triggered when a player unregisters.  If the player has joined or
 is currently playing a game, a `Game Player Left` event is triggered.
 
+Example message::
+
+    {
+      "message": "PLAYER_UNREGISTERED",
+      "context": {
+        "handle": "leela"
+      }
+    }
+
 Player Disconnected
 ~~~~~~~~~~~~~~~~~~~
 

@@ -61,6 +61,7 @@ __all__ = [
     "RegisteredPlayersContext",
     "AvailableGamesContext",
     "PlayerRegisteredContext",
+    "PlayerUnregisteredContext",
     "PlayerIdleContext",
     "PlayerInactiveContext",
     "PlayerMessageReceivedContext",
@@ -182,6 +183,7 @@ class MessageType(Enum):
     REGISTERED_PLAYERS = "Registered Players"
     AVAILABLE_GAMES = "Available Games"
     PLAYER_REGISTERED = "Player Registered"
+    PLAYER_UNREGISTERED = "Player Unregistered"
     WEBSOCKET_IDLE = "Connection Idle"
     WEBSOCKET_INACTIVE = "Connection Inactive"
     PLAYER_IDLE = "Player Idle"
@@ -438,6 +440,13 @@ class PlayerRegisteredContext(Context):
 
 
 @attr.s(frozen=True)
+class PlayerUnregisteredContext(Context):
+    """Context for a PLAYER_UNREGISTERED event."""
+
+    handle = attr.ib(type=str)
+
+
+@attr.s(frozen=True)
 class PlayerIdleContext(Context):
     """Context for a PLAYER_IDLE event."""
 
@@ -595,6 +604,7 @@ _PLAYER_ID: Dict[MessageType, bool] = {
     MessageType.REGISTERED_PLAYERS: False,
     MessageType.AVAILABLE_GAMES: False,
     MessageType.PLAYER_REGISTERED: True,
+    MessageType.PLAYER_UNREGISTERED: False,
     MessageType.PLAYER_IDLE: False,
     MessageType.PLAYER_INACTIVE: False,
     MessageType.PLAYER_MESSAGE_RECEIVED: False,
@@ -634,6 +644,7 @@ _CONTEXT: Dict[MessageType, Optional[Type[Context]]] = {
     MessageType.REGISTERED_PLAYERS: RegisteredPlayersContext,
     MessageType.AVAILABLE_GAMES: AvailableGamesContext,
     MessageType.PLAYER_REGISTERED: PlayerRegisteredContext,
+    MessageType.PLAYER_UNREGISTERED: PlayerUnregisteredContext,
     MessageType.PLAYER_IDLE: PlayerIdleContext,
     MessageType.PLAYER_INACTIVE: PlayerInactiveContext,
     MessageType.PLAYER_MESSAGE_RECEIVED: PlayerMessageReceivedContext,
