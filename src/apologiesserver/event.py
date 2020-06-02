@@ -382,7 +382,7 @@ class EventHandler:
     def handle_player_reregistered_event(self, player: TrackedPlayer, websocket: WebSocketServerProtocol) -> None:
         """Handle the Player Registered event."""
         log.info("Event - PLAYER REREGISTERED - %s on %s", player.handle, id(websocket))
-        player.websocket = websocket
+        self.manager.retrack_player(player, websocket)
         context = PlayerRegisteredContext(handle=player.handle)
         message = Message(MessageType.PLAYER_REGISTERED, player_id=player.player_id, context=context)
         self.queue.message(message, players=[player])

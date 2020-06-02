@@ -881,7 +881,7 @@ class TestEventMethods:
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
         handler.handle_player_reregistered_event(player, websocket)
-        assert player.websocket is websocket
+        handler.manager.retrack_player.assert_called_once_with(player, websocket)
         handler.queue.message.assert_called_once_with(message, players=[player])
 
     def test_handle_player_unregistered_event_no_game(self):

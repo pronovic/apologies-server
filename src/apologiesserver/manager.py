@@ -651,10 +651,17 @@ class StateManager:
         if handle in self._handle_map:
             raise ProcessingError(FailureReason.DUPLICATE_USER, handle=handle)
         player_id = "%s" % uuid4()
+        self._websocket_map[websocket].mark_active()  # we never want a websocket to time out before an associated player
         self._websocket_map[websocket].player_ids.add(player_id)
         self._player_map[player_id] = TrackedPlayer.for_context(player_id, websocket, handle)
         self._handle_map[handle] = player_id
         return self._player_map[player_id]
+
+    def retrack_player(self, player: TrackedPlayer, websocket: WebSocketServerProtocol) -> None:
+        """Re-track and existing player, associating it with a different websocket."""
+        player.websocket = websocket
+        self._websocket_map[websocket].mark_active()  # we never want a websocket to time out before an associated player
+        self._websocket_map[websocket].player_ids.add(player.player_id)
 
     def delete_player(self, player: TrackedPlayer) -> None:
         """Delete a tracked player, so it is no longer tracked."""

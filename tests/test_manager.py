@@ -1029,8 +1029,10 @@ class TestStateManager:
         websocket = MagicMock()
         mgr = StateManager()
         mgr.track_websocket(websocket)  # this would always be done ahead of time, so do it here
+        mgr._websocket_map[websocket].last_active_date = None  # so we can tell it was reset
         player = mgr.track_player(websocket, "handle")
         assert player == TrackedPlayer.for_context("player_id", websocket, "handle")
+        assert mgr._websocket_map[websocket].last_active_date == to_date("2020-05-11T16:57:00,000")  # we always mark the websocket
         assert "player_id" in mgr._websocket_map[websocket].player_ids
         assert mgr._player_map["player_id"] is player
         assert mgr._handle_map["handle"] == "player_id"
@@ -1038,6 +1040,19 @@ class TestStateManager:
             mgr.track_player(websocket, "handle")
         assert mgr._player_map["player_id"] is player
         assert mgr._handle_map["handle"] == "player_id"
+
+    @patch("apologiesserver.manager.pendulum.now")
+    def test_retrack_player(self, now):
+        now.return_value = to_date("2020-05-11T16:57:00,000")
+        player = MagicMock(player_id="player_id")
+        websocket = MagicMock()
+        mgr = StateManager()
+        mgr.track_websocket(websocket)  # this would always be done ahead of time, so do it here
+        mgr._websocket_map[websocket].last_active_date = None  # so we can tell it was reset
+        mgr.retrack_player(player, websocket)
+        assert player.websocket == websocket
+        assert mgr._websocket_map[websocket].last_active_date == to_date("2020-05-11T16:57:00,000")  # we always mark the websocket
+        assert "player_id" in mgr._websocket_map[websocket].player_ids
 
     def test_delete_player_no_websocket(self):
         mgr = StateManager()
