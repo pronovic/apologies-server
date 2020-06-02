@@ -6,9 +6,10 @@
 Implements various generic attrs validators.
 """
 
+import re
 import warnings
 from enum import Enum
-from typing import Any, List, Type
+from typing import Any, List, Pattern, Type
 
 import attr
 from attr import Attribute, attrs
@@ -45,6 +46,22 @@ class _LengthValidator:
             raise ValueError("'%s' must not exceed length %d" % (attribute.name, self.maxlength))
 
 
+@attrs(repr=False, slots=True, hash=True)
+class _RegexValidator:
+    """Validator for use by regex(), following the pattern from the standard attrs _InValidator."""
+
+    pattern = attr.ib(type=str)
+    compiled = attr.ib(type=Pattern[str])
+
+    @compiled.default
+    def _compiled_default(self) -> Pattern[str]:
+        return re.compile(self.pattern)
+
+    def __call__(self, instance: Any, attribute: Attribute, value: str) -> None:  # type: ignore
+        if not self.compiled.fullmatch(value):
+            raise ValueError("'%s' does not match regex '%s'" % (attribute.name, self.pattern))
+
+
 def enum(options: Type[Enum]) -> _EnumValidator:
     """attrs validator to ensure that a value is a legal enumeration."""
     return _EnumValidator(options)
@@ -53,6 +70,11 @@ def enum(options: Type[Enum]) -> _EnumValidator:
 def length(maxlength: int) -> _LengthValidator:
     """attrs validator to ensure that a string value does not exceed a length."""
     return _LengthValidator(maxlength)
+
+
+def regex(pattern: str) -> _RegexValidator:
+    """attrs validator to ensure that a string value matches a regular expression."""
+    return _RegexValidator(pattern)
 
 
 def notempty(_instance: Any, attribute: Attribute, value: Any) -> None:  # type: ignore

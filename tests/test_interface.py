@@ -308,13 +308,13 @@ class TestRequest:
         {
           "message": "REGISTER_PLAYER",
           "context": {
-            "handle": "1234567890123456789012345"
+            "handle": "aB_-567890123456789012345"
           }
         }
         """
         message = Message.for_json(data)
         assert message.message == MessageType.REGISTER_PLAYER
-        assert message.context.handle == "1234567890123456789012345"
+        assert message.context.handle == "aB_-567890123456789012345"
 
     def test_register_player_valid_null_player_id(self) -> None:
         data = """
@@ -322,13 +322,13 @@ class TestRequest:
           "message": "REGISTER_PLAYER",
           "player_id": null,
           "context": {
-            "handle": "1234567890123456789012345"
+            "handle": "aB_-567890123456789012345"
           }
         }
         """
         message = Message.for_json(data)
         assert message.message == MessageType.REGISTER_PLAYER
-        assert message.context.handle == "1234567890123456789012345"
+        assert message.context.handle == "aB_-567890123456789012345"
 
     def test_register_player_invalid_handle_none(self) -> None:
         data = """
@@ -365,6 +365,22 @@ class TestRequest:
         """
         with pytest.raises(ValueError, match=r"'handle' must not exceed length 25"):
             Message.for_json(data)
+
+    def test_register_player_invalid_handle_regex(self) -> None:
+        for handle in [";", "ab(c)", "handle name"]:  # just a few examples
+            data = (
+                """
+            {
+              "message": "REGISTER_PLAYER",
+              "context": {
+                "handle": "%s"
+              }
+            }
+            """
+                % handle
+            )
+            with pytest.raises(ValueError, match=r"'handle' does not match regex"):
+                Message.for_json(data)
 
     def test_reregister_player_valid(self) -> None:
         data = """
@@ -447,7 +463,7 @@ class TestRequest:
           "message": "ADVERTISE_GAME",
           "player_id": "id",
           "context": {
-            "name": "Leela's Game",
+            "name": "Leela's Game 45678901234567890123457890",
             "mode": "STANDARD",
             "players": 3,
             "visibility": "PUBLIC",
@@ -457,7 +473,7 @@ class TestRequest:
         """
         message = Message.for_json(data)
         assert message.message == MessageType.ADVERTISE_GAME
-        assert message.context.name == "Leela's Game"
+        assert message.context.name == "Leela's Game 45678901234567890123457890"
         assert message.context.mode == GameMode.STANDARD
         assert message.context.players == 3
         assert message.context.visibility == Visibility.PUBLIC
@@ -495,6 +511,23 @@ class TestRequest:
         } 
         """
         with pytest.raises(ValueError, match=r"'name' must be a non-empty string"):
+            Message.for_json(data)
+
+    def test_advertise_game_invalid_name_too_long(self) -> None:
+        data = """
+        {
+          "message": "ADVERTISE_GAME",
+          "player_id": "id",
+          "context": {
+            "name": "12345678901234567890123456789012345678901",
+            "mode": "STANDARD",
+            "players": 3,
+            "visibility": "PUBLIC",
+            "invited_handles": [ "bender", "hermes" ]
+          }
+        } 
+        """
+        with pytest.raises(ValueError, match=r"'name' must not exceed length 40"):
             Message.for_json(data)
 
     def test_advertise_game_invalid_mode_none(self) -> None:

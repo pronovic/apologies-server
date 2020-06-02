@@ -31,7 +31,7 @@ from attr.validators import and_, in_
 from pendulum.datetime import DateTime
 from pendulum.parser import parse
 
-from .validator import enum, length, notempty, string, stringlist
+from .validator import enum, length, notempty, regex, string, stringlist
 
 __all__ = [
     "Visibility",
@@ -369,26 +369,32 @@ class Context(ABC):
 MAX_HANDLE = 25
 """Maximum length of a player handle."""
 
+MAX_GAME_NAME = 40
+"""Maximum length of a game name."""
+
+HANDLE_REGEX = r"[a-zA-Z0-9_-]+"
+"""Regular expression that handles must match."""
+
 
 @attr.s(frozen=True)
 class RegisterPlayerContext(Context):
     """Context for a REGISTER_PLAYER request."""
 
-    handle = attr.ib(type=str, validator=and_(string, length(MAX_HANDLE)))
+    handle = attr.ib(type=str, validator=and_(string, length(MAX_HANDLE), regex(HANDLE_REGEX)))
 
 
 @attr.s(frozen=True)
 class ReregisterPlayerContext(Context):
     """Context for a REREGISTER_PLAYER request."""
 
-    handle = attr.ib(type=str, validator=and_(string, length(MAX_HANDLE)))
+    handle = attr.ib(type=str, validator=and_(string, length(MAX_HANDLE), regex(HANDLE_REGEX)))
 
 
 @attr.s(frozen=True)
 class AdvertiseGameContext(Context):
     """Context for an ADVERTISE_GAME request."""
 
-    name = attr.ib(type=str, validator=string)
+    name = attr.ib(type=str, validator=and_(string, length(MAX_GAME_NAME)))
     mode = attr.ib(type=GameMode, validator=enum(GameMode))
     players = attr.ib(type=int, validator=in_([2, 3, 4]))
     visibility = attr.ib(type=Visibility, validator=enum(Visibility))
