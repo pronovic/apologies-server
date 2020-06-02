@@ -359,6 +359,11 @@ class TrackedGame:
             invited_handles=context.invited_handles[:],
         )
 
+    @property
+    def completed(self) -> bool:
+        """Whether the game is completed."""
+        return self.completed_date is not None  # this way, we don't have to mess with which statuses mean "completed"
+
     def to_advertised_game(self) -> AdvertisedGame:
         """Convert this tracked game to an AdvertisedGame."""
         return AdvertisedGame(
@@ -708,14 +713,15 @@ class StateManager:
         """Look up the last active date for all games."""
         result: List[Tuple[TrackedGame, DateTime]] = []
         for game in self._game_map.values():
-            result.append((game, game.last_active_date))
+            if not game.completed:
+                result.append((game, game.last_active_date))
         return result
 
     def lookup_game_completion(self) -> List[Tuple[TrackedGame, Optional[DateTime]]]:
         """Look up the completed date for all completed games."""
         result: List[Tuple[TrackedGame, Optional[DateTime]]] = []
         for game in self._game_map.values():
-            if game.game_state == GameState.COMPLETED:
+            if game.completed:
                 result.append((game, game.completed_date))
         return result
 

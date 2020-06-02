@@ -1134,15 +1134,17 @@ class TestStateManager:
 
     def test_lookup_game_activity(self):
         date = to_date("2020-05-12T16:26:00,000")
-        tracked = MagicMock(game_id="game_id", last_active_date=date)
+        tracked1 = MagicMock(game_id="1", last_active_date=date, completed=False)
+        tracked2 = MagicMock(game_id="2", last_active_date=None, completed=True)
         mgr = StateManager()
-        mgr._game_map["game_id"] = tracked
-        assert mgr.lookup_game_activity() == [(tracked, date)]
+        mgr._game_map["1"] = tracked1
+        mgr._game_map["2"] = tracked2
+        assert mgr.lookup_game_activity() == [(tracked1, date)]
 
     def test_lookup_game_completion(self):
         date = to_date("2020-05-12T16:26:00,000")
-        tracked1 = MagicMock(game_id="1", completed_date=None, game_state=GameState.PLAYING)
-        tracked2 = MagicMock(game_id="2", completed_date=date, game_state=GameState.COMPLETED)
+        tracked1 = MagicMock(game_id="1", completed_date=None, completed=False)
+        tracked2 = MagicMock(game_id="2", completed_date=date, completed=True)
         mgr = StateManager()
         mgr._game_map["1"] = tracked1
         mgr._game_map["2"] = tracked2
