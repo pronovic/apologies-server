@@ -315,11 +315,12 @@ class GameStateHistory:
 
     action = attr.ib(type=str)
     color = attr.ib(type=Optional[PlayerColor])
+    card = attr.ib(type=Optional[CardType])
     timestamp = attr.ib(type=DateTime)
 
     @staticmethod
     def for_history(history: History) -> GameStateHistory:
-        return GameStateHistory(action=history.action, color=history.color, timestamp=history.timestamp)
+        return GameStateHistory(action=history.action, color=history.color, card=history.card, timestamp=history.timestamp)
 
 
 @attr.s(frozen=True)

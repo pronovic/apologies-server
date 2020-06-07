@@ -928,12 +928,19 @@ The event can be triggered when a player requests the current state via the
 has changed.  Among other things, the state of the game is considered to have
 changed when the game starts, when a player executes a move, when a player wins
 the game, or when the game is cancelled or is terminated due to inactivity.
+
 Each player's view of the game is different; for instance, in an ``ADULT`` mode
 game, a player can only see their own cards, not the cards held by other
-players.  In an ``ADULT`` mode game, there is no explict message when the player
-draws a card to fill their hand.  Instead, the state change event simply
-reflects the new hand.  The recent history attribute includes the last 10
-events that took place for the game, in order from oldest to newest.
+players.  In an ``ADULT`` mode game, there is no explict message when the
+player draws a card to fill their hand.  Instead, the state change event simply
+reflects the new hand.  
+
+The ``recent_history`` attribute describes the 10 most recent actions that
+occurred in game play, in order from oldest to newest.  There will always be an
+``action``, but the ``color`` and ``card`` are optional, since some game
+actions don't involve a player or don't involve playing a card.  If you want to
+track the most recent player turn, look for the latest history item that has
+both a color and a card.
 
 Example message::
 
@@ -944,8 +951,15 @@ Example message::
         "recent_history": [
           {
             "action": "Game Started",
-            "color": "RED",
+            "color": null,
+            "card": null,
             "timestamp": "2020-05-14T13:53:35,334+00:00"
+          },
+          {
+            "action": "Turn is forfeit; discarded card 12",
+            "color": "RED",
+            "card": "CARD_12",
+            "timestamp": "2020-05-14T13:53:37.012+00:00"
           }
         ],
         "player": {

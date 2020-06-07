@@ -105,12 +105,13 @@ class TestGameStateChangeContext:
     def test_for_context(self) -> None:
         action = "action"
         color = PlayerColor.RED
+        card = CardType.CARD_APOLOGIES
         timestamp = to_date("2020-05-14T13:53:35,334")
         view = create_view()
-        history = [History(action, color, timestamp)]
+        history = [History(action, color, card, timestamp)]
         context = GameStateChangeContext.for_context("game", view, history)
         assert context.game_id == "game"
-        assert context.recent_history == [GameStateHistory(action, color, timestamp)]
+        assert context.recent_history == [GameStateHistory(action, color, card, timestamp)]
 
         player = context.player
         assert player.color == PlayerColor.RED
@@ -1067,7 +1068,7 @@ class TestEvent:
 
     def test_game_state_change_roundtrip(self) -> None:
         view = create_view()
-        recent_history = [History("action", PlayerColor.RED, to_date("2020-05-14T13:53:35,334"))]
+        recent_history = [History("action", PlayerColor.RED, CardType.CARD_12, to_date("2020-05-14T13:53:35,334"))]
         context = GameStateChangeContext.for_context("game", view, recent_history)
         message = Message(MessageType.GAME_STATE_CHANGE, context=context)
         roundtrip(message)
