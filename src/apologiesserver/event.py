@@ -89,7 +89,8 @@ class TaskQueue:
         """Execute all tasks in the queue, sending messages first and then disconnecting websockets."""
         tasks = [send(websocket, message) for message, websocket in self.messages]
         if tasks:
-            await asyncio.wait(tasks)
+            for task in tasks:
+                await asyncio.wait([task])  # if we do them all at once, they can get sent out of order
         tasks = [close(websocket) for websocket in self.disconnects]
         if tasks:
             await asyncio.wait(tasks)  # TODO: not entirely sure how we handle errors that happen here
