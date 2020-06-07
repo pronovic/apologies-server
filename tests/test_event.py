@@ -1074,6 +1074,7 @@ class TestEventMethods:
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
         handler.manager.lookup_game.return_value = game
+        handler.handle_game_player_change_event = MagicMock()
         handler.handle_game_started_event = MagicMock()
         handler.handle_game_joined_event(player, game_id="game_id")
         handler.manager.lookup_game.assert_called_once_with(game_id="game_id")
@@ -1082,6 +1083,7 @@ class TestEventMethods:
         player.mark_joined.assert_called_once_with(game)
         game.mark_joined.assert_called_once_with("handle")
         handler.queue.message.assert_called_once_with(message, players=[player])
+        handler.handle_game_player_change_event.assert_called_once_with(game, "Player joined game")
         handler.handle_game_started_event.assert_not_called()
 
     def test_handle_game_joined_event_pending_for_game(self):
@@ -1094,6 +1096,7 @@ class TestEventMethods:
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
         handler.manager.lookup_game.return_value = game
+        handler.handle_game_player_change_event = MagicMock()
         handler.handle_game_started_event = MagicMock()
         handler.handle_game_joined_event(player, game=game)
         handler.manager.lookup_game.assert_not_called()
@@ -1102,6 +1105,7 @@ class TestEventMethods:
         player.mark_joined.assert_called_once_with(game)
         game.mark_joined.assert_called_once_with("handle")
         handler.queue.message.assert_called_once_with(message, players=[player])
+        handler.handle_game_player_change_event.assert_called_once_with(game, "Player joined game")
         handler.handle_game_started_event.assert_not_called()
 
     @patch("apologiesserver.event.config")
@@ -1117,6 +1121,7 @@ class TestEventMethods:
         handler.queue.message = MagicMock()
         handler.manager.get_in_progress_game_count.return_value = 4
         handler.manager.lookup_game.return_value = game
+        handler.handle_game_player_change_event = MagicMock()
         handler.handle_game_started_event = MagicMock()
         handler.handle_game_joined_event(player, game=game)
         handler.manager.lookup_game.assert_not_called()
@@ -1125,6 +1130,7 @@ class TestEventMethods:
         player.mark_joined.assert_called_once_with(game)
         game.mark_joined.assert_called_once_with("handle")
         handler.queue.message.assert_called_once_with(message, players=[player])
+        handler.handle_game_player_change_event.assert_called_once_with(game, "Player joined game")
         handler.handle_game_started_event.assert_called_once_with(game)
 
     @patch("apologiesserver.event.config")
@@ -1140,6 +1146,7 @@ class TestEventMethods:
         handler.queue.message = MagicMock()
         handler.manager.get_in_progress_game_count.return_value = 5
         handler.manager.lookup_game.return_value = game
+        handler.handle_game_player_change_event = MagicMock()
         handler.handle_game_started_event = MagicMock()
         handler.handle_game_joined_event(player, game=game)
         handler.manager.lookup_game.assert_not_called()
@@ -1148,6 +1155,7 @@ class TestEventMethods:
         player.mark_joined.assert_called_once_with(game)
         game.mark_joined.assert_called_once_with("handle")
         handler.queue.message.assert_called_once_with(message, players=[player])
+        handler.handle_game_player_change_event.assert_called_once_with(game, "Player joined game")
         handler.handle_game_started_event.assert_not_called()  # because in-progress limit was reached
 
     def test_handle_game_started_event(self):

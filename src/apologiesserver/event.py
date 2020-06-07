@@ -479,6 +479,7 @@ class EventHandler:
         context = GameJoinedContext(game_id=game.game_id)
         message = Message(MessageType.GAME_JOINED, context=context)
         self.queue.message(message, players=[player])
+        self.handle_game_player_change_event(game, "Player joined game")
         if game.is_fully_joined():
             if self.manager.get_in_progress_game_count() >= config().in_progress_game_limit:
                 # Rather than giving the caller an error, we just ignore the game and force the

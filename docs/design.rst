@@ -697,7 +697,8 @@ Game Joined
 
 This event is triggered when a player joins a game.  A player may explicitly
 join a game via the `Join Game` request, or may implicitly join a game when
-advertising it.   If this player completes the number of players advertised for
+advertising it.   Whenever a player joins a game, a `Game Player Change` event
+is triggered.  If this player completes the number of players advertised for
 the game, then the game will be started immediately and a `Game Started` event
 will be triggered.
 
