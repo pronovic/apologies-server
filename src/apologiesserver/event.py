@@ -87,6 +87,12 @@ class TaskQueue:
 
     async def execute(self) -> None:
         """Execute all tasks in the queue, sending messages first and then disconnecting websockets."""
+        # It seems like there could be a race condition here.  The messages need to be sent in order,
+        # and that does seem to work.  However, if things happen really fast (i.e. a client receives
+        # a message and triggers another event before we finish sending all of these messages) then it
+        # seems possible that the messages for that second event could be intermingled with these.  I
+        # guess it's unlikely?  But I'm leaving this note here in case I ever have to debug some strange
+        # behavior with messages being received out-of-order.
         tasks = [send(websocket, message) for message, websocket in self.messages]
         if tasks:
             for task in tasks:
