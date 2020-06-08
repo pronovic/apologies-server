@@ -1066,10 +1066,11 @@ class TestEventMethods:
 
     def test_handle_game_joined_event_pending_by_id(self):
         player = MagicMock(handle="handle")
-        game = MagicMock(game_id="id")
+        game = MagicMock(game_id="id", mode=GameMode.STANDARD, advertiser_handle="advertiser")
+        game.name = "name"  # MagicMock treats the name attribute specially
         game.is_available.return_value = True
         game.is_fully_joined.return_value = False
-        context = GameJoinedContext("id")
+        context = GameJoinedContext("handle", "id", "name", GameMode.STANDARD, "advertiser")
         message = Message(MessageType.GAME_JOINED, context=context)
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
@@ -1088,10 +1089,11 @@ class TestEventMethods:
 
     def test_handle_game_joined_event_pending_for_game(self):
         player = MagicMock(handle="handle")
-        game = MagicMock(game_id="id")
+        game = MagicMock(game_id="id", mode=GameMode.STANDARD, advertiser_handle="advertiser")
+        game.name = "name"  # MagicMock treats the name attribute specially
         game.is_available.return_value = True
         game.is_fully_joined.return_value = False
-        context = GameJoinedContext("id")
+        context = GameJoinedContext("handle", "id", "name", GameMode.STANDARD, "advertiser")
         message = Message(MessageType.GAME_JOINED, context=context)
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
@@ -1112,10 +1114,11 @@ class TestEventMethods:
     def test_handle_game_joined_event_fully_joined(self, config):
         config.return_value = MagicMock(in_progress_game_limit=5)
         player = MagicMock(handle="handle")
-        game = MagicMock(game_id="id")
+        game = MagicMock(game_id="id", mode=GameMode.STANDARD, advertiser_handle="advertiser")
+        game.name = "name"  # MagicMock treats the name attribute specially
         game.is_available.return_value = True
         game.is_fully_joined.return_value = True
-        context = GameJoinedContext("id")
+        context = GameJoinedContext("handle", "id", "name", GameMode.STANDARD, "advertiser")
         message = Message(MessageType.GAME_JOINED, context=context)
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
@@ -1137,10 +1140,11 @@ class TestEventMethods:
     def test_handle_game_joined_event_game_limit(self, config):
         config.return_value = MagicMock(in_progress_game_limit=5)
         player = MagicMock(handle="handle")
-        game = MagicMock(game_id="id")
+        game = MagicMock(game_id="id", mode=GameMode.STANDARD, advertiser_handle="advertiser")
+        game.name = "name"  # MagicMock treats the name attribute specially
         game.is_available.return_value = True
         game.is_fully_joined.return_value = True
-        context = GameJoinedContext("id")
+        context = GameJoinedContext("handle", "id", "name", GameMode.STANDARD, "advertiser")
         message = Message(MessageType.GAME_JOINED, context=context)
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
@@ -1489,9 +1493,7 @@ class TestEventMethods:
     @patch("apologiesserver.event.GameStateChangeContext")
     def test_handle_game_state_change_event_specific_player(self, game_state_change_context):
         history = MagicMock()
-        context = GameStateChangeContext(
-            "game", "name", GameMode.STANDARD, "advertiser", player=None, opponents=None, recent_history=[history]
-        )
+        context = GameStateChangeContext("game", player=None, opponents=None, recent_history=[history])
         player = MagicMock(handle="handle")
         view = MagicMock()
         game = MagicMock(game_id="game")
@@ -1523,9 +1525,7 @@ class TestEventMethods:
     def test_handle_game_state_change_event_game_players(self, game_state_change_context):
         game = MagicMock(game_id="game", name="name", mode=GameMode.ADULT, advertiser_handle="advertiser")
         history = MagicMock()
-        context = GameStateChangeContext(
-            "game", "name", GameMode.ADULT, "advertiser", player=None, opponents=None, recent_history=[history]
-        )
+        context = GameStateChangeContext("game", player=None, opponents=None, recent_history=[history])
         player = MagicMock(handle="handle")
         view = MagicMock()
         game = MagicMock(game_id="game")

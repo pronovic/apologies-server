@@ -700,14 +700,18 @@ join a game via the `Join Game` request, or may implicitly join a game when
 advertising it.   Whenever a player joins a game, a `Game Player Change` event
 is triggered.  If this player completes the number of players advertised for
 the game, then the game will be started immediately and a `Game Started` event
-will be triggered.
+will be triggered.  
 
 Example message::
 
     {
       "message": "GAME_JOINED",
       "context": {
+        "player_handle": "nibbler",
         "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe"
+        "name": "Planet Express",
+        "mode": "ADULT",
+        "advertiser_handle": "leela",
       }
     }
 
@@ -950,9 +954,6 @@ Example message::
       "message": "GAME_STATE_CHANGE",
       "context": {
         "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe",
-        "name": "Planet Express",
-        "mode": "ADULT",
-        "advertiser_handle": "leela",
         "recent_history": [
           {
             "action": "Game Started",

@@ -109,11 +109,8 @@ class TestGameStateChangeContext:
         timestamp = to_date("2020-05-14T13:53:35,334")
         view = create_view()
         history = [History(action, color, card, timestamp)]
-        context = GameStateChangeContext.for_context("game", "name", GameMode.ADULT, "advertiser", view, history)
+        context = GameStateChangeContext.for_context("game", view, history)
         assert context.game_id == "game"
-        assert context.name == "name"
-        assert context.mode == GameMode.ADULT
-        assert context.advertiser_handle == "advertiser"
         assert context.recent_history == [GameStateHistory(action, color, card, timestamp)]
 
         player = context.player
@@ -201,7 +198,7 @@ class TestGeneral:
 
     def test_message_invalid_player_id(self) -> None:
         with pytest.raises(ValueError, match=r"Message type JOIN_GAME requires a player id"):
-            Message(MessageType.JOIN_GAME, None, GameJoinedContext(game_id="id"))
+            Message(MessageType.JOIN_GAME, None, GameJoinedContext("handle", "id", "name", GameMode.STANDARD, "advertiser"))
         with pytest.raises(ValueError, match=r"Message type REGISTER_PLAYER does not allow a player id"):
             Message(MessageType.REGISTER_PLAYER, "id", "Hello")
         with pytest.raises(ValueError, match=r"Message type REQUEST_FAILED does not allow a player id"):
@@ -1027,7 +1024,7 @@ class TestEvent:
         roundtrip(message)
 
     def test_game_joined_roundtrip(self) -> None:
-        context = GameJoinedContext("game")
+        context = GameJoinedContext("handle", "game", "name", GameMode.ADULT, "advertiser")
         message = Message(MessageType.GAME_JOINED, context=context)
         roundtrip(message)
 
@@ -1072,7 +1069,7 @@ class TestEvent:
     def test_game_state_change_roundtrip(self) -> None:
         view = create_view()
         recent_history = [History("action", PlayerColor.RED, CardType.CARD_12, to_date("2020-05-14T13:53:35,334"))]
-        context = GameStateChangeContext.for_context("game", "name", GameMode.ADULT, "advertiser", view, recent_history)
+        context = GameStateChangeContext.for_context("game", view, recent_history)
         message = Message(MessageType.GAME_STATE_CHANGE, context=context)
         roundtrip(message)
 

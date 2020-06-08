@@ -483,7 +483,13 @@ class EventHandler:
         game.mark_active()
         player.mark_joined(game)
         game.mark_joined(player.handle)
-        context = GameJoinedContext(game_id=game.game_id)
+        context = GameJoinedContext(
+            player_handle=player.handle,
+            game_id=game.game_id,
+            name=game.name,
+            mode=game.mode,
+            advertiser_handle=game.advertiser_handle,
+        )
         message = Message(MessageType.GAME_JOINED, context=context)
         self.queue.message(message, players=[player])
         self.handle_game_player_change_event(game, "Player joined game")
@@ -647,14 +653,7 @@ class EventHandler:
             for player in players:
                 view = game.get_player_view(player.handle)
                 history = game.get_recent_history(10)  # the last 10 entries in history
-                context = GameStateChangeContext.for_context(
-                    game_id=game.game_id,
-                    name=game.name,
-                    mode=game.mode,
-                    advertiser_handle=game.advertiser_handle,
-                    view=view,
-                    history=history,
-                )
+                context = GameStateChangeContext.for_context(game_id=game.game_id, view=view, history=history)
                 message = Message(MessageType.GAME_STATE_CHANGE, context=context)
                 self.queue.message(message, players=[player])
 
