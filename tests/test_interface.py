@@ -1042,7 +1042,7 @@ class TestEvent:
         roundtrip(message)
 
     def test_game_completed_roundtrip(self) -> None:
-        context = GameCompletedContext("game", "YELLOW player (nibbler) won after 46 turns")
+        context = GameCompletedContext("game", "nibbler", "Player nibbler won after 46 turns")
         message = Message(MessageType.GAME_COMPLETED, context=context)
         roundtrip(message)
 

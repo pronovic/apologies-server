@@ -528,10 +528,10 @@ class EventHandler:
             self.queue.message(message, players=players)
             self.handle_game_state_change_event(game)
 
-    def handle_game_completed_event(self, game: TrackedGame, comment: Optional[str] = None) -> None:
+    def handle_game_completed_event(self, game: TrackedGame, winner: str, comment: str) -> None:
         """Handle the Game Completed event."""
         log.info("Event - GAME COMPLETED - %s (%s)", game.game_id, "'%s'" % comment if comment else None)
-        context = GameCompletedContext(game_id=game.game_id, comment=comment)
+        context = GameCompletedContext(game_id=game.game_id, winner=winner, comment=comment)
         message = Message(MessageType.GAME_COMPLETED, context=context)
         players = self.manager.lookup_game_players(game)
         for player in players:
@@ -607,10 +607,10 @@ class EventHandler:
         """Handle the Game Move event."""
         log.info("Event - GAME MOVE - %s for %s, move %s", handle, game.game_id, move_id)
         game.mark_active()
-        (completed, comment) = game.execute_move(handle, move_id)
+        (completed, winner, comment) = game.execute_move(handle, move_id)
         self.handle_game_state_change_event(game)
         if completed:
-            self.handle_game_completed_event(game, comment)
+            self.handle_game_completed_event(game, winner, comment)  # type: ignore
         else:
             self.handle_game_next_turn_event(game)
 

@@ -376,7 +376,7 @@ class TestTrackedEngine:
         engine._colors = {"handle": PlayerColor.RED}
         engine._engine.winner.return_value = (character, player)  # only set if the game is completed
         engine._engine.execute_move.return_value = True  # turn is always true if the game is completed
-        assert engine.execute_move("handle", "move_id") == (True, "Player handle (YELLOW) won after 42 turns")
+        assert engine.execute_move("handle", "move_id") == (True, "handle", "Player handle won after 42 turns")
         assert engine._current is None
         engine._engine.execute_move.assert_called_once_with(PlayerColor.RED, move)
 
@@ -394,7 +394,7 @@ class TestTrackedEngine:
         engine._colors = {"handle": PlayerColor.RED}
         engine._engine.winner.return_value = None  # only set if the game is completed
         engine._engine.execute_move.return_value = False  # player's turn is not done yet, so current does not change
-        assert engine.execute_move("handle", "move_id") == (False, None)
+        assert engine.execute_move("handle", "move_id") == (False, None, None)
         assert engine._current is again
         current.draw_again.assert_called_once_with(engine._engine)
         engine._engine.execute_move.assert_called_once_with(PlayerColor.RED, move)
@@ -414,7 +414,7 @@ class TestTrackedEngine:
         engine._colors = {"handle": PlayerColor.RED}
         engine._engine.winner.return_value = None  # only set if the game is completed
         engine._engine.execute_move.return_value = True  # player's turn is now done, so current will change
-        assert engine.execute_move("handle", "move_id") == (False, None)
+        assert engine.execute_move("handle", "move_id") == (False, None, None)
         assert engine._current is replacement
         engine._engine.execute_move.assert_called_once_with(PlayerColor.RED, move)
 
@@ -1215,12 +1215,12 @@ class TestGame:
                 view = game.get_player_view(handle)
                 moves = game.get_legal_moves(handle)
                 move = RewardV1InputSource().choose_move(game.mode, view, moves, Rules.evaluate_move)
-                (completed, comment) = game.execute_move(handle, move.id)
+                (completed, _winner, comment) = game.execute_move(handle, move.id)
             else:
                 moves = game.get_legal_moves(handle)
                 context = GamePlayerTurnContext.for_moves(handle=handle, game_id=game.game_id, moves=moves)
                 move_id = random.choice(list(context.moves.keys()))  # simulates input from the websocket client
-                (completed, comment) = game.execute_move(handle, move_id)
+                (completed, _winner, comment) = game.execute_move(handle, move_id)
             history = game.get_recent_history(1)
             if history:
                 color = "General" if not history[0].color else history[0].color.value

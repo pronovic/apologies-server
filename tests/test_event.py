@@ -1214,14 +1214,14 @@ class TestEventMethods:
     def test_handle_game_completed_event(self):
         player = MagicMock()
         game = MagicMock(game_id="game")
-        context = GameCompletedContext("game", "comment")
+        context = GameCompletedContext("game", "winner", "comment")
         message = Message(MessageType.GAME_COMPLETED, context=context)
         handler = EventHandler(MagicMock())
         handler.queue.message = MagicMock()
         handler.handle_game_player_change_event = MagicMock()
         handler.handle_game_state_change_event = MagicMock()
         handler.manager.lookup_game_players.return_value = [player]
-        handler.handle_game_completed_event(game, "comment")
+        handler.handle_game_completed_event(game, "winner", "comment")
         player.mark_quit.assert_called_once()
         game.mark_completed.assert_called_once()
         handler.manager.lookup_game_players.assert_called_once_with(game)
@@ -1390,7 +1390,7 @@ class TestEventMethods:
 
     def test_handle_game_move_event_completed(self):
         game = MagicMock()
-        game.execute_move.return_value = (True, "comment")
+        game.execute_move.return_value = (True, "winner", "comment")
         handler = EventHandler(MagicMock())
         handler.handle_game_completed_event = MagicMock()
         handler.handle_game_state_change_event = MagicMock()
@@ -1399,12 +1399,12 @@ class TestEventMethods:
         game.mark_active.assert_called_once()
         game.execute_move.assert_called_once_with("handle", "move_id")
         handler.handle_game_state_change_event.assert_called_once_with(game)
-        handler.handle_game_completed_event.assert_called_once_with(game, "comment")
+        handler.handle_game_completed_event.assert_called_once_with(game, "winner", "comment")
         handler.handle_game_next_turn_event.assert_not_called()
 
     def test_handle_game_player_event_not_completed(self):
         game = MagicMock()
-        game.execute_move.return_value = (False, "comment")
+        game.execute_move.return_value = (False, None, None)
         handler = EventHandler(MagicMock())
         handler.handle_game_completed_event = MagicMock()
         handler.handle_game_state_change_event = MagicMock()

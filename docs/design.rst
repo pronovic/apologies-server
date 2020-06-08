@@ -754,7 +754,8 @@ Game Completed
 ~~~~~~~~~~~~~~
 
 When a player wins a game, and the game is thus completed, the server will
-notify all players.  Cancelled and completed games are tracked for a limited
+notify all players.  The message indicates the winner's handle and includes a
+descriptive comment.  Cancelled and completed games are tracked for a limited
 period of time after finishing.
 
 Example message::
@@ -763,7 +764,8 @@ Example message::
       "message": "GAME_COMPLETED",
       "context": {
         "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe",
-        "comment": "Player nibbler (YELLOW) won after 46 turns"
+        "winner": "nibbler",
+        "comment": "Player nibbler won after 46 turns"
       }
     }
 

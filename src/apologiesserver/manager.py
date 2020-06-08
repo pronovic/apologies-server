@@ -285,8 +285,8 @@ class TrackedEngine:
             raise ProcessingError(FailureReason.INTERNAL_ERROR, "Illegal state for operation")
         return handle == self._current.handle and move_id in self._current.movedict
 
-    def execute_move(self, handle: str, move_id: str) -> Tuple[bool, Optional[str]]:
-        """Execute a player's move, returning whether the game was completed (and a comment if so)."""
+    def execute_move(self, handle: str, move_id: str) -> Tuple[bool, Optional[str], Optional[str]]:
+        """Execute a player's move, returning whether the game was completed (and the winner and a comment if so)."""
         if (
             not self._engine
             or not self._current
@@ -301,10 +301,10 @@ class TrackedEngine:
         if self._engine.completed:
             self._current = None
             character, player = self._engine.winner()  # type: ignore
-            comment = "Player %s (%s) won after %d turns" % (character.name, player.color.name, player.turns)
-            return True, comment
+            comment = "Player %s won after %d turns" % (character.name, player.turns)
+            return True, character.name, comment
         self._current = CurrentTurn.next_player(self._engine) if done else self._current.draw_again(self._engine)
-        return False, None
+        return False, None, None
 
 
 # pylint: disable=too-many-instance-attributes,too-many-public-methods
@@ -515,7 +515,7 @@ class TrackedGame:
         else:
             raise ProcessingError(FailureReason.INTERNAL_ERROR, "Illegal state for operation")
 
-    def execute_move(self, handle: str, move_id: str) -> Tuple[bool, Optional[str]]:
+    def execute_move(self, handle: str, move_id: str) -> Tuple[bool, Optional[str], Optional[str]]:
         """Execute a player's move, returning an indication of whether the game was completed (and a comment if so)."""
         return self._engine.execute_move(handle, move_id)
 

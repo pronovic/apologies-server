@@ -527,7 +527,8 @@ class GameCompletedContext(Context):
     """Context for a GAME_COMPLETED event."""
 
     game_id = attr.ib(type=str)
-    comment = attr.ib(type=Optional[str])
+    winner = attr.ib(type=str)
+    comment = attr.ib(type=str)
 
 
 @attr.s(frozen=True)
