@@ -1489,7 +1489,9 @@ class TestEventMethods:
     @patch("apologiesserver.event.GameStateChangeContext")
     def test_handle_game_state_change_event_specific_player(self, game_state_change_context):
         history = MagicMock()
-        context = GameStateChangeContext(game_id="game", player=None, opponents=None, recent_history=[history])
+        context = GameStateChangeContext(
+            "game", "name", GameMode.STANDARD, "advertiser", player=None, opponents=None, recent_history=[history]
+        )
         player = MagicMock(handle="handle")
         view = MagicMock()
         game = MagicMock(game_id="game")
@@ -1519,8 +1521,11 @@ class TestEventMethods:
 
     @patch("apologiesserver.event.GameStateChangeContext")
     def test_handle_game_state_change_event_game_players(self, game_state_change_context):
+        game = MagicMock(game_id="game", name="name", mode=GameMode.ADULT, advertiser_handle="advertiser")
         history = MagicMock()
-        context = GameStateChangeContext(game_id="game", player=None, opponents=None, recent_history=[history])
+        context = GameStateChangeContext(
+            "game", "name", GameMode.ADULT, "advertiser", player=None, opponents=None, recent_history=[history]
+        )
         player = MagicMock(handle="handle")
         view = MagicMock()
         game = MagicMock(game_id="game")

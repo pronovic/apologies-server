@@ -647,7 +647,14 @@ class EventHandler:
             for player in players:
                 view = game.get_player_view(player.handle)
                 history = game.get_recent_history(10)  # the last 10 entries in history
-                context = GameStateChangeContext.for_context(game_id=game.game_id, view=view, history=history)
+                context = GameStateChangeContext.for_context(
+                    game_id=game.game_id,
+                    name=game.name,
+                    mode=game.mode,
+                    advertiser_handle=game.advertiser_handle,
+                    view=view,
+                    history=history,
+                )
                 message = Message(MessageType.GAME_STATE_CHANGE, context=context)
                 self.queue.message(message, players=[player])
 

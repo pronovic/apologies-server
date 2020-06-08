@@ -948,6 +948,9 @@ Example message::
       "message": "GAME_STATE_CHANGE",
       "context": {
         "game_id": "f13b405e-36e5-45f3-a351-e45bf487acfe",
+        "name": "Planet Express",
+        "mode": "ADULT",
+        "advertiser_handle": "leela",
         "recent_history": [
           {
             "action": "Game Started",
