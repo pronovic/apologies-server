@@ -1398,8 +1398,8 @@ class TestEventMethods:
         handler.handle_game_move_event("handle", game, "move_id")
         game.mark_active.assert_called_once()
         game.execute_move.assert_called_once_with("handle", "move_id")
+        handler.handle_game_state_change_event.assert_called_once_with(game)
         handler.handle_game_completed_event.assert_called_once_with(game, "comment")
-        handler.handle_game_state_change_event.assert_not_called()
         handler.handle_game_next_turn_event.assert_not_called()
 
     def test_handle_game_player_event_not_completed(self):
@@ -1412,8 +1412,8 @@ class TestEventMethods:
         handler.handle_game_move_event("handle", game, "move_id")
         game.mark_active.assert_called_once()
         game.execute_move.assert_called_once_with("handle", "move_id")
-        handler.handle_game_completed_event.assert_not_called()
         handler.handle_game_state_change_event.assert_called_once_with(game)
+        handler.handle_game_completed_event.assert_not_called()
         handler.handle_game_next_turn_event.assert_called_once_with(game)
 
     def test_handle_game_next_turn_event_programmatic(self):

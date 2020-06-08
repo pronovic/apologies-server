@@ -608,10 +608,10 @@ class EventHandler:
         log.info("Event - GAME MOVE - %s for %s, move %s", handle, game.game_id, move_id)
         game.mark_active()
         (completed, comment) = game.execute_move(handle, move_id)
+        self.handle_game_state_change_event(game)
         if completed:
             self.handle_game_completed_event(game, comment)
         else:
-            self.handle_game_state_change_event(game)
             self.handle_game_next_turn_event(game)
 
     def handle_game_next_turn_event(self, game: TrackedGame) -> None:
