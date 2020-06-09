@@ -798,6 +798,16 @@ class TestRequest:
         with pytest.raises(ValueError, match=r"'move_id' must be a non-empty string"):
             Message.for_json(data)
 
+    def test_optimal_move_valid(self) -> None:
+        data = """
+        {
+          "message": "OPTIMAL_MOVE",
+          "player_id": "id"
+        }  
+        """
+        message = Message.for_json(data)
+        assert message.message == MessageType.OPTIMAL_MOVE
+
     def test_send_message_valid(self) -> None:
         data = """
         {
@@ -945,6 +955,10 @@ class TestRequest:
     def test_execute_move_roundtrip(self) -> None:
         context = ExecuteMoveContext("move")
         message = Message(MessageType.EXECUTE_MOVE, player_id="id", context=context)
+        roundtrip(message)
+
+    def test_optimal_move_roundtrip(self) -> None:
+        message = Message(MessageType.OPTIMAL_MOVE, player_id="id")
         roundtrip(message)
 
     def test_retrieve_game_state_roundtrip(self) -> None:

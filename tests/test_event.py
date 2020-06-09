@@ -698,6 +698,58 @@ class TestRequestMethods:
         game.is_move_pending.assert_called_once_with("leela")
         handler.handle_game_player_move_event.assert_called_once_with(player, game, "move")
 
+    def test_handle_optimal_move_request_not_playing(self):
+        handler = EventHandler(MagicMock())
+        handler.handle_game_programmatic_move_event = MagicMock()
+        message = Message(MessageType.OPTIMAL_MOVE, player_id="id")
+        websocket = MagicMock()
+        player = MagicMock()
+        game = None
+        request = RequestContext(message, websocket, player, game)
+        with pytest.raises(ProcessingError, match=r"Player is not playing a game"):
+            handler.handle_optimal_move_request(request)
+        handler.handle_game_programmatic_move_event.assert_not_called()
+
+    def test_handle_optimal_move_request_not_being_played(self):
+        handler = EventHandler(MagicMock())
+        handler.handle_game_programmatic_move_event = MagicMock()
+        message = Message(MessageType.OPTIMAL_MOVE, player_id="id")
+        websocket = MagicMock()
+        player = MagicMock()
+        game = MagicMock()
+        game.is_playing.return_value = False
+        request = RequestContext(message, websocket, player, game)
+        with pytest.raises(ProcessingError, match=r"Game is not being played"):
+            handler.handle_optimal_move_request(request)
+        handler.handle_game_programmatic_move_event.assert_not_called()
+
+    def test_handle_optimal_move_request_no_move_pending(self):
+        handler = EventHandler(MagicMock())
+        handler.handle_game_programmatic_move_event = MagicMock()
+        message = Message(MessageType.OPTIMAL_MOVE, player_id="id")
+        websocket = MagicMock()
+        player = MagicMock(handle="leela")
+        game = MagicMock()
+        game.is_move_pending.return_value = False
+        request = RequestContext(message, websocket, player, game)
+        with pytest.raises(ProcessingError, match=r"No move is pending for this player"):
+            handler.handle_optimal_move_request(request)
+        game.is_move_pending.assert_called_once_with("leela")
+        handler.handle_game_programmatic_move_event.assert_not_called()
+
+    def test_handle_optimal_move_request(self):
+        handler = EventHandler(MagicMock())
+        handler.handle_game_programmatic_move_event = MagicMock()
+        message = Message(MessageType.OPTIMAL_MOVE, player_id="id")
+        websocket = MagicMock()
+        player = MagicMock(handle="leela")
+        game = MagicMock()
+        game.is_move_pending.return_value = True
+        request = RequestContext(message, websocket, player, game)
+        handler.handle_optimal_move_request(request)
+        game.is_move_pending.assert_called_once_with("leela")
+        handler.handle_game_programmatic_move_event.assert_called_once_with("leela", game)
+
     def test_handle_retrieve_game_state_request_not_playing(self):
         handler = EventHandler(MagicMock())
         handler.handle_game_state_change_event = MagicMock()

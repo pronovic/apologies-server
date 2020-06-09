@@ -175,6 +175,7 @@ class MessageType(Enum):
     START_GAME = "Start Game"
     CANCEL_GAME = "Cancel Game"
     EXECUTE_MOVE = "Execute Move"
+    OPTIMAL_MOVE = "Optimal Move"
     RETRIEVE_GAME_STATE = "Retrieve Game State"
     SEND_MESSAGE = "Send Message"
 
@@ -614,6 +615,7 @@ _PLAYER_ID: Dict[MessageType, bool] = {
     MessageType.START_GAME: True,
     MessageType.CANCEL_GAME: True,
     MessageType.EXECUTE_MOVE: True,
+    MessageType.OPTIMAL_MOVE: True,
     MessageType.RETRIEVE_GAME_STATE: True,
     MessageType.SEND_MESSAGE: True,
     MessageType.SERVER_SHUTDOWN: False,
@@ -654,6 +656,7 @@ _CONTEXT: Dict[MessageType, Optional[Type[Context]]] = {
     MessageType.START_GAME: None,
     MessageType.CANCEL_GAME: None,
     MessageType.EXECUTE_MOVE: ExecuteMoveContext,
+    MessageType.OPTIMAL_MOVE: None,
     MessageType.RETRIEVE_GAME_STATE: None,
     MessageType.SEND_MESSAGE: SendMessageContext,
     MessageType.SERVER_SHUTDOWN: None,

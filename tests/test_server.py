@@ -174,6 +174,7 @@ class TestFunctions:
         assert _lookup_method(handler, MessageType.START_GAME) == handler.handle_start_game_request
         assert _lookup_method(handler, MessageType.CANCEL_GAME) == handler.handle_cancel_game_request
         assert _lookup_method(handler, MessageType.EXECUTE_MOVE) == handler.handle_execute_move_request
+        assert _lookup_method(handler, MessageType.OPTIMAL_MOVE) == handler.handle_optimal_move_request
         assert _lookup_method(handler, MessageType.RETRIEVE_GAME_STATE) == handler.handle_retrieve_game_state_request
         assert _lookup_method(handler, MessageType.SEND_MESSAGE) == handler.handle_send_message_request
 

@@ -301,6 +301,17 @@ class EventHandler:
             raise ProcessingError(FailureReason.ILLEGAL_MOVE, handle=request.player.handle)
         self.handle_game_player_move_event(request.player, request.game, context.move_id)
 
+    def handle_optimal_move_request(self, request: RequestContext) -> None:
+        """Handle the Optimal Move request."""
+        log.info("Request - OPTIMAL MOVE - %s for %s", request.player.handle, request.player.game_id)
+        if not request.game:
+            raise ProcessingError(FailureReason.NOT_PLAYING, handle=request.player.handle)
+        if not request.game.is_playing():
+            raise ProcessingError(FailureReason.INVALID_GAME, comment="Game is not being played", handle=request.player.handle)
+        if not request.game.is_move_pending(request.player.handle):
+            raise ProcessingError(FailureReason.NO_MOVE_PENDING, handle=request.player.handle)
+        self.handle_game_programmatic_move_event(request.player.handle, request.game)
+
     def handle_retrieve_game_state_request(self, request: RequestContext) -> None:
         """Handle the Retrieve Game State request."""
         log.info("Request - RETRIEVE GAME - %s for %s", request.player.handle, request.player.game_id)

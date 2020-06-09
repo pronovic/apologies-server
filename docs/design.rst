@@ -297,6 +297,23 @@ Example request::
       }
     }
 
+
+Execute Optimal Move
+~~~~~~~~~~~~~~~~~~~~
+
+When a player has been notified that it is their turn via the `Game Player
+Turn` event, it may optionally choose to have the server determine and then
+execute the optimal move.  This behaves exactly like the `Execute Move`
+request, except that the player does not need to provide a move id.
+
+Example request::
+
+    {
+      "message": "OPTIMAL_MOVE",
+      "player_id": "247179aa-e516-4eed-b68f-7daaa54c0625",
+    }
+
+
 Retrieve Game State
 ~~~~~~~~~~~~~~~~~~~
 

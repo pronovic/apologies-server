@@ -44,6 +44,8 @@ def _lookup_method(handler: EventHandler, message: MessageType) -> Callable[[Req
         return handler.handle_cancel_game_request
     elif message == MessageType.EXECUTE_MOVE:
         return handler.handle_execute_move_request
+    elif message == MessageType.OPTIMAL_MOVE:
+        return handler.handle_optimal_move_request
     elif message == MessageType.RETRIEVE_GAME_STATE:
         return handler.handle_retrieve_game_state_request
     elif message == MessageType.SEND_MESSAGE:
