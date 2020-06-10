@@ -5,8 +5,8 @@
 My primary development environment is IntelliJ (or just Vim) on MacOS, but the
 code and the development process also work in a Linux environment (I've tested
 on Debian buster).  As of now, I do not do any software development on Windows,
-and there are known problems on that platform.  Fixing this is not a high
-priority for me. 
+so I don't know whether the code works there.  Windows support is not a high
+priority for me.
 
 ## Packaging and Dependencies
 
@@ -65,7 +65,7 @@ $ curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-po
 ## Activating the Virtual Environment
 
 Poetry manages the virtual environment used for testing.  Theoretically, the
-Poetry `shell` command gives you a shell using that virutalenv.  However, it
+Poetry `shell` command gives you a shell using that virtualenv.  However, it
 doesn't work that well.  Instead, it's simpler to just activate the virtual
 environment directly.  The [`run`](run) script has an entry that dumps out the
 correct `source` command. Otherwise, see [`notes/venv.sh`](notes/venv.sh) for a way
