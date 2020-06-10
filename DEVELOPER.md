@@ -296,3 +296,64 @@ able to run the demo multiple times in a row against the server without any
 problems, because it cleans up after itself properly.  However, if you have
 been making changes to the demo - or if it crashed or was interrupted - and the
 `leela` handle is still registered, the demo will fail to run.
+
+
+## Release Process
+
+### Documentation
+
+Documentation at [Read the Docs](https://apologies-server.readthedocs.io/en/latest/)
+is generated via a GitHub hook each time code is pushed to master.  So, there
+is no formal release process for the documentation.
+
+### Code
+
+Code is released to [PyPI](https://pypi.org/project/apologiesserver/).  There
+is a manual process to publish a new release. 
+
+Before publishing code, you must must have push permissions to the GitHub repo
+and be a collaborator on the PyPI project.
+
+First, configure an API token which has permission to publish to the
+PyPI project.  This is a one-time step. In your PyPI [account settings](https://pypi.org/manage/account/),
+create an API token with upload permissions.  Save off the token, and then tell
+Poetry to use it, following the [instructions](https://python-poetry.org/docs/repositories/#configuring-credentials):
+
+```
+poetry config pypi-token.pypi my-token
+```
+
+To publish a new release, check the current version:
+
+```
+$ poetry version 
+apologiesserver 0.1.6
+```
+
+Bump it to whatever version you want to use and commit your changes:
+
+```
+$ poetry version 0.1.7
+Bumping version from 0.1.6 to 0.1.7
+
+$ git add pyproject.toml
+
+$ git commit -m "Release v0.1.7"
+```
+
+Finally, kick off the custom publish process via the `run` script:
+
+```
+$ run publish
+```
+
+This tags the code, builds the deployment artifacts, publishes the artifacts to
+PyPI, and pushes the tag to GitHub.  You still need to push your change to
+`pyproject.toml` and any other pending changes to the repo:
+
+```
+$ git push
+```
+
+The code will be available on PyPI for others to use after a little while,
+sometimes within a minute or two, and sometimes as much as half an hour later.
