@@ -107,7 +107,9 @@ def _handle_game_state_change(_player_id: str, message: Message) -> None:
 def _handle_game_player_change(_player_id: str, message: Message) -> None:
     """Handle the game player change event."""
     context = cast(GamePlayerChangeContext, message.context)
-    players = ["%s (%s)" % (player.handle, player.player_color.value) for player in context.players]  # type: ignore
+    players = [
+        "%s%s" % (player.handle, " (%s)" % player.player_color.value if player.player_color else "") for player in context.players
+    ]
     log.info("Game players are: %s", players)
 
 
