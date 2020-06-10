@@ -23,12 +23,18 @@ ApologiesServer_  is a Websocket_ server interface used to interactively play a
 multi-player game using the Apologies_ library. The Apologies library
 implements a game similar to the Sorry_ board game.
 
+It was written as a learning exercise and technology demonstration effort, and
+serves as a complete example of how to manage a modern (circa 2020) Python
+project, including style checks, code formatting, integration with IntelliJ, CI
+builds at GitHub, and integration with PyPI and Read the Docs.
+
 `Note:` At present, the Apologies Server runs as a single stateful process that
 maintains game state in memory.  It cannot be horizontally scaled, and there is
 no option for an external data store.  There is also only limited support for
-authentication and authorization - basically, any player can register any
-available handle.  We do enforce resource limits (open connections, registered
-users, in-progress games) to limit the amount of damage abusive clients can do. 
+authentication and authorization - any player can register any handle that is
+not currently being used.  We do enforce resource limits (open connections,
+registered users, in-progress games) to limit the amount of damage abusive
+clients can do.
 
 
 Installation
