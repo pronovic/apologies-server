@@ -12,7 +12,7 @@ description = "Python code to play a game similar to Sorry"
 name = "apologies"
 optional = false
 python-versions = ">=3.7,<4.0"
-version = "0.1.21"
+version = "0.1.22"
 
 [package.dependencies]
 attrs = ">=19.3.0,<20.0.0"
@@ -419,7 +419,7 @@ description = "A framework for managing and maintaining multi-language pre-commi
 name = "pre-commit"
 optional = false
 python-versions = ">=3.6.1"
-version = "2.4.0"
+version = "2.5.1"
 
 [package.dependencies]
 cfgv = ">=2.0.0"
@@ -845,7 +845,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [metadata]
-content-hash = "a0f50bc1e004e086b7bd9fe2c6e32e9036a4a1347c653df1a4d1538a9029fc66"
+content-hash = "e703c96afc4984cd679edaac446b8c3b0f6502c2d79bb970d16b2849ad09d814"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -854,8 +854,8 @@ alabaster = [
     {file = "alabaster-0.7.12.tar.gz", hash = "sha256:a661d72d58e6ea8a57f7a86e37d86716863ee5e92788398526d58b26a4e4dc02"},
 ]
 apologies = [
-    {file = "apologies-0.1.21-py3-none-any.whl", hash = "sha256:98bfad1d333bb0491413f07d3dc1b1f8bf42f98305a2db42cc75a252af226b50"},
-    {file = "apologies-0.1.21.tar.gz", hash = "sha256:68c2017968be1d4f73e70dd453638476733c865bd314d78a86de1c9209b6c1f7"},
+    {file = "apologies-0.1.22-py3-none-any.whl", hash = "sha256:b35c6b8bd40ab067aa6f80c89708813c4e547bc561143e304e7cd2de982ce3a1"},
+    {file = "apologies-0.1.22.tar.gz", hash = "sha256:86a85927612f69da5d9c8332e3b3d4852e8efef7395802fad2843588b061ecdc"},
 ]
 appdirs = [
     {file = "appdirs-1.4.4-py2.py3-none-any.whl", hash = "sha256:a841dacd6b99318a741b166adb07e19ee71a274450e68237b4650ca1055ab128"},
@@ -1128,8 +1128,8 @@ pluggy = [
     {file = "pluggy-0.13.1.tar.gz", hash = "sha256:15b2acde666561e1298d71b523007ed7364de07029219b604cf808bfa1c765b0"},
 ]
 pre-commit = [
-    {file = "pre_commit-2.4.0-py2.py3-none-any.whl", hash = "sha256:5559e09afcac7808933951ffaf4ff9aac524f31efbc3f24d021540b6c579813c"},
-    {file = "pre_commit-2.4.0.tar.gz", hash = "sha256:703e2e34cbe0eedb0d319eff9f7b83e2022bb5a3ab5289a6a8841441076514d0"},
+    {file = "pre_commit-2.5.1-py2.py3-none-any.whl", hash = "sha256:c5c8fd4d0e1c363723aaf0a8f9cba0f434c160b48c4028f4bae6d219177945b3"},
+    {file = "pre_commit-2.5.1.tar.gz", hash = "sha256:da463cf8f0e257f9af49047ba514f6b90dbd9b4f92f4c8847a3ccd36834874c7"},
 ]
 py = [
     {file = "py-1.8.1-py2.py3-none-any.whl", hash = "sha256:c20fdd83a5dbc0af9efd622bee9a5564e278f6380fffcacc43ba6f43db2813b0"},

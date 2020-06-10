@@ -1,5 +1,5 @@
 alabaster==0.7.12
-apologies==0.1.21
+apologies==0.1.22
 appdirs==1.4.4
 astroid==2.4.2
 asyncio-periodic==2019.2
@@ -38,7 +38,7 @@ packaging==20.4
 pathspec==0.8.0
 pendulum==2.1.0
 pluggy==0.13.1
-pre-commit==2.4.0
+pre-commit==2.5.1
 py==1.8.1
 pygments==2.6.1
 pylint==2.5.3
