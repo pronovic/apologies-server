@@ -904,7 +904,8 @@ This event is triggered when a player joins or leaves a game, or when a game
 starts.  Players start in the ``JOINED`` state and move to the ``PLAYING`` state
 when the game starts.  A player might leave a game because they ``QUIT``, or
 because they were ``DISCONNECTED``.  The message is sent to all players in the
-game.
+game.  Note that player colors are not assigned until after the game has been
+started, so the ``player_color`` value may be ``null``.
 
 Example message::
 
@@ -1075,11 +1076,13 @@ When the game play engine determines that it is a player's turn to execute a
 move, the server will notify the player.  The message will contain all of the
 information needed for the player to choose and execute a legal move.  In
 response, the player must send back an `Execute Move` request with the id of
-its chosen move.  In a ``STANDARD`` mode game, all moves will be for a single
-card, and that is the card that the player has drawn.  In an ``ADULT`` mode game,
-legal moves will span all of the cards in the player's hand and so the drawn
-card will be unset.  The player should assume that the state of the game board
-matches what was received in the most recent `Game State Change` message.
+its chosen move.  (The player may also defer to the server's judgement and
+issue an `Execute Optimal Move` request instead.) In a ``STANDARD`` mode game,
+all moves will be for a single card, and that is the card that the player has
+drawn.  In an ``ADULT`` mode game, legal moves will span all of the cards in
+the player's hand and so the drawn card will be unset.  The player should
+assume that the state of the game board matches what was received in the most
+recent `Game State Change` message.
 
 Example message::
 
