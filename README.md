@@ -19,12 +19,16 @@ that file for information about scheduled jobs, all messages in the public
 API, and what you can expect when each event is triggered.
 
 There is a quick'n'dirty websocket client demo implemented in [demo.py](src/apologiesserver/demo.py). See
-[DEVELOPER.md](DEVELOPER.md) for notes about how to run it.  
+[DEVELOPER.md](https://github.com/pronovic/apologies-server/blob/master/DEVELOPER.md#running-the-demo) for notes about how to run it.  
 
-_Note:_ At present, the Apologies Server runs as a single stateful process that
-maintains game state in memory.  It cannot be horizontally scaled, and there is
-no option for an external data store.  There is also only limited support for
-authentication and authorization - any player can register any handle that is
-not currently being used.  We do enforce resource limits (open connections,
-registered users, in-progress games) to limit the amount of damage abusive
-clients can do.
+As of this writing, the published PyPI project does not include a script to run
+the server. The only way to run it is from the codebase, for local testing. See
+[DEVELOPER.md](https://github.com/pronovic/apologies-server/blob/master/DEVELOPER.md#running-the-server) for more information.
+
+As a technology demonstration effort, the Apologies Server is fairly
+simplistic.  It runs as a single stateful process that maintains game state in
+memory.  It cannot be horizontally scaled, and there is no option for an
+external data store.  There is also only limited support for authentication and
+authorization - any player can register any handle that is not currently being
+used.  We do enforce resource limits (open connections, registered users,
+in-progress games) to limit the amount of damage abusive clients can do.

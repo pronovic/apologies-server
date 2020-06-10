@@ -28,13 +28,17 @@ serves as a complete example of how to manage a modern (circa 2020) Python
 project, including style checks, code formatting, integration with IntelliJ, CI
 builds at GitHub, and integration with PyPI and Read the Docs.
 
-`Note:` At present, the Apologies Server runs as a single stateful process that
-maintains game state in memory.  It cannot be horizontally scaled, and there is
-no option for an external data store.  There is also only limited support for
-authentication and authorization - any player can register any handle that is
-not currently being used.  We do enforce resource limits (open connections,
-registered users, in-progress games) to limit the amount of damage abusive
-clients can do.
+As of this writing, the published PyPI project does not include a script to run
+the server. The only way to run it is from the codebase, for local testing. See
+the developer_ documentation on GitHub for more information.
+
+As a technology demonstration effort, the Apologies Server is fairly
+simplistic.  It runs as a single stateful process that maintains game state in
+memory.  It cannot be horizontally scaled, and there is no option for an
+external data store.  There is also only limited support for authentication and
+authorization - any player can register any handle that is not currently being
+used.  We do enforce resource limits (open connections, registered users,
+in-progress games) to limit the amount of damage abusive clients can do. 
 
 
 Installation
@@ -61,3 +65,4 @@ Design Documentation
 .. _ApologiesServer: https://pypi.org/project/apologiesserver
 .. _Sorry: https://en.wikipedia.org/wiki/Sorry!_(game)
 .. _Websocket: https://en.wikipedia.org/wiki/WebSocket
+.. _developer: https://github.com/pronovic/apologies-server/blob/master/DEVELOPER.md#running-the-server
