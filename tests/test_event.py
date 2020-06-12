@@ -721,6 +721,7 @@ class TestRequestMethods:
         request = RequestContext(message, websocket, player, game)
         with pytest.raises(ProcessingError, match=r"Game is not being played"):
             handler.handle_optimal_move_request(request)
+        game.mark_active.assert_not_called()
         handler.handle_game_programmatic_move_event.assert_not_called()
 
     def test_handle_optimal_move_request_no_move_pending(self):
@@ -735,6 +736,7 @@ class TestRequestMethods:
         with pytest.raises(ProcessingError, match=r"No move is pending for this player"):
             handler.handle_optimal_move_request(request)
         game.is_move_pending.assert_called_once_with("leela")
+        game.mark_active.assert_not_called()
         handler.handle_game_programmatic_move_event.assert_not_called()
 
     def test_handle_optimal_move_request(self):
@@ -748,6 +750,7 @@ class TestRequestMethods:
         request = RequestContext(message, websocket, player, game)
         handler.handle_optimal_move_request(request)
         game.is_move_pending.assert_called_once_with("leela")
+        game.mark_active.assert_called_once()
         handler.handle_game_programmatic_move_event.assert_called_once_with("leela", game)
 
     def test_handle_retrieve_game_state_request_not_playing(self):

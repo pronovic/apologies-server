@@ -310,6 +310,7 @@ class EventHandler:
             raise ProcessingError(FailureReason.INVALID_GAME, comment="Game is not being played", handle=request.player.handle)
         if not request.game.is_move_pending(request.player.handle):
             raise ProcessingError(FailureReason.NO_MOVE_PENDING, handle=request.player.handle)
+        request.game.mark_active()
         self.handle_game_programmatic_move_event(request.player.handle, request.game)
 
     def handle_retrieve_game_state_request(self, request: RequestContext) -> None:
