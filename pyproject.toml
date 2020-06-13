@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "apologiesserver"
-version = "0.1.8"
+version = "0.1.9"
 description = "Websocket server to interactively play the Apologies game"
 authors = ["Kenneth J. Pronovici <pronovic@ieee.org>"]
 license = "Apache-2.0"
