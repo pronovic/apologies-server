@@ -24,7 +24,7 @@ from asyncio import AbstractEventLoop, CancelledError
 from typing import List, Optional, Tuple, cast
 
 import websockets
-from apologies.game import GameMode
+from apologies import GameMode
 from websockets import WebSocketClientProtocol
 
 from .interface import *

@@ -40,10 +40,7 @@ from uuid import uuid4
 
 import attr
 import pendulum
-from apologies.engine import Character, Engine
-from apologies.game import GameMode, History, PlayerColor, PlayerView
-from apologies.rules import Move
-from apologies.source import NoOpInputSource
+from apologies import Character, Engine, GameMode, History, Move, NoOpInputSource, PlayerColor, PlayerView
 from ordered_set import OrderedSet  # this makes expected results easier to articulate in test code
 from pendulum.datetime import DateTime
 from websockets import WebSocketServerProtocol

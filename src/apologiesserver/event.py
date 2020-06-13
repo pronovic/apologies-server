@@ -22,8 +22,7 @@ from typing import List, Optional, Set, Tuple, cast
 
 import attr
 import pendulum
-from apologies.rules import Move, Rules
-from apologies.source import RewardV1InputSource
+from apologies import Move, RewardV1InputSource, Rules
 from ordered_set import OrderedSet  # this makes expected results easier to articulate in test code
 from websockets import WebSocketServerProtocol
 

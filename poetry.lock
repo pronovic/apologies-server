@@ -12,7 +12,7 @@ description = "Python code to play a game similar to Sorry"
 name = "apologies"
 optional = false
 python-versions = ">=3.7,<4.0"
-version = "0.1.22"
+version = "0.1.24"
 
 [package.dependencies]
 attrs = ">=19.3.0,<20.0.0"
@@ -790,7 +790,7 @@ description = "Virtual Python Environment builder"
 name = "virtualenv"
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,>=2.7"
-version = "20.0.21"
+version = "20.0.23"
 
 [package.dependencies]
 appdirs = ">=1.4.3,<2"
@@ -804,7 +804,7 @@ version = ">=0.12,<2"
 
 [package.extras]
 docs = ["sphinx (>=3)", "sphinx-argparse (>=0.2.5)", "sphinx-rtd-theme (>=0.4.3)", "towncrier (>=19.9.0rc1)", "proselint (>=0.10.2)"]
-testing = ["pytest (>=4)", "coverage (>=5)", "coverage-enable-subprocess (>=1)", "pytest-xdist (>=1.31.0)", "pytest-mock (>=2)", "pytest-env (>=0.6.2)", "pytest-randomly (>=1)", "pytest-timeout", "packaging (>=20.0)", "xonsh (>=0.9.16)"]
+testing = ["pytest (>=4)", "coverage (>=5)", "coverage-enable-subprocess (>=1)", "pytest-xdist (>=1.31.0)", "pytest-mock (>=2)", "pytest-env (>=0.6.2)", "pytest-randomly (>=1)", "pytest-timeout (>=1)", "flaky (>=3)", "packaging (>=20.0)", "xonsh (>=0.9.16)"]
 
 [[package]]
 category = "dev"
@@ -845,7 +845,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [metadata]
-content-hash = "e703c96afc4984cd679edaac446b8c3b0f6502c2d79bb970d16b2849ad09d814"
+content-hash = "ea99f653a6e6d301312b8c6c5cc1bc7e325d03e4722d7fb6eb0d23e89e532607"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -854,8 +854,8 @@ alabaster = [
     {file = "alabaster-0.7.12.tar.gz", hash = "sha256:a661d72d58e6ea8a57f7a86e37d86716863ee5e92788398526d58b26a4e4dc02"},
 ]
 apologies = [
-    {file = "apologies-0.1.22-py3-none-any.whl", hash = "sha256:b35c6b8bd40ab067aa6f80c89708813c4e547bc561143e304e7cd2de982ce3a1"},
-    {file = "apologies-0.1.22.tar.gz", hash = "sha256:86a85927612f69da5d9c8332e3b3d4852e8efef7395802fad2843588b061ecdc"},
+    {file = "apologies-0.1.24-py3-none-any.whl", hash = "sha256:c42bdc5b2b6487b4fe81af8d22fd42ebbf547823875610a5d9597ce138f58602"},
+    {file = "apologies-0.1.24.tar.gz", hash = "sha256:5c42fa54107a0fe629614121807d466ae2e6014c2550f7c1b778ef8d2c84590e"},
 ]
 appdirs = [
     {file = "appdirs-1.4.4-py2.py3-none-any.whl", hash = "sha256:a841dacd6b99318a741b166adb07e19ee71a274450e68237b4650ca1055ab128"},
@@ -1291,8 +1291,8 @@ urllib3 = [
     {file = "urllib3-1.25.9.tar.gz", hash = "sha256:3018294ebefce6572a474f0604c2021e33b3fd8006ecd11d62107a5d2a963527"},
 ]
 virtualenv = [
-    {file = "virtualenv-20.0.21-py2.py3-none-any.whl", hash = "sha256:a730548b27366c5e6cbdf6f97406d861cccece2e22275e8e1a757aeff5e00c70"},
-    {file = "virtualenv-20.0.21.tar.gz", hash = "sha256:a116629d4e7f4d03433b8afa27f43deba09d48bc48f5ecefa4f015a178efb6cf"},
+    {file = "virtualenv-20.0.23-py2.py3-none-any.whl", hash = "sha256:ccfb8e1e05a1174f7bd4c163700277ba730496094fe1a58bea9d4ac140a207c8"},
+    {file = "virtualenv-20.0.23.tar.gz", hash = "sha256:5102fbf1ec57e80671ef40ed98a84e980a71194cedf30c87c2b25c3a9e0b0107"},
 ]
 wcwidth = [
     {file = "wcwidth-0.2.4-py2.py3-none-any.whl", hash = "sha256:79375666b9954d4a1a10739315816324c3e73110af9d0e102d906fdb0aec009f"},

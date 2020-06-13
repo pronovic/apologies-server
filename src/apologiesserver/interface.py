@@ -24,8 +24,7 @@ from typing import Any, Dict, List, Optional, Type
 import attr
 import cattr
 import orjson
-from apologies.game import CardType, GameMode, History, Pawn, Player, PlayerColor, PlayerView, Position
-from apologies.rules import Action, ActionType, Move
+from apologies import Action, ActionType, CardType, GameMode, History, Move, Pawn, Player, PlayerColor, PlayerView, Position
 from attr import Attribute
 from attr.validators import and_, in_
 from pendulum.datetime import DateTime
