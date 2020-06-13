@@ -247,14 +247,12 @@ tools as described below.
 
 ## Running the Server
 
-As of this writing, the published PyPI project does not include a script
-to run the server.  The only way to run it is from the codebase, for local
-testing.  
+To run the server from the codebase for local testing, use the `run server`
+command.  This is equivalent to the installed `apologies-server` script.
 
 ```
 $ run server --help
-run server --help
-usage: server [-h] [--quiet] [--verbose] [--debug] [--config CONFIG]
+usage: apologies-server [-h] [--quiet] [--verbose] [--debug] [--config CONFIG]
               [--logfile LOGFILE] [--override OVERRIDE]
 
 Start the apologies server and let it run forever.

@@ -18,6 +18,9 @@ classifiers=[
    "Topic :: Games/Entertainment :: Board Games",
 ]
 
+[tool.poetry.scripts]
+apologies-server = 'apologiesserver.scripts:server'
+
 [tool.poetry.dependencies]
 python = "^3.7"
 apologies = "^0.1.24"

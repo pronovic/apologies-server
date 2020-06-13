@@ -83,4 +83,4 @@ def cli(script: str) -> Any:
     Args:
         script(str): Name of the script to execute
     """
-    return _lookup_method(script)(argv=sys.argv[2:])
+    return _lookup_method(script)(argv=sys.argv[1:])

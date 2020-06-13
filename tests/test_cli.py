@@ -16,7 +16,7 @@ class TestUtil:
 
     def test_cli(self):
         # When a script is invoked, it gets arguments like shown below - that's just how it works
-        with patch.object(sys, "argv", ["src/scripts/example", "example", "a", "b", "c"]):
+        with patch.object(sys, "argv", ["src/scripts/example", "a", "b", "c"]):
             assert cli("_example") == ["a", "b", "c"]
 
     def test_lookup_method(self):

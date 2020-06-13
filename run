@@ -151,12 +151,13 @@ run_publish() {
 
 # Start the websockets server
 run_server() {
-   poetry run python -c "from apologiesserver.cli import cli" >/dev/null 2>&1
+   poetry run python -c "from apologiesserver.scripts import server" >/dev/null 2>&1
    if [ $? != 0 ]; then
       run_install
    fi
 
-   poetry run python src/scripts/server $*
+   shift  # get rid of first argument "server"
+   poetry run apologies-server $*
 }
 
 # Start the demo client
@@ -166,6 +167,7 @@ run_demo() {
       run_install
    fi
 
+   shift  # get rid of first argument "demo"
    poetry run python src/scripts/demo $*
 }
    
