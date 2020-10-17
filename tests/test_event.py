@@ -159,6 +159,8 @@ class TestEventHandler:
         queue.execute.assert_awaited_once()
 
 
+@pytest.mark.filterwarnings("ignore:coroutine 'send' was never awaited")
+@pytest.mark.filterwarnings("ignore:coroutine 'close' was never awaited")
 class TestTaskMethods:
     """
     Test the task-related methods on EventHandler.

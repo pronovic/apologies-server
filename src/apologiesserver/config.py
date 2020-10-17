@@ -6,13 +6,13 @@ System configuration.
 """
 
 import configparser
+import json
 import os
 from configparser import ConfigParser, SectionProxy
 from typing import Any, Dict, Optional, Union
 
 import attr
 import cattr
-import orjson
 
 from .util import homedir
 
@@ -126,7 +126,7 @@ class SystemConfig:
 
     def to_json(self) -> str:
         """Serialize to JSON."""
-        return orjson.dumps(cattr.unstructure(self), option=orjson.OPT_INDENT_2).decode("utf-8")  # type: ignore
+        return json.dumps(cattr.unstructure(self), indent="  ")
 
 
 _CONFIG: Optional[SystemConfig] = None

@@ -17,13 +17,13 @@ The file notes/API.md includes a detailed discussion of each request and event.
 
 from __future__ import annotations  # see: https://stackoverflow.com/a/33533514/2907667
 
+import json
 from abc import ABC
 from enum import Enum
 from typing import Any, Dict, List, Optional, Type
 
 import attr
 import cattr
-import orjson
 from apologies import Action, ActionType, CardType, GameMode, History, Move, Pawn, Player, PlayerColor, PlayerView, Position
 from attr import Attribute
 from attr.validators import and_, in_
@@ -760,18 +760,18 @@ class Message:
             del d["player_id"]
         if d["context"] is None:
             del d["context"]
-        return orjson.dumps(d, option=orjson.OPT_INDENT_2).decode("utf-8")  # type: ignore
+        return json.dumps(d, indent="  ")
 
     @staticmethod
     def for_json(data: str) -> Message:
         """Create a request based on JSON data."""
-        d = orjson.loads(data)  # pylint: disable=invalid-name
+        d = json.loads(data)  # pylint: disable=invalid-name
         if "message" not in d or d["message"] is None:
             raise ValueError("Message type is required")
         try:
             message = MessageType[d["message"]]
-        except KeyError:
-            raise ValueError("Unknown message type: %s" % d["message"])
+        except KeyError as e:
+            raise ValueError("Unknown message type: %s" % d["message"]) from e
         if _PLAYER_ID[message]:
             if "player_id" not in d or d["player_id"] is None:
                 raise ValueError("Message type %s requires a player id" % message.name)
@@ -790,7 +790,7 @@ class Message:
             try:
                 context = _CONVERTER.structure(d["context"], _CONTEXT[message])
             except KeyError as e:
-                raise ValueError("Invalid value %s" % str(e))
+                raise ValueError("Invalid value %s" % str(e)) from e
             except TypeError as e:
-                raise ValueError("Message type %s does not support this context" % message.name, e)
+                raise ValueError("Message type %s does not support this context" % message.name, e) from e
         return Message(message, player_id, context)
