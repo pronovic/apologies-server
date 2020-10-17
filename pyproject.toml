@@ -22,8 +22,8 @@ classifiers=[
 apologies-server = 'apologiesserver.scripts:server'
 
 [tool.poetry.dependencies]
-python = "^3.7"
-apologies = "^0.1.24"
+python = ">=3.7,<3.9"
+apologies = "^0.1.25"
 websockets = "^8.1"
 asyncio-periodic = "^2019.2"
 ordered-set = "^4.0.1"
