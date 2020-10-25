@@ -127,7 +127,7 @@ Usage: run <command>
 - run install: Setup the virtualenv via Poetry and install pre-commit hooks
 - run activate: Print command needed to activate the Poetry virtualenv
 - run checks: Run the PyLint and MyPy code checkers
-- run format: Run the Black code formatter
+- run format: Run the code formatters
 - run test: Run the unit tests
 - run test -c: Run the unit tests with coverage
 - run test -ch: Run the unit tests with coverage and open the HTML report
