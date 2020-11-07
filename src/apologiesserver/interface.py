@@ -701,7 +701,7 @@ _ENUMS = [
 _DATE_FORMAT = "YYYY-MM-DDTHH:mm:ss,SSSZ"  # gives us something like "2020-04-27T09:02:14,334+00:00"
 
 
-class _CattrConverter(cattr.Converter):  # type: ignore
+class _CattrConverter(cattr.Converter):
     """
     Cattr converter for requests and events, to standardize conversion of dates and enumerations.
     """
@@ -709,10 +709,10 @@ class _CattrConverter(cattr.Converter):  # type: ignore
     def __init__(self) -> None:
         super().__init__()
         self.register_unstructure_hook(DateTime, lambda value: value.format(_DATE_FORMAT) if value else None)
-        self.register_structure_hook(DateTime, lambda value, _: parse(value) if value else None)
+        self.register_structure_hook(DateTime, lambda value, _: parse(value) if value else None)  # type: ignore
         for element in _ENUMS:
             self.register_unstructure_hook(element, lambda value: value.name if value else None)
-            self.register_structure_hook(element, lambda value, _, e=element: e[value] if value else None)
+            self.register_structure_hook(element, lambda value, _, e=element: e[value] if value else None)  # type: ignore
 
 
 # Cattr converter used to serialize and deserialize requests and responses
@@ -788,7 +788,7 @@ class Message:
             if "context" not in d or d["context"] is None:
                 raise ValueError("Message type %s requires a context" % message.name)
             try:
-                context = _CONVERTER.structure(d["context"], _CONTEXT[message])
+                context = _CONVERTER.structure(d["context"], _CONTEXT[message])  # type: ignore
             except KeyError as e:
                 raise ValueError("Invalid value %s" % str(e)) from e
             except TypeError as e:

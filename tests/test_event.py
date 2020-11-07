@@ -133,6 +133,8 @@ class TestTaskQueue:
         stub.wait.assert_awaited()
 
 
+@pytest.mark.filterwarnings("ignore:coroutine 'send' was never awaited")
+@pytest.mark.filterwarnings("ignore:coroutine 'close' was never awaited")
 class TestEventHandler:
     """
     Test the basic EventHandler functionality.
@@ -315,6 +317,8 @@ class TestTaskMethods:
 
 
 # pylint: disable=too-many-public-methods
+@pytest.mark.filterwarnings("ignore:coroutine 'send' was never awaited")
+@pytest.mark.filterwarnings("ignore:coroutine 'close' was never awaited")
 class TestRequestMethods:
     """
     Test the request-related methods on EventHandler.
