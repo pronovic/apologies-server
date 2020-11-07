@@ -133,6 +133,8 @@ class TestTaskQueue:
         stub.wait.assert_awaited()
 
 
+@pytest.mark.filterwarnings("ignore:coroutine 'send' was never awaited")
+@pytest.mark.filterwarnings("ignore:coroutine 'close' was never awaited")
 class TestEventHandler:
     """
     Test the basic EventHandler functionality.

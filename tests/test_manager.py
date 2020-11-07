@@ -50,8 +50,8 @@ def check_is_in_progress(advertised: bool, playing: bool) -> bool:
     game = TrackedGame("game_id", "handle", "name", GameMode.STANDARD, 3, Visibility.PRIVATE, ["bender", "fry"])
     game.is_advertised = MagicMock()  # type: ignore
     game.is_playing = MagicMock()  # type: ignore
-    game.is_advertised.return_value = advertised  # type: ignore
-    game.is_playing.return_value = playing  # type: ignore
+    game.is_advertised.return_value = advertised
+    game.is_playing.return_value = playing
     return game.is_in_progress()
 
 
@@ -59,8 +59,8 @@ def check_is_viable(advertised: bool, available: int) -> bool:
     game = TrackedGame("game_id", "handle", "name", GameMode.STANDARD, 3, Visibility.PRIVATE, [])
     game.is_advertised = MagicMock()  # type: ignore
     game.get_available_player_count = MagicMock()  # type: ignore
-    game.is_advertised.return_value = advertised  # type: ignore
-    game.get_available_player_count.return_value = available  # type: ignore
+    game.is_advertised.return_value = advertised
+    game.get_available_player_count.return_value = available
     return game.is_viable()
 
 
