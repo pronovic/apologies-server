@@ -709,7 +709,7 @@ class _CattrConverter(cattr.Converter):
     def __init__(self) -> None:
         super().__init__()
         self.register_unstructure_hook(DateTime, lambda value: value.format(_DATE_FORMAT) if value else None)
-        self.register_structure_hook(DateTime, lambda value, _: parse(value) if value else None)  # type: ignore
+        self.register_structure_hook(DateTime, lambda value, _: parse(value) if value else None)
         for element in _ENUMS:
             self.register_unstructure_hook(element, lambda value: value.name if value else None)
             self.register_structure_hook(element, lambda value, _, e=element: e[value] if value else None)  # type: ignore
