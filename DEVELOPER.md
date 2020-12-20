@@ -4,8 +4,19 @@
 
 My primary development environment when writing this was IntelliJ on MacOS, but the
 code and the development process also work in a Linux environment (I've tested
-on Debian buster).  The server relies on asyncio signal handling that is not
-supported on the Windows platform, and hence does not work there.
+on Debian buster).  
+
+## Support on Windows
+
+Unfortunately, the server implementation relies on asyncio signal handling to
+implement graceful shutdown behavior.  This sort of signal handling is not
+supported on the Windows platform, so the server does not work there.  There
+are no easy workarounds, and any fix looks to be pretty involved &mdash;
+process behavior is just fundamentally different on Windows than on UNIX
+platforms.  There is a partial patch in [notes/win32.patch](notes/win32.patch)
+that could be used as a starting point in the future.  The rest of the code is
+portable, so all that's really needed is some sort of alternative shutdown
+mechanism.
 
 ## Packaging and Dependencies
 

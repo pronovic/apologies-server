@@ -1,0 +1,152 @@
+# This was my attempt to get the code working on Windows.  The code itself
+# basically works, but the signal handlers we rely on to gracefully clean up
+# the server are not supported on the Windows platform.  It seems like there
+# might be alternatives that would work, but they're fairly involved and not
+# worth the effort at this point.  Process behavior is just fundamentally
+# different on Windows than on UNIX platforms.
+diff --git a/.github/workflows/tox.yml b/.github/workflows/tox.yml
+index 5551597..8bbc6ab 100644
+--- a/.github/workflows/tox.yml
++++ b/.github/workflows/tox.yml
+@@ -13,7 +13,7 @@ jobs:
+     runs-on: ubuntu-latest
+     strategy:
+       matrix:
+-        os: [ubuntu-latest, macos-latest]
++        os: [ubuntu-latest, macos-latest, windows-latest]
+         python: [3.7, 3.8, 3.9]
+     steps: 
+       - name: Check out code
+diff --git a/pyproject.toml b/pyproject.toml
+index cb3bb38..aea2998 100644
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -22,8 +22,8 @@ classifiers=[
+ apologies-server = 'apologiesserver.scripts:server'
+ 
+ [tool.poetry.dependencies]
+-python = ">=3.7,<=3.9"
+-apologies = "^0.1.27"
++python = ">=3.7,<4"
++apologies = "^0.1.28"
+ websockets = "^8.1"
+ asyncio-periodic = "^2019.2"
+ ordered-set = "^4.0.1"
+diff --git a/run b/run
+index 702c027..e8f0f84 100755
+--- a/run
++++ b/run
+@@ -3,7 +3,6 @@
+ 
+ # Setup the virtual environment via Poetry and install pre-commit hooks
+ run_install() {
+-   poetry env use python3
+    poetry install -v
+    poetry run pre-commit install 
+ }
+@@ -139,7 +138,7 @@ run_docs() {
+ # For instance: poetry config pypi-token.pypi token --local
+ # See: https://python-poetry.org/docs/repositories/#configuring-credentials
+ run_publish() {
+-   VERSION=$(poetry version)
++   VERSION=$(poetry version --no-ansi)
+    SHORT_VERSION=$(echo "$VERSION" | sed 's/^.* //g')
+ 
+    git tag -a "v$SHORT_VERSION" -m "Release $VERSION to PyPI"
+diff --git a/src/apologiesserver/demo.py b/src/apologiesserver/demo.py
+index 2c6ab0b..d270e95 100644
+--- a/src/apologiesserver/demo.py
++++ b/src/apologiesserver/demo.py
+@@ -20,6 +20,7 @@
+ import logging
+ import random
+ import signal
++import sys
+ from asyncio import AbstractEventLoop, CancelledError
+ from typing import List, Optional, Tuple, cast
+ 
+@@ -30,7 +31,11 @@
+ from .interface import *
+ from .util import receive, send
+ 
+-SHUTDOWN_SIGNALS = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
++if sys.platform == "win32":
++    # there is apparently no SIGHUP on Windows
++    SHUTDOWN_SIGNALS = (signal.SIGTERM, signal.SIGINT)
++else:
++    SHUTDOWN_SIGNALS = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)  # pylint: disable=no-member
+ 
+ log = logging.getLogger("apologies.demo")
+ 
+diff --git a/src/apologiesserver/interface.py b/src/apologiesserver/interface.py
+index 4447770..704faae 100644
+--- a/src/apologiesserver/interface.py
++++ b/src/apologiesserver/interface.py
+@@ -709,7 +709,7 @@ class _CattrConverter(cattr.Converter):
+     def __init__(self) -> None:
+         super().__init__()
+         self.register_unstructure_hook(DateTime, lambda value: value.format(_DATE_FORMAT) if value else None)
+-        self.register_structure_hook(DateTime, lambda value, _: parse(value) if value else None)  # type: ignore
++        self.register_structure_hook(DateTime, lambda value, _: parse(value) if value else None)
+         for element in _ENUMS:
+             self.register_unstructure_hook(element, lambda value: value.name if value else None)
+             self.register_structure_hook(element, lambda value, _, e=element: e[value] if value else None)  # type: ignore
+diff --git a/src/apologiesserver/server.py b/src/apologiesserver/server.py
+index 6b54ace..8ffde15 100644
+--- a/src/apologiesserver/server.py
++++ b/src/apologiesserver/server.py
+@@ -4,6 +4,7 @@
+ import asyncio
+ import logging
+ import signal
++import sys
+ from asyncio import AbstractEventLoop, Future  # pylint: disable=unused-import
+ from typing import Any, Callable, Coroutine, Union  # pylint: disable=unused-import
+ 
+@@ -19,7 +20,11 @@
+ 
+ log = logging.getLogger("apologies.server")
+ 
+-SHUTDOWN_SIGNALS = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
++if sys.platform == "win32":
++    # there is apparently no SIGHUP on Windows
++    SHUTDOWN_SIGNALS = (signal.SIGTERM, signal.SIGINT)
++else:
++    SHUTDOWN_SIGNALS = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)  # pylint: disable=no-member
+ 
+ # pylint: disable=too-many-return-statements,too-many-branches
+ def _lookup_method(handler: EventHandler, message: MessageType) -> Callable[[RequestContext], None]:
+diff --git a/tests/test_server.py b/tests/test_server.py
+index 01dddec..e940afa 100644
+--- a/tests/test_server.py
++++ b/tests/test_server.py
+@@ -5,6 +5,7 @@
+ import asyncio
+ import os
+ import signal
++import sys
+ from unittest.mock import MagicMock, call
+ 
+ import pytest
+@@ -58,9 +59,18 @@ def test_add_signal_handlers(self):
+         loop = AsyncMock()
+         loop.create_future.return_value = stop
+         assert _add_signal_handlers(loop) is stop
+-        loop.add_signal_handler.assert_has_calls(
+-            [call(signal.SIGHUP, set_result, None), call(signal.SIGTERM, set_result, None), call(signal.SIGINT, set_result, None),]
+-        )
++        if sys.platform == "win32":
++            loop.add_signal_handler.assert_has_calls(
++                [call(signal.SIGTERM, set_result, None), call(signal.SIGINT, set_result, None),]
++            )
++        else:
++            loop.add_signal_handler.assert_has_calls(
++                [
++                    call(signal.SIGHUP, set_result, None),  # pylint: disable=no-member
++                    call(signal.SIGTERM, set_result, None),
++                    call(signal.SIGINT, set_result, None),
++                ]
++            )
+ 
+     # noinspection PyCallingNonCallable
+     @patch("apologiesserver.server.scheduled_tasks")
