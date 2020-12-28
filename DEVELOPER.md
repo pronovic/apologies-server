@@ -2,9 +2,8 @@
 
 ## Development Environment
 
-My primary development environment when writing this was IntelliJ on MacOS, but the
-code and the development process also work in a Linux environment (I've tested
-on Debian buster).  
+My primary development environment when writing this code was IntelliJ Ultimate
+on MacOS.  I also tested regularly in my Debian Linux development environment.
 
 ## Support on Windows
 
@@ -71,19 +70,6 @@ Then, install Poetry in your home directory:
 ```
 $ curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
 ```
-
-### Windows
-
-First, install Python 3 from your preferred source, either a standard
-installer or a meta-installer like Chocolatey.  Then, install Poetry
-in your home directory:
-
-```
-$ curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
-```
-
-The development environment (with the `run` script, etc.) expects a bash shell
-to be available.  It seems to work fine with the standard Git bash.  
 
 ## Configure Poetry's Python Interpreter
 
@@ -163,12 +149,10 @@ Usage: run <command>
 - run demo: Run the demo client (requires running server)
 ```
 
-## Integration with IntelliJ or PyCharm
+## Integration with IntelliJ
 
-For my day-to-day IDE, I use IntelliJ Ultimate with the Python plugin
-installed, which is basically equivalent to PyCharm. By integrating Black and
-Pylint, most everything important that can be done from a shell environment can
-also be done right in IntelliJ.
+By integrating Black and Pylint with IntelliJ, most everything important that 
+can be done from a shell environment can also be done right in IntelliJ.
 
 Unfortunately, it is somewhat difficult to provide a working IntelliJ
 configuration that other developers can simply import. There are still some
