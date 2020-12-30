@@ -4,9 +4,7 @@
 
 import asyncio
 import os
-import signal
-import sys
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
 import pytest
 from asynctest import MagicMock as AsyncMock
@@ -16,6 +14,7 @@ from websockets.exceptions import ConnectionClosed
 from apologiesserver.event import EventHandler, RequestContext
 from apologiesserver.interface import FailureReason, Message, MessageType, ProcessingError, RequestFailedContext
 from apologiesserver.server import (
+    SHUTDOWN_SIGNALS,
     _add_signal_handlers,
     _handle_connect,
     _handle_connection,
@@ -52,25 +51,17 @@ class TestFunctions:
     Test Python functions.
     """
 
-    def test_add_signal_handlers(self):
+    @patch("apologiesserver.server.signal.signal")
+    def test_add_signal_handlers(self, signaler):
         stop = AsyncMock()
         set_result = AsyncMock()
-        stop.set_result = set_result
         loop = AsyncMock()
         loop.create_future.return_value = stop
+        stop.set_result = set_result
         assert _add_signal_handlers(loop) is stop
-        if sys.platform == "win32":
-            loop.add_signal_handler.assert_has_calls(
-                [call(signal.SIGTERM, set_result, None), call(signal.SIGINT, set_result, None),]
-            )
-        else:
-            loop.add_signal_handler.assert_has_calls(
-                [
-                    call(signal.SIGHUP, set_result, None),  # pylint: disable=no-member
-                    call(signal.SIGTERM, set_result, None),
-                    call(signal.SIGINT, set_result, None),
-                ]
-            )
+        assert list(SHUTDOWN_SIGNALS) == [call.args[0] for call in signaler.call_args_list]  # confirm all signals are handled
+        signaler.call_args_list[0].args[1]("x", "y")  # execute the handler with dummy arguments (which are ignored)
+        stop.set_result.assert_called_once_with(None)  # confirm that the handler sets the stop future result properly
 
     # noinspection PyCallingNonCallable
     @patch("apologiesserver.server.scheduled_tasks")

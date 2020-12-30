@@ -20,8 +20,8 @@ from .util import close, mask, send
 
 log = logging.getLogger("apologies.server")
 
+# the list of available signals varies by platform
 if sys.platform == "win32":
-    # there is apparently no SIGHUP on Windows
     SHUTDOWN_SIGNALS = (signal.SIGTERM, signal.SIGINT)
 else:
     SHUTDOWN_SIGNALS = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)  # pylint: disable=no-member
@@ -174,8 +174,14 @@ def _add_signal_handlers(loop: AbstractEventLoop) -> "Future[Any]":
     """Add signal handlers so shutdown can be handled normally, returning the stop future."""
     log.info("Adding signal handlers...")
     stop = loop.create_future()
+
+    # pylint: disable=invalid-name,unused-argument
+    def handler(s, f):  # type: ignore
+        stop.set_result(None)
+
     for sig in SHUTDOWN_SIGNALS:
-        loop.add_signal_handler(sig, stop.set_result, None)
+        signal.signal(sig, handler)
+
     return stop
 
 
