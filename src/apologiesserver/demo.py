@@ -20,8 +20,7 @@ import asyncio
 import logging
 import random
 import signal
-import sys
-from asyncio import AbstractEventLoop, CancelledError
+from asyncio import CancelledError
 from typing import List, Optional, Tuple, cast
 
 import websockets
@@ -29,13 +28,8 @@ from apologies import GameMode
 from websockets import WebSocketClientProtocol
 
 from .interface import *
+from .server import SHUTDOWN_SIGNALS
 from .util import receive, send
-
-if sys.platform == "win32":
-    # there is apparently no SIGHUP on Windows
-    SHUTDOWN_SIGNALS = (signal.SIGTERM, signal.SIGINT)
-else:
-    SHUTDOWN_SIGNALS = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)  # pylint: disable=no-member
 
 log = logging.getLogger("apologies.demo")
 
@@ -184,11 +178,11 @@ async def _terminate() -> None:
     await asyncio.gather(*pending)
 
 
-def _add_signal_handlers(loop: AbstractEventLoop) -> None:
-    """Add signal handlers so shutdown can be handled normally, returning the stop future."""
+def _add_signal_handlers() -> None:
+    """Add signal handlers so shutdown can be handled normally."""
     log.info("Adding signal handlers...")
     for sig in SHUTDOWN_SIGNALS:
-        loop.add_signal_handler(sig, lambda: asyncio.create_task(_terminate()))
+        signal.signal(sig, lambda s, f: asyncio.create_task(_terminate()))  # type: ignore
 
 
 def demo(host: str, port: int) -> None:
@@ -196,7 +190,7 @@ def demo(host: str, port: int) -> None:
     uri = "ws://%s:%d" % (host, port)
     log.info("Demo client started against %s", uri)
     loop = asyncio.get_event_loop()
-    _add_signal_handlers(loop)
+    _add_signal_handlers()
     try:
         loop.run_until_complete(_websocket_client(uri))
     except CancelledError:
