@@ -20,7 +20,8 @@ import asyncio
 import logging
 import random
 import signal
-from asyncio import CancelledError
+import sys
+from asyncio import AbstractEventLoop, CancelledError
 from typing import List, Optional, Tuple, cast
 
 import websockets
@@ -178,11 +179,15 @@ async def _terminate() -> None:
     await asyncio.gather(*pending)
 
 
-def _add_signal_handlers() -> None:
+def _add_signal_handlers(loop: AbstractEventLoop) -> None:
     """Add signal handlers so shutdown can be handled normally."""
     log.info("Adding signal handlers...")
-    for sig in SHUTDOWN_SIGNALS:
-        signal.signal(sig, lambda s, f: asyncio.create_task(_terminate()))  # type: ignore
+    if sys.platform == "win32":
+        for sig in SHUTDOWN_SIGNALS:
+            signal.signal(sig, lambda s, f: asyncio.create_task(_terminate()))  # type: ignore
+    else:
+        for sig in SHUTDOWN_SIGNALS:
+            loop.add_signal_handler(sig, lambda: asyncio.create_task(_terminate()))
 
 
 def demo(host: str, port: int) -> None:
@@ -190,7 +195,7 @@ def demo(host: str, port: int) -> None:
     uri = "ws://%s:%d" % (host, port)
     log.info("Demo client started against %s", uri)
     loop = asyncio.get_event_loop()
-    _add_signal_handlers()
+    _add_signal_handlers(loop)
     try:
         loop.run_until_complete(_websocket_client(uri))
     except CancelledError:
