@@ -174,14 +174,8 @@ def _add_signal_handlers(loop: AbstractEventLoop) -> "Future[Any]":
     """Add signal handlers so shutdown can be handled normally, returning the stop future."""
     log.info("Adding signal handlers...")
     stop = loop.create_future()
-
-    # pylint: disable=invalid-name,unused-argument
-    def handler(s, f):  # type: ignore
-        stop.set_result(None)
-
     for sig in SHUTDOWN_SIGNALS:
-        signal.signal(sig, handler)
-
+        signal.signal(sig, lambda s, f: stop.set_result(None))
     return stop
 
 
