@@ -18,9 +18,9 @@ to work with.
 
 import asyncio
 import logging
+import platform
 import random
 import signal
-import sys
 from asyncio import AbstractEventLoop, CancelledError
 from typing import List, Optional, Tuple, cast
 
@@ -183,7 +183,7 @@ def _add_signal_handlers(loop: AbstractEventLoop) -> None:
     """Add signal handlers so shutdown can be handled normally."""
     log.info("Adding signal handlers...")
     for sig in SHUTDOWN_SIGNALS:
-        if sys.platform == "win32":
+        if platform.system() == "win32":
             signal.signal(sig, lambda s, f: asyncio.create_task(_terminate()))  # type: ignore
         else:
             loop.add_signal_handler(sig, lambda: asyncio.create_task(_terminate()))
