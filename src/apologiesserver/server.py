@@ -4,6 +4,7 @@
 import asyncio
 import logging
 import signal
+import sys
 from asyncio import AbstractEventLoop, Future  # pylint: disable=unused-import
 from typing import Any, Callable, Coroutine, Union  # pylint: disable=unused-import
 
@@ -19,7 +20,11 @@ from .util import close, mask, send
 
 log = logging.getLogger("apologies.server")
 
-SHUTDOWN_SIGNALS = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
+# the list of available signals varies by platform
+if sys.platform == "win32":
+    SHUTDOWN_SIGNALS = (signal.SIGTERM, signal.SIGINT)
+else:
+    SHUTDOWN_SIGNALS = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)  # pylint: disable=no-member
 
 # pylint: disable=too-many-return-statements,too-many-branches
 def _lookup_method(handler: EventHandler, message: MessageType) -> Callable[[RequestContext], None]:
@@ -170,7 +175,10 @@ def _add_signal_handlers(loop: AbstractEventLoop) -> "Future[Any]":
     log.info("Adding signal handlers...")
     stop = loop.create_future()
     for sig in SHUTDOWN_SIGNALS:
-        loop.add_signal_handler(sig, stop.set_result, None)
+        if sys.platform == "win32":
+            signal.signal(sig, lambda s, f: stop.set_result(None))
+        else:
+            loop.add_signal_handler(sig, stop.set_result, None)
     return stop
 
 

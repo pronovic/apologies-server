@@ -18,6 +18,7 @@ to work with.
 
 import asyncio
 import logging
+import platform
 import random
 import signal
 from asyncio import AbstractEventLoop, CancelledError
@@ -28,9 +29,8 @@ from apologies import GameMode
 from websockets import WebSocketClientProtocol
 
 from .interface import *
+from .server import SHUTDOWN_SIGNALS
 from .util import receive, send
-
-SHUTDOWN_SIGNALS = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
 
 log = logging.getLogger("apologies.demo")
 
@@ -180,10 +180,13 @@ async def _terminate() -> None:
 
 
 def _add_signal_handlers(loop: AbstractEventLoop) -> None:
-    """Add signal handlers so shutdown can be handled normally, returning the stop future."""
+    """Add signal handlers so shutdown can be handled normally."""
     log.info("Adding signal handlers...")
     for sig in SHUTDOWN_SIGNALS:
-        loop.add_signal_handler(sig, lambda: asyncio.create_task(_terminate()))
+        if platform.system() == "win32":
+            signal.signal(sig, lambda s, f: asyncio.create_task(_terminate()))  # type: ignore
+        else:
+            loop.add_signal_handler(sig, lambda: asyncio.create_task(_terminate()))
 
 
 def demo(host: str, port: int) -> None:
