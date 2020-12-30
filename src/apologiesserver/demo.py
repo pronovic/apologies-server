@@ -20,6 +20,7 @@ import asyncio
 import logging
 import random
 import signal
+import sys
 from asyncio import AbstractEventLoop, CancelledError
 from typing import List, Optional, Tuple, cast
 
@@ -30,7 +31,11 @@ from websockets import WebSocketClientProtocol
 from .interface import *
 from .util import receive, send
 
-SHUTDOWN_SIGNALS = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
+if sys.platform == "win32":
+    # there is apparently no SIGHUP on Windows
+    SHUTDOWN_SIGNALS = (signal.SIGTERM, signal.SIGINT)
+else:
+    SHUTDOWN_SIGNALS = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)  # pylint: disable=no-member
 
 log = logging.getLogger("apologies.demo")
 

@@ -5,6 +5,7 @@
 import asyncio
 import os
 import signal
+import sys
 from unittest.mock import MagicMock, call
 
 import pytest
@@ -58,9 +59,18 @@ class TestFunctions:
         loop = AsyncMock()
         loop.create_future.return_value = stop
         assert _add_signal_handlers(loop) is stop
-        loop.add_signal_handler.assert_has_calls(
-            [call(signal.SIGHUP, set_result, None), call(signal.SIGTERM, set_result, None), call(signal.SIGINT, set_result, None),]
-        )
+        if sys.platform == "win32":
+            loop.add_signal_handler.assert_has_calls(
+                [call(signal.SIGTERM, set_result, None), call(signal.SIGINT, set_result, None),]
+            )
+        else:
+            loop.add_signal_handler.assert_has_calls(
+                [
+                    call(signal.SIGHUP, set_result, None),  # pylint: disable=no-member
+                    call(signal.SIGTERM, set_result, None),
+                    call(signal.SIGINT, set_result, None),
+                ]
+            )
 
     # noinspection PyCallingNonCallable
     @patch("apologiesserver.server.scheduled_tasks")
