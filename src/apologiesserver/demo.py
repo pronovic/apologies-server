@@ -182,11 +182,10 @@ async def _terminate() -> None:
 def _add_signal_handlers(loop: AbstractEventLoop) -> None:
     """Add signal handlers so shutdown can be handled normally."""
     log.info("Adding signal handlers...")
-    if sys.platform == "win32":
-        for sig in SHUTDOWN_SIGNALS:
+    for sig in SHUTDOWN_SIGNALS:
+        if sys.platform == "win32":
             signal.signal(sig, lambda s, f: asyncio.create_task(_terminate()))  # type: ignore
-    else:
-        for sig in SHUTDOWN_SIGNALS:
+        else:
             loop.add_signal_handler(sig, lambda: asyncio.create_task(_terminate()))
 
 

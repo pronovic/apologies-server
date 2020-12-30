@@ -174,11 +174,10 @@ def _add_signal_handlers(loop: AbstractEventLoop) -> "Future[Any]":
     """Add signal handlers so shutdown can be handled normally, returning the stop future."""
     log.info("Adding signal handlers...")
     stop = loop.create_future()
-    if sys.platform == "win32":
-        for sig in SHUTDOWN_SIGNALS:
+    for sig in SHUTDOWN_SIGNALS:
+        if sys.platform == "win32":
             signal.signal(sig, lambda s, f: stop.set_result(None))
-    else:
-        for sig in SHUTDOWN_SIGNALS:
+        else:
             loop.add_signal_handler(sig, stop.set_result, None)
     return stop
 
