@@ -60,6 +60,7 @@ class TestFunctions:
     def test_default_config_path(self):
         assert DEFAULT_CONFIG_PATH == os.path.join(os.path.expanduser("~"), ".apologiesrc")  # different way to get same value
 
+    # noinspection PyGlobalUndefined
     def test_config_not_loaded(self):
         global _CONFIG
         saved = _CONFIG

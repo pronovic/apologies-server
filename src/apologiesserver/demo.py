@@ -95,7 +95,7 @@ def _handle_game_completed(_player_id: str, message: Message) -> None:
 
 
 def _handle_game_state_change(_player_id: str, message: Message) -> None:
-    "Handle the game state change event"
+    """Handle the game state change event"""
     context = cast(GameStateChangeContext, message.context)
     if context.recent_history:
         history = context.recent_history[-1]

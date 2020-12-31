@@ -62,7 +62,7 @@ class TestFunctions:
         assert _add_signal_handlers(loop) is stop
         if sys.platform == "win32":
             assert [signal.SIGTERM, signal.SIGINT] == [
-                call.args[0] for call in signaler.call_args_list
+                c.args[0] for c in signaler.call_args_list
             ]  # confirm all signals are handled
             signaler.call_args_list[0].args[1]("x", "y")  # execute the handler with dummy arguments (which are ignored)
             stop.set_result.assert_called_once_with(None)  # confirm that the handler sets the stop future result properly
