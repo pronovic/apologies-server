@@ -73,7 +73,7 @@ def create_moves_complex() -> List[Move]:
     move1 = Move(
         id="a9fff13fbe5e46feaeda87382bf4c3b8",
         card=Card("card1", CardType.CARD_APOLOGIES),
-        actions=[Action(ActionType.MOVE_TO_POSITION, pawn1, position1), Action(ActionType.MOVE_TO_POSITION, pawn2, position2),],
+        actions=[Action(ActionType.MOVE_TO_POSITION, pawn1, position1), Action(ActionType.MOVE_TO_POSITION, pawn2, position2)],
         side_effects=[Action(ActionType.MOVE_TO_START, pawn3)],
     )
 

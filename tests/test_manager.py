@@ -1154,7 +1154,7 @@ class TestStateManager:
 class TestGame:
     """
     Test a complete game via the StateManager interface.
-    
+
     This basically covers the steps that would happen in a real game via the
     public interface, except directly against the manager interface instead.
     Unlike the public interface, the manager interface is synchronous, which

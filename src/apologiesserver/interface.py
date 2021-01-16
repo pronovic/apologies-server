@@ -580,7 +580,7 @@ class GameStateChangeContext(Context):
         player = GameStatePlayer.for_player(view.player)
         recent_history = [GameStateHistory.for_history(entry) for entry in history]
         opponents = [GameStatePlayer.for_player(opponent) for opponent in view.opponents.values()]
-        return GameStateChangeContext(game_id=game_id, recent_history=recent_history, player=player, opponents=opponents,)
+        return GameStateChangeContext(game_id=game_id, recent_history=recent_history, player=player, opponents=opponents)
 
 
 @attr.s(frozen=True)

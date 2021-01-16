@@ -73,7 +73,7 @@ DEFAULTS = {
 class SystemConfig:
     """
     System configuration.
-    
+
     Attributes:
         logfile_path(str): The path to the log file on disk
         server_host(str): The hostname to bind to
