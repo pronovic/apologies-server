@@ -8,7 +8,7 @@ python-versions = "*"
 
 [[package]]
 name = "apologies"
-version = "0.1.28"
+version = "0.1.29"
 description = "Python code to play a game similar to Sorry"
 category = "main"
 optional = false
@@ -203,7 +203,7 @@ python-versions = "*"
 
 [[package]]
 name = "identify"
-version = "1.5.12"
+version = "1.5.13"
 description = "File identification library for Python"
 category = "dev"
 optional = false
@@ -804,7 +804,7 @@ testing = ["pytest (>=3.5,!=3.7.3)", "pytest-checkdocs (>=1.2.3)", "pytest-flake
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<4"
-content-hash = "55a6153c520d473d0299a04e9070175990ba8d44d3cf8fe323e73af146a6e241"
+content-hash = "6693c9f86d4474cc1c4107a08ad099848334a5dcd3f2d41a5d18698fed99c0af"
 
 [metadata.files]
 alabaster = [
@@ -812,8 +812,8 @@ alabaster = [
     {file = "alabaster-0.7.12.tar.gz", hash = "sha256:a661d72d58e6ea8a57f7a86e37d86716863ee5e92788398526d58b26a4e4dc02"},
 ]
 apologies = [
-    {file = "apologies-0.1.28-py3-none-any.whl", hash = "sha256:aca5dea97653297b1b2688cb8380439ee8b8e3dd470e448e719a664638c0d2d3"},
-    {file = "apologies-0.1.28.tar.gz", hash = "sha256:05364f5c2fafa34354e6c5e8174e06126fac2a5ace676e14a359a0ffe5211b8f"},
+    {file = "apologies-0.1.29-py3-none-any.whl", hash = "sha256:9a072e513e8466d7afdfe0ef0a34fb300e57d7aba48698a6721db14f5929761b"},
+    {file = "apologies-0.1.29.tar.gz", hash = "sha256:229b3ba4198d45a44cda7009357c35452b8787df5b25f2c40b3213bd90392df4"},
 ]
 appdirs = [
     {file = "appdirs-1.4.4-py2.py3-none-any.whl", hash = "sha256:a841dacd6b99318a741b166adb07e19ee71a274450e68237b4650ca1055ab128"},
@@ -934,8 +934,8 @@ filelock = [
     {file = "filelock-3.0.12.tar.gz", hash = "sha256:18d82244ee114f543149c66a6e0c14e9c4f8a1044b5cdaadd0f82159d6a6ff59"},
 ]
 identify = [
-    {file = "identify-1.5.12-py2.py3-none-any.whl", hash = "sha256:18994e850ba50c37bcaed4832be8b354d6a06c8fb31f54e0e7ece76d32f69bc8"},
-    {file = "identify-1.5.12.tar.gz", hash = "sha256:892473bf12e655884132a3a32aca737a3cbefaa34a850ff52d501773a45837bc"},
+    {file = "identify-1.5.13-py2.py3-none-any.whl", hash = "sha256:9dfb63a2e871b807e3ba62f029813552a24b5289504f5b071dea9b041aee9fe4"},
+    {file = "identify-1.5.13.tar.gz", hash = "sha256:70b638cf4743f33042bebb3b51e25261a0a10e80f978739f17e7fd4837664a66"},
 ]
 idna = [
     {file = "idna-2.10-py2.py3-none-any.whl", hash = "sha256:b97d804b1e9b523befed77c48dacec60e6dcb0b5391d57af6a65a312a90648c0"},

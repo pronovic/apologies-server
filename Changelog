@@ -9,4 +9,5 @@ Version 0.1.15    unreleased
 	* Make improvements to the MyPy and Pylint configuration.
 	* Move to a new two-step release process based on cedar-backup3.
 	* Create a changelog for the first time, along with new release process.
+	* Upgrade to latest apologies library (v0.1.29) to stay up-to-date.
 
