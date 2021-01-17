@@ -5,9 +5,10 @@ description = "Websocket server to interactively play the Apologies game"
 authors = ["Kenneth J. Pronovici <pronovic@ieee.org>"]
 license = "Apache-2.0"
 readme = "PyPI.md"
-homepage = "https://github.com/pronovic/apologies-server"
+homepage = "https://pypi.org/project/apologiesserver/"
 repository = "https://github.com/pronovic/apologies-server"
-include = ["LICENSE"]
+include = [ "Changelog", "LICENSE", "README.md", "docs", "tests", ]
+packages = [ { include = "apologiesserver", from = "src" } ]
 classifiers=[
    "Programming Language :: Python :: 3",
    "License :: OSI Approved :: Apache Software License",
