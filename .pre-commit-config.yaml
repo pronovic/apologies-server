@@ -39,6 +39,6 @@ repos:
     hooks:
       - id: system
         name: Pylint
-        entry: poetry run pylint --rcfile=.pylintrc src/apologiesserver tests
+        entry: poetry run pylint src/apologiesserver tests
         pass_filenames: false
         language: system
