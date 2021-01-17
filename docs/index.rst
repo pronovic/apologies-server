@@ -3,8 +3,11 @@ Apologies Server Python Library
 
 Release v\ |version|
 
-.. image:: https://img.shields.io/pypi/l/apologiesserver.svg
+.. image:: https://img.shields.io/pypi/v/apologiesserver.svg
     :target: https://pypi.org/project/apologiesserver/
+
+.. image:: https://img.shields.io/pypi/l/apologiesserver.svg
+    :target: https://github.com/pronovic/apologies-server/blob/master/LICENSE
 
 .. image:: https://img.shields.io/pypi/wheel/apologiesserver.svg
     :target: https://pypi.org/project/apologiesserver/
@@ -13,11 +16,10 @@ Release v\ |version|
     :target: https://pypi.org/project/apologiesserver/
 
 .. image:: https://github.com/pronovic/apologies-server/workflows/Test%20Suite/badge.svg
-    :target: https://github.com/pronovic/apologies-server
+    :target: https://github.com/pronovic/apologies-server/actions?query=workflow%3A%22Test+Suite%22
 
 .. image:: https://readthedocs.org/projects/apologies-server/badge/?version=stable&style=flat
     :target: https://apologies-server.readthedocs.io/en/stable/
-
 
 ApologiesServer_  is a Websocket_ server interface used to interactively play a
 multi-player game using the Apologies_ library. The Apologies library
