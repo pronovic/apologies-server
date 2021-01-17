@@ -293,6 +293,10 @@ case $1 in
       shift 1
       run_docs $*
       ;;
+   release)
+      shift 1
+      run_release $*
+      ;;
    publish)
       run_publish
       ;;
