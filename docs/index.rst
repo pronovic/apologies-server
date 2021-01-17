@@ -15,8 +15,8 @@ Release v\ |version|
 .. image:: https://github.com/pronovic/apologies-server/workflows/Test%20Suite/badge.svg
     :target: https://github.com/pronovic/apologies-server
 
-.. image:: https://readthedocs.org/projects/apologies-server/badge/?version=latest&style=flat
-    :target: https://apologies-server.readthedocs.io/en/latest/
+.. image:: https://readthedocs.org/projects/apologies-server/badge/?version=stable&style=flat
+    :target: https://apologies-server.readthedocs.io/en/stable/
 
 
 ApologiesServer_  is a Websocket_ server interface used to interactively play a

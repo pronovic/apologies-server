@@ -534,7 +534,7 @@ been making changes to the demo - or if it crashed or was interrupted - and the
 
 ### Documentation
 
-Documentation at [Read the Docs](https://apologies-server.readthedocs.io/en/latest/)
+Documentation at [Read the Docs](https://apologies-server.readthedocs.io/en/stable/)
 is generated via a GitHub hook each time code is pushed to master.  So, there
 is no formal release process for the documentation.
 
