@@ -1,4 +1,4 @@
-Version 0.1.15    unreleased
+Version 0.1.15     17 Jan 2021
 
 	* Update build system to use poetry.core.
 	* Fix the GitHub test suite by adding Python version into cache id.
