@@ -22,12 +22,12 @@ Switch ($command)
 
     mypy {
       Write-Output "Running mypy checks..." 
-      poetry run mypy --config-file=.mypyrc src/apologiesserver tests
+      poetry run mypy
     }
 
     pylint {
       Write-Output "Running pylint checks..." 
-      poetry run pylint --rcfile=.pylintrc src/apologiesserver tests
+      poetry run pylint -j 0 src/apologiesserver tests
     }
 }
 

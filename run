@@ -27,7 +27,7 @@ run_pylint() {
       run_install
    fi
 
-   poetry run pylint --rcfile=.pylintrc src/apologiesserver tests
+   poetry run pylint -j 0 src/apologiesserver tests
 }
 
 # Run the MyPy code checker
@@ -39,7 +39,7 @@ run_mypy() {
       run_install
    fi
 
-   poetry run mypy --config-file=.mypyrc src/apologiesserver tests
+   poetry run mypy
 }
 
 # Run the black code formatter
