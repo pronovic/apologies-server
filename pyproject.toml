@@ -28,6 +28,7 @@ apologies = "^0.1.29"
 websockets = "^8.1"
 asyncio-periodic = "^2019.2"
 ordered-set = "^4.0.1"
+safety = "^1.10.3"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2"
