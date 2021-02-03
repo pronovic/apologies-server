@@ -708,10 +708,10 @@ class _CattrConverter(cattr.Converter):
 
     def __init__(self) -> None:
         super().__init__()
-        self.register_unstructure_hook(DateTime, lambda value: value.format(_DATE_FORMAT) if value else None)
+        self.register_unstructure_hook(DateTime, lambda value: value.format(_DATE_FORMAT) if value else None)  # type: ignore
         self.register_structure_hook(DateTime, lambda value, _: parse(value) if value else None)
         for element in _ENUMS:
-            self.register_unstructure_hook(element, lambda value: value.name if value else None)
+            self.register_unstructure_hook(element, lambda value: value.name if value else None)  # type: ignore
             self.register_structure_hook(element, lambda value, _, e=element: e[value] if value else None)  # type: ignore
 
 
@@ -742,6 +742,7 @@ class Message:
             if value is not None:
                 raise ValueError("Message type %s does not allow a player id" % self.message.name)
 
+    # noinspection PyTypeHints
     @context.validator
     def _validate_context(self, _attribute: Attribute[Context], value: Context) -> None:
         if _CONTEXT[self.message] is not None:
@@ -756,6 +757,7 @@ class Message:
     def to_json(self) -> str:
         """Convert the request to JSON."""
         d = _CONVERTER.unstructure(self)  # pylint: disable=invalid-name
+        d["context"] = _CONVERTER.unstructure(self.context)
         if d["player_id"] is None:
             del d["player_id"]
         if d["context"] is None:
