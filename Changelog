@@ -1,3 +1,7 @@
+Version 0.1.16     unreleased
+
+	* Upgrade to cattrs 1.2.0 and handle related behavior changes.
+
 Version 0.1.15     17 Jan 2021
 
 	* Update build system to use poetry.core.
