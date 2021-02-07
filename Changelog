@@ -1,4 +1,4 @@
-Version 0.1.16     unreleased
+Version 0.1.16     07 Feb 2021
 
 	* Upgrade to cattrs 1.2.0 and handle related behavior changes.
 	* Update build process to include security scans using Safety.
