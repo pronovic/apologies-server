@@ -1,5 +1,5 @@
 alabaster==0.7.12; python_version >= "3.6"
-apologies==0.1.29; python_version >= "3.7" and python_version < "4"
+apologies==0.1.30; python_version >= "3.7" and python_version < "4"
 appdirs==1.4.4; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.6"
 astroid==2.4.2; python_version >= "3.6"
 asyncio-periodic==2019.2
@@ -38,7 +38,7 @@ packaging==20.9; python_version >= "3.6" and python_full_version < "3.0.0" or py
 pathspec==0.8.1; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.6"
 pendulum==2.1.2; python_version >= "3.7" and python_full_version < "3.0.0" and python_version < "4" or python_version >= "3.7" and python_version < "4" and python_full_version >= "3.5.0"
 pluggy==0.13.1; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.6"
-pre-commit==2.10.0; python_full_version >= "3.6.1"
+pre-commit==2.10.1; python_full_version >= "3.6.1"
 py==1.10.0; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.6"
 pygments==2.7.4; python_version >= "3.6"
 pylint==2.6.0; python_version >= "3.5"
@@ -66,7 +66,7 @@ toml==0.10.2; (python_version >= "2.6" and python_full_version < "3.0.0") or (py
 tox==3.21.4; (python_version >= "2.7" and python_full_version < "3.0.0") or (python_full_version >= "3.5.0")
 typed-ast==1.4.2; implementation_name == "cpython" and python_version < "3.8" and python_version >= "3.6"
 typing-extensions==3.7.4.3; python_version < "3.8" and python_version >= "3.6"
-unidecode==1.1.2; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.4.0" and python_version >= "3.6"
+unidecode==1.2.0; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.4.0" and python_version >= "3.6"
 urllib3==1.26.3; python_version >= "3.5" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version < "4" and python_version >= "3.5"
 virtualenv==20.4.2; python_full_version >= "3.6.1"
 websockets==8.1; python_full_version >= "3.6.1"
