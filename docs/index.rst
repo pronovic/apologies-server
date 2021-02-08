@@ -21,6 +21,9 @@ Release v\ |version|
 .. image:: https://readthedocs.org/projects/apologies-server/badge/?version=stable&style=flat
     :target: https://apologies-server.readthedocs.io/en/stable/
 
+.. image:: https://coveralls.io/repos/github/pronovic/apologies-server/badge.svg?branch=master
+    :target: https://coveralls.io/github/pronovic/apologies-server?branch=master
+
 ApologiesServer_  is a Websocket_ server interface used to interactively play a
 multi-player game using the Apologies_ library. The Apologies library
 implements a game similar to the Sorry_ board game.
