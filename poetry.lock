@@ -8,7 +8,7 @@ python-versions = "*"
 
 [[package]]
 name = "apologies"
-version = "0.1.30"
+version = "0.1.31"
 description = "Python code to play a game similar to Sorry"
 category = "main"
 optional = false
@@ -867,8 +867,8 @@ alabaster = [
     {file = "alabaster-0.7.12.tar.gz", hash = "sha256:a661d72d58e6ea8a57f7a86e37d86716863ee5e92788398526d58b26a4e4dc02"},
 ]
 apologies = [
-    {file = "apologies-0.1.30-py3-none-any.whl", hash = "sha256:31721ab0e8c112e6d5796b5c7ef4517d0fecc6c288a5aef96ee84caa131c17fc"},
-    {file = "apologies-0.1.30.tar.gz", hash = "sha256:d39ec8abc70fd60d2a4e39a62165a25dafe44188399ee6e2e648c0268771bd44"},
+    {file = "apologies-0.1.31-py3-none-any.whl", hash = "sha256:5b6e425b9fbd95f6df8058d9191a4fe6c8e6ecea1678c912d19866c03d2c732c"},
+    {file = "apologies-0.1.31.tar.gz", hash = "sha256:011ea39423eb3a16f9c0b702724574aa3153005d71e5b1d34dc38e8a3858a62d"},
 ]
 appdirs = [
     {file = "appdirs-1.4.4-py2.py3-none-any.whl", hash = "sha256:a841dacd6b99318a741b166adb07e19ee71a274450e68237b4650ca1055ab128"},

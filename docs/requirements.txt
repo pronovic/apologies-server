@@ -1,5 +1,5 @@
 alabaster==0.7.12; python_version >= "3.6"
-apologies==0.1.30; python_version >= "3.7" and python_version < "4"
+apologies==0.1.31; python_version >= "3.7" and python_version < "4"
 appdirs==1.4.4; python_version >= "3.6" and python_full_version < "3.0.0" or python_full_version >= "3.5.0" and python_version >= "3.6"
 astroid==2.4.2; python_version >= "3.6"
 asyncio-periodic==2019.2
