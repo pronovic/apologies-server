@@ -34,7 +34,7 @@ pytest = "^6.2"
 pytest-testdox = "^2.0.1"
 coverage = "^5.0.3"
 tox = "^3.14.5"
-pylint = ">=2.6.0,<2.7"   # bug with astroid and OrderedSet
+pylint = "^2.7.2"
 sphinx = "^3.4.3"
 toml = "^0.10.0"
 pre-commit = "^2.2.0"
