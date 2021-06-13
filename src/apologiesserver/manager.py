@@ -43,7 +43,7 @@ import pendulum
 from apologies import Character, Engine, GameMode, History, Move, NoOpInputSource, PlayerColor, PlayerView
 from ordered_set import OrderedSet  # this makes expected results easier to articulate in test code
 from pendulum.datetime import DateTime
-from websockets import WebSocketServerProtocol
+from websockets.legacy.server import WebSocketServerProtocol
 
 from .interface import *
 

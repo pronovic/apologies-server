@@ -15,7 +15,7 @@ from asyncio import TimeoutError  # pylint: disable=redefined-builtin
 from pathlib import Path
 from typing import Optional, Union, cast
 
-from websockets import WebSocketCommonProtocol
+from websockets.legacy.protocol import WebSocketCommonProtocol
 from websockets.typing import Data
 
 from .interface import Message, MessageType, ProcessingError, RequestFailedContext
