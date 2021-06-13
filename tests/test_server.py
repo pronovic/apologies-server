@@ -374,7 +374,7 @@ class TestCoroutines:
 
     @patch("apologiesserver.server._handle_shutdown")
     @patch("apologiesserver.server._handle_connection")
-    @patch("apologiesserver.server.websockets.serve")
+    @patch("apologiesserver.server.serve")
     async def test_websocket_server(self, serve, handle_connection, handle_shutdown):
         stop = asyncio.Future()
         stop.set_result(None)

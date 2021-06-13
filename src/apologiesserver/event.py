@@ -24,7 +24,7 @@ import attr
 import pendulum
 from apologies import Move, RewardV1InputSource, Rules
 from ordered_set import OrderedSet  # this makes expected results easier to articulate in test code
-from websockets import WebSocketServerProtocol
+from websockets.legacy.server import WebSocketServerProtocol
 
 from .config import config
 from .interface import *

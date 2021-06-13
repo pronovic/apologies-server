@@ -25,9 +25,8 @@ import sys
 from asyncio import AbstractEventLoop, CancelledError
 from typing import List, Optional, Tuple, cast
 
-import websockets
 from apologies import GameMode
-from websockets import WebSocketClientProtocol
+from websockets.legacy.client import WebSocketClientProtocol, connect
 
 from .interface import *
 from .server import SHUTDOWN_SIGNALS
@@ -166,7 +165,7 @@ async def _websocket_client(uri: str) -> None:
     """The asynchronous websocket client."""
     log.info("Completed starting websocket client")  # ok, it's a bit of a lie
     try:
-        async with websockets.connect(uri=uri) as websocket:
+        async with connect(uri=uri) as websocket:
             await _handle_connection(websocket)
     except Exception as e:  # pylint: disable=broad-except
         log.error("Error with connection: %s", str(e), exc_info=True)

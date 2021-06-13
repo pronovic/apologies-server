@@ -8,8 +8,8 @@ import sys
 from asyncio import AbstractEventLoop, Future  # pylint: disable=unused-import
 from typing import Any, Callable, Coroutine, Union  # pylint: disable=unused-import
 
-import websockets
-from websockets import WebSocketServerProtocol
+from websockets.exceptions import ConnectionClosed
+from websockets.legacy.server import WebSocketServerProtocol, serve
 
 from .config import config
 from .event import EventHandler, RequestContext
@@ -149,7 +149,7 @@ async def _handle_connection(websocket: WebSocketServerProtocol, _path: str) -> 
                 await _handle_data(data, websocket)
             except Exception as e:
                 await _handle_exception(e, websocket)
-    except websockets.exceptions.ConnectionClosed:  # we get this if the connection closes for any reason
+    except ConnectionClosed:  # we get this if the connection closes for any reason
         pass
     await _handle_disconnect(websocket)
 
@@ -165,7 +165,7 @@ async def _handle_shutdown() -> None:
 async def _websocket_server(stop: "Future[Any]", host: str, port: int, close_timeout_sec: float) -> None:
     """Websocket server."""
     log.info("Completed starting websocket server")  # ok, it's a bit of a lie
-    async with websockets.serve(_handle_connection, host=host, port=port, close_timeout=close_timeout_sec):
+    async with serve(_handle_connection, host=host, port=port, close_timeout=close_timeout_sec):
         await stop
         await _handle_shutdown()
 
