@@ -71,7 +71,7 @@ $ sudo apt-get install python3 python3-venv python3-pip
 
 Once that's done, make sure Python 3 is the default `python` on your
 system.  There are a couple of ways to do this, but using `update-alternatives` as
-discussed on [StackOverflow](https://unix.stackexchange.com/a/410851) is probably
+discussed on [StackExchange](https://unix.stackexchange.com/a/410851) is probably
 the best.
 
 Then, install Poetry in your home directory:
@@ -536,7 +536,7 @@ system keyring, and no other setup is required.  If you are using Debian, the
 process is more complicated.  See the notes below.
 
 First, in your PyPI [account settings](https://pypi.org/manage/account/),
-create an API token with upload permissions for the apologies-server project.
+create an API token with upload permissions for the apologiesserver project.
 Once you have a working keyring, configure Poetry following
 the [instructions](https://python-poetry.org/docs/repositories/#configuring-credentials):
 
