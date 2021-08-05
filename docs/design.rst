@@ -86,10 +86,9 @@ Reregister Player
 
 If a player has become disconnected, but still has access to its player id from
 the `Registration Completed` event, it may re-register and get access to its
-existing handle by providing the player id in the `Authentication` header as
-for any other request.  If the player id is no longer valid (because there
-has been a `Player Inactive` event for the player), this falls back
-on behavior equivalent to the `Register Player` request.  Successful
+existing handle by providing the player id.  If the player id is no longer
+valid (because there has been a `Player Inactive` event for the player), this
+falls back on behavior equivalent to the `Register Player` request.  Successful
 re-registration resets the player's last active timestamp and marks the player
 as active and connected.
 
