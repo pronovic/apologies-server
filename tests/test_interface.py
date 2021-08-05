@@ -43,7 +43,7 @@ def create_view() -> PlayerView:
 
 
 def create_moves_simple() -> List[Move]:
-    """Create a complex move for testing."""
+    """Create a simple move for testing."""
     pawn = Pawn(color=PlayerColor.RED, index=1, name="V", position=Position().move_to_safe(3))
     position = Position().move_to_square(10)
 

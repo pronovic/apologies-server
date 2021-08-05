@@ -241,6 +241,7 @@ class TestTrackedEngine:
     """
 
     # noinspection PyTypeChecker
+    # noinspection PyUnresolvedReferences
     @patch("apologiesserver.manager.CurrentTurn")
     def test_start_game(self, current_turn):
         replacement = MagicMock()

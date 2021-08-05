@@ -1,5 +1,6 @@
 Version 0.1.20     unreleased
 
+	* Minor tweaks to typos in comments.
 	* Run test suite with python-testdox for more verbose output.
 
 Version 0.1.19     17 Feb 2021

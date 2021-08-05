@@ -12,7 +12,7 @@ associated with requests, since the input is untrusted.  We assume that the
 unit tests and the Python type validations imposed by MyPy give us everything
 we need for events that are only built internally.
 
-The file notes/API.md includes a detailed discussion of each request and event.
+The file docs/design.rst includes a detailed discussion of each request and event.
 """
 
 from __future__ import annotations  # see: https://stackoverflow.com/a/33533514/2907667
