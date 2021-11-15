@@ -213,7 +213,7 @@ class ProcessingError(RuntimeError):
     handle = attr.ib(type=Optional[str], default=None)
 
     def __repr__(self) -> str:
-        return self.comment if self.comment else self.reason.value  # type: ignore
+        return self.comment if self.comment else self.reason.value
 
     def __str__(self) -> str:
         return self.__repr__()

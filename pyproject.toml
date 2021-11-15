@@ -24,29 +24,29 @@ apologies-server = 'apologiesserver.scripts:server'
 
 [tool.poetry.dependencies]
 python = ">=3.7,<4"
-apologies = "^0.1.29"
+apologies = "^0.1.34"
 websockets = "^9.1"
 asyncio-periodic = "^2019.2"
-ordered-set = "^4.0.1"
+ordered-set = "^4.0.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2"
 pytest-testdox = "^2.0.1"
-coverage = "^5.0.3"
-tox = "^3.14.5"
-pylint = "^2.7.2"
-sphinx = "^3.4.3"
-toml = "^0.10.0"
-pre-commit = "^2.2.0"
-black = "^20.8b1"
-mypy = "^0.790"
-isort = "^5.0.0"
-sphinx-autoapi = "^1.2.1"
-pytest-asyncio = "^0.12.0"
+coverage = "^6.1.1"
+tox = "^3.24.4"
+pylint = "^2.11.1"
+sphinx = "^4.3"
+toml = "^0.10.2"
+pre-commit = "^2.15.0"
+black = "^21.10b0"
+mypy = "^0.910"
+isort = "^5.10.0"
+sphinx-autoapi = "^1.8.4"
+pytest-asyncio = "^0.16.0"
 asynctest = "^0.13.0"
 ordered-set-stubs = "^0.1.3"
 safety = "^1.10.3"
-coveralls = "^3.0.0"
+coveralls = "^3.3.1"
 
 [tool.black]
 line-length = 132
