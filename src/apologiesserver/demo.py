@@ -184,7 +184,7 @@ def _add_signal_handlers(loop: AbstractEventLoop) -> None:
     log.info("Adding signal handlers...")
     for sig in SHUTDOWN_SIGNALS:
         if platform.system() == "Windows" or sys.platform == "win32":  # stupid MyPy
-            signal.signal(sig, lambda s, f: asyncio.create_task(_terminate()))  # type: ignore
+            signal.signal(sig, lambda s, f: asyncio.create_task(_terminate()))
         else:
             loop.add_signal_handler(sig, lambda: asyncio.create_task(_terminate()))
 
