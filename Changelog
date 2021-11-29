@@ -1,3 +1,7 @@
+Version 0.1.21     unreleased
+
+	* Remove the Safety scanner from the pre-commit hooks and GitHub action.
+
 Version 0.1.20     14 Nov 2021
 
 	* Minor tweaks to typos in comments.
