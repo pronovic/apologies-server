@@ -12,6 +12,7 @@ import re
 import sys
 import time
 from asyncio import TimeoutError  # pylint: disable=redefined-builtin
+from logging import FileHandler, StreamHandler
 from pathlib import Path
 from typing import Optional, Union, cast
 
@@ -70,7 +71,7 @@ def setup_logging(quiet: bool, verbose: bool, debug: bool, logfile_path: Optiona
     """Set up Python logging."""
     logger = logging.getLogger("apologies")
     logger.setLevel(logging.DEBUG)
-    handler = logging.FileHandler(logfile_path) if logfile_path else logging.StreamHandler(sys.stdout)
+    handler: StreamHandler = FileHandler(logfile_path) if logfile_path else StreamHandler(sys.stdout)  # type: ignore
     formatter = logging.Formatter(fmt="%(asctime)sZ --> [%(levelname)-7s] %(message)s")
     formatter.converter = time.gmtime  # type: ignore
     handler.setFormatter(formatter)
