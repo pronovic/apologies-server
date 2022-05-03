@@ -10,6 +10,10 @@ This project uses [Poetry](https://python-poetry.org/) to manage Python packagin
 
 A coding standard is enforced using [Black](https://github.com/psf/black), [isort](https://pypi.org/project/isort/) and [Pylint](https://www.pylint.org/).  Python 3 type hinting is validated using [MyPy](https://pypi.org/project/mypy/).  To reduce boilerplate, classes are defined using [Attrs](https://www.attrs.org/) (see this [rationale](https://glyph.twistedmatrix.com/2016/08/attrs.html)).
 
+To add dependencies use `poetry add package` (for runtime dependencies) or `poetry add --dev package` (for development environment dependencies).
+
+To update dependencies, use `poetry update`.  This will update all of the dependencies without taking you past any major version changes that are likely to be incompatible.  If you want to update a single package, use `poetry update package`. If you want to update past a major version change, either specify the version like `poetry add package=^2.0.3` or get the latest with `poetry add package@latest`.
+
 ## Pre-Commit Hooks
 
 We rely on pre-commit hooks to ensure that the code is properly-formatted,
