@@ -23,10 +23,11 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Type
 
 import attr
-import cattr
+import cattrs
 from apologies import Action, ActionType, CardType, GameMode, History, Move, Pawn, Player, PlayerColor, PlayerView, Position
 from attr import Attribute
 from attr.validators import and_, in_
+from attrs import frozen
 from pendulum.datetime import DateTime
 from pendulum.parser import parse
 
@@ -204,13 +205,13 @@ class MessageType(Enum):
     GAME_PLAYER_TURN = "Game Player Turn"
 
 
-@attr.s(frozen=True, repr=False)
+@frozen(repr=False)
 class ProcessingError(RuntimeError):
     """Exception thrown when there is a general processing error."""
 
-    reason = attr.ib(type=FailureReason)
-    comment = attr.ib(type=Optional[str], default=None)
-    handle = attr.ib(type=Optional[str], default=None)
+    reason: FailureReason
+    comment: Optional[str] = None
+    handle: Optional[str] = None
 
     def __repr__(self) -> str:
         return self.comment if self.comment else self.reason.value
@@ -703,7 +704,7 @@ _ENUMS = [
 _DATE_FORMAT = "YYYY-MM-DDTHH:mm:ss,SSSZ"  # gives us something like "2020-04-27T09:02:14,334+00:00"
 
 
-class _CattrConverter(cattr.Converter):
+class _CattrConverter(cattrs.Converter):
     """
     Cattr converter for requests and events, to standardize conversion of dates and enumerations.
     """
