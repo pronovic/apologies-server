@@ -11,8 +11,8 @@ import os
 from configparser import ConfigParser, SectionProxy
 from typing import Any, Dict, Optional, Union
 
-import attr
-import cattr
+import cattrs
+from attrs import frozen
 
 from .util import homedir
 
@@ -69,7 +69,7 @@ DEFAULTS = {
 }
 
 # pylint: disable=too-many-instance-attributes
-@attr.s(frozen=True)
+@frozen
 class SystemConfig:
     """
     System configuration.
@@ -100,33 +100,33 @@ class SystemConfig:
         obsolete_game_check_delay_sec(int): Number of seconds to delay before the first Idle Player Check task
     """
 
-    logfile_path = attr.ib(type=str, default=DEFAULT_LOGFILE_PATH)
-    server_host = attr.ib(type=str, default=DEFAULT_SERVER_HOST)
-    server_port = attr.ib(type=int, default=DEFAULT_SERVER_PORT)
-    close_timeout_sec = attr.ib(type=int, default=DEFAULT_CLOSE_TIMEOUT_SEC)
-    websocket_limit = attr.ib(type=int, default=DEFAULT_WEBSOCKET_LIMIT)
-    total_game_limit = attr.ib(type=int, default=DEFAULT_TOTAL_GAME_LIMIT)
-    in_progress_game_limit = attr.ib(type=int, default=DEFAULT_IN_PROGRESS_GAME_LIMIT)
-    registered_player_limit = attr.ib(type=int, default=DEFAULT_REGISTERED_PLAYER_LIMIT)
-    websocket_idle_thresh_min = attr.ib(type=int, default=DEFAULT_WEBSOCKET_IDLE_THRESH_MIN)
-    websocket_inactive_thresh_min = attr.ib(type=int, default=DEFAULT_WEBSOCKET_INACTIVE_THRESH_MIN)
-    player_idle_thresh_min = attr.ib(type=int, default=DEFAULT_PLAYER_IDLE_THRESH_MIN)
-    player_inactive_thresh_min = attr.ib(type=int, default=DEFAULT_PLAYER_INACTIVE_THRESH_MIN)
-    game_idle_thresh_min = attr.ib(type=int, default=DEFAULT_GAME_IDLE_THRESH_MIN)
-    game_inactive_thresh_min = attr.ib(type=int, default=DEFAULT_GAME_INACTIVE_THRESH_MIN)
-    game_retention_thresh_min = attr.ib(type=int, default=DEFAULT_GAME_RETENTION_THRESH_MIN)
-    idle_websocket_check_period_sec = attr.ib(type=int, default=IDLE_WEBSOCKET_CHECK_PERIOD_SEC)
-    idle_websocket_check_delay_sec = attr.ib(type=int, default=IDLE_WEBSOCKET_CHECK_DELAY_SEC)
-    idle_player_check_period_sec = attr.ib(type=int, default=IDLE_PLAYER_CHECK_PERIOD_SEC)
-    idle_player_check_delay_sec = attr.ib(type=int, default=IDLE_PLAYER_CHECK_DELAY_SEC)
-    idle_game_check_period_sec = attr.ib(type=int, default=IDLE_GAME_CHECK_PERIOD_SEC)
-    idle_game_check_delay_sec = attr.ib(type=int, default=IDLE_GAME_CHECK_DELAY_SEC)
-    obsolete_game_check_period_sec = attr.ib(type=int, default=OBSOLETE_GAME_CHECK_PERIOD_SEC)
-    obsolete_game_check_delay_sec = attr.ib(type=int, default=OBSOLETE_GAME_CHECK_DELAY_SEC)
+    logfile_path: Optional[str] = DEFAULT_LOGFILE_PATH
+    server_host: str = DEFAULT_SERVER_HOST
+    server_port: int = DEFAULT_SERVER_PORT
+    close_timeout_sec: int = DEFAULT_CLOSE_TIMEOUT_SEC
+    websocket_limit: int = DEFAULT_WEBSOCKET_LIMIT
+    total_game_limit: int = DEFAULT_TOTAL_GAME_LIMIT
+    in_progress_game_limit: int = DEFAULT_IN_PROGRESS_GAME_LIMIT
+    registered_player_limit: int = DEFAULT_REGISTERED_PLAYER_LIMIT
+    websocket_idle_thresh_min: int = DEFAULT_WEBSOCKET_IDLE_THRESH_MIN
+    websocket_inactive_thresh_min: int = DEFAULT_WEBSOCKET_INACTIVE_THRESH_MIN
+    player_idle_thresh_min: int = DEFAULT_PLAYER_IDLE_THRESH_MIN
+    player_inactive_thresh_min: int = DEFAULT_PLAYER_INACTIVE_THRESH_MIN
+    game_idle_thresh_min: int = DEFAULT_GAME_IDLE_THRESH_MIN
+    game_inactive_thresh_min: int = DEFAULT_GAME_INACTIVE_THRESH_MIN
+    game_retention_thresh_min: int = DEFAULT_GAME_RETENTION_THRESH_MIN
+    idle_websocket_check_period_sec: int = IDLE_WEBSOCKET_CHECK_PERIOD_SEC
+    idle_websocket_check_delay_sec: int = IDLE_WEBSOCKET_CHECK_DELAY_SEC
+    idle_player_check_period_sec: int = IDLE_PLAYER_CHECK_PERIOD_SEC
+    idle_player_check_delay_sec: int = IDLE_PLAYER_CHECK_DELAY_SEC
+    idle_game_check_period_sec: int = IDLE_GAME_CHECK_PERIOD_SEC
+    idle_game_check_delay_sec: int = IDLE_GAME_CHECK_DELAY_SEC
+    obsolete_game_check_period_sec: int = OBSOLETE_GAME_CHECK_PERIOD_SEC
+    obsolete_game_check_delay_sec: int = OBSOLETE_GAME_CHECK_DELAY_SEC
 
     def to_json(self) -> str:
         """Serialize to JSON."""
-        return json.dumps(cattr.unstructure(self), indent="  ")
+        return json.dumps(cattrs.unstructure(self), indent="  ")
 
 
 _CONFIG: Optional[SystemConfig] = None

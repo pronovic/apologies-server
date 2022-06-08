@@ -684,7 +684,7 @@ class TestTrackedGame:
             }
             return colors
 
-        game._engine.start_game = stubbed_start_game
+        game._engine.start_game = stubbed_start_game  # pylint: disable=assigning-non-slot:
 
         game.game_state = GameState.ADVERTISED  # otherwise it's an illegal state
         game.last_active_date = None

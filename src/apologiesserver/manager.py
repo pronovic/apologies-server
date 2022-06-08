@@ -41,6 +41,7 @@ from uuid import uuid4
 import attr
 import pendulum
 from apologies import Character, Engine, GameMode, History, Move, NoOpInputSource, PlayerColor, PlayerView
+from attrs import define, field, frozen
 from ordered_set import OrderedSet  # this makes expected results easier to articulate in test code
 from pendulum.datetime import DateTime
 from websockets.legacy.server import WebSocketServerProtocol
@@ -79,27 +80,15 @@ _NAMES = [
 ]
 
 
-@attr.s
+@define
 class TrackedWebsocket:
     """The state that is tracked for a websocket within the state manager."""
 
-    websocket = attr.ib(type=WebSocketServerProtocol)
-    registration_date = attr.ib(type=DateTime)
-    last_active_date = attr.ib(type=DateTime)
-    activity_state = attr.ib(type=ActivityState, default=ActivityState.ACTIVE)
-    player_ids = attr.ib(type=OrderedSet[str])
-
-    @registration_date.default
-    def _default_registration_date(self) -> DateTime:
-        return pendulum.now()
-
-    @last_active_date.default
-    def _default_last_active_date(self) -> DateTime:
-        return pendulum.now()
-
-    @player_ids.default
-    def _default_player_ids(self) -> OrderedSet[str]:
-        return OrderedSet()
+    websocket: WebSocketServerProtocol
+    registration_date: DateTime = field(factory=pendulum.now)
+    last_active_date: DateTime = field(factory=pendulum.now)
+    activity_state: ActivityState = ActivityState.ACTIVE
+    player_ids: OrderedSet[str] = field(factory=OrderedSet)
 
     def mark_active(self) -> None:
         """Mark the websocket as active."""
@@ -116,27 +105,19 @@ class TrackedWebsocket:
 
 
 # pylint: disable=too-many-instance-attributes
-@attr.s
+@define
 class TrackedPlayer:
     """The state that is tracked for a player within the state manager."""
 
-    player_id = attr.ib(type=str, repr=False)  # treat as read-only; this is a secret, so we don't want it printed or logged
-    handle = attr.ib(type=str)  # treat as read-only
-    websocket = attr.ib(type=Optional[WebSocketServerProtocol])
-    registration_date = attr.ib(type=DateTime)
-    last_active_date = attr.ib(type=DateTime)
-    activity_state = attr.ib(type=ActivityState, default=ActivityState.ACTIVE)
-    connection_state = attr.ib(type=ConnectionState, default=ConnectionState.CONNECTED)
-    player_state = attr.ib(type=PlayerState, default=PlayerState.WAITING)
-    game_id = attr.ib(type=Optional[str], default=None)
-
-    @registration_date.default
-    def _default_registration_date(self) -> DateTime:
-        return pendulum.now()
-
-    @last_active_date.default
-    def _default_last_active_date(self) -> DateTime:
-        return pendulum.now()
+    player_id: str = field(repr=False)  # treat as read-only; this is a secret, so we don't want it printed or logged
+    handle: str  # treat as read-only
+    websocket: Optional[WebSocketServerProtocol]
+    registration_date: DateTime = field(factory=pendulum.now)
+    last_active_date: DateTime = field(factory=pendulum.now)
+    activity_state: ActivityState = ActivityState.ACTIVE
+    connection_state: ConnectionState = ConnectionState.CONNECTED
+    player_state: PlayerState = PlayerState.WAITING
+    game_id: Optional[str] = None
 
     @staticmethod
     def for_context(player_id: str, websocket: WebSocketServerProtocol, handle: str) -> TrackedPlayer:
@@ -191,14 +172,14 @@ class TrackedPlayer:
         self.connection_state = ConnectionState.DISCONNECTED
 
 
-@attr.s(frozen=True)
+@frozen
 class CurrentTurn:
 
-    handle = attr.ib(type=str)
-    color = attr.ib(type=PlayerColor)
-    view = attr.ib(type=PlayerView)
-    movelist = attr.ib(type=List[Move])
-    movedict = attr.ib(type=Dict[str, Move])
+    handle: str
+    color: PlayerColor
+    view: PlayerView
+    movelist: List[Move]
+    movedict: Dict[str, Move]
 
     def draw_again(self, engine: Engine) -> CurrentTurn:
         return CurrentTurn.for_handle(engine, self.handle, self.color)
@@ -216,17 +197,13 @@ class CurrentTurn:
         return CurrentTurn(handle=handle, color=color, view=view, movelist=movelist, movedict=movedict)
 
 
-@attr.s
+@define
 class TrackedEngine:
     """Wrapper over an Apologies game engine, to manage game play state for TrackedGame."""
 
-    _engine = attr.ib(type=Optional[Engine], default=None)
-    _colors = attr.ib(type=Dict[str, PlayerColor])
-    _current = attr.ib(type=Optional[CurrentTurn], default=None)
-
-    @_colors.default
-    def _default_colors(self) -> Dict[str, PlayerColor]:
-        return {}
+    _engine: Optional[Engine] = None
+    _colors: Dict[str, PlayerColor] = field(factory=dict)
+    _current: Optional[CurrentTurn] = None
 
     def start_game(self, mode: GameMode, handles: List[str]) -> Dict[str, PlayerColor]:
         """Start the game, returning a map from handle to assigned color."""
@@ -305,43 +282,27 @@ class TrackedEngine:
 
 
 # pylint: disable=too-many-instance-attributes,too-many-public-methods
-@attr.s
+@define(slots=False)
 class TrackedGame:
     """The state that is tracked for a game within the state manager."""
 
-    game_id = attr.ib(type=str)  # treat as read-only
-    advertiser_handle = attr.ib(type=str)  # treat as read-only
-    name = attr.ib(type=str)  # treat as read-only
-    mode = attr.ib(type=GameMode)  # treat as read-only
-    players = attr.ib(type=int)  # treat as read-only
-    visibility = attr.ib(type=Visibility)  # treat as read-only
-    invited_handles = attr.ib(type=List[str])  # treat as read-only
-    advertised_date = attr.ib(type=DateTime)
-    last_active_date = attr.ib(type=DateTime)
-    started_date = attr.ib(type=Optional[DateTime], default=None)
-    completed_date = attr.ib(type=Optional[DateTime], default=None)
-    game_state = attr.ib(type=GameState, default=GameState.ADVERTISED)
-    activity_state = attr.ib(type=ActivityState, default=ActivityState.ACTIVE)
-    cancelled_reason = attr.ib(type=Optional[CancelledReason], default=None)
-    completed_comment = attr.ib(type=Optional[str], default=None)
-    game_players = attr.ib(type=Dict[str, GamePlayer])
-    _engine = attr.ib(type=TrackedEngine)
-
-    @advertised_date.default
-    def _default_advertised_date(self) -> DateTime:
-        return pendulum.now()
-
-    @last_active_date.default
-    def _default_last_active_date(self) -> DateTime:
-        return pendulum.now()
-
-    @game_players.default
-    def _default_game_players(self) -> Dict[str, GamePlayer]:
-        return {}
-
-    @_engine.default
-    def _default_engine(self) -> TrackedEngine:
-        return TrackedEngine()
+    game_id: str  # treat as read-only
+    advertiser_handle: str  # treat as read-only
+    name: str  # treat as read-only
+    mode: GameMode  # treat as read-only
+    players: int  # treat as read-only
+    visibility: Visibility  # treat as read-only
+    invited_handles: List[str]  # treat as read-only
+    advertised_date: DateTime = field(factory=pendulum.now)
+    last_active_date: DateTime = field(factory=pendulum.now)
+    started_date: Optional[DateTime] = None
+    completed_date: Optional[DateTime] = None
+    game_state: GameState = GameState.ADVERTISED
+    activity_state: ActivityState = ActivityState.ACTIVE
+    cancelled_reason: Optional[CancelledReason] = None
+    completed_comment: Optional[str] = None
+    game_players: Dict[str, GamePlayer] = field(factory=dict)
+    _engine: TrackedEngine = field(factory=TrackedEngine)
 
     @staticmethod
     def for_context(advertiser_handle: str, game_id: str, context: AdvertiseGameContext) -> TrackedGame:
@@ -506,7 +467,8 @@ class TrackedGame:
         """Mark that the player has quit a game."""
         # We assume that if the player is in the middle of their turn, that the caller handles that cleanup
         if self.game_state == GameState.ADVERTISED:
-            del self.game_players[handle]  # if the game hasn't started, just remove them
+            # if the game hasn't started, just remove them
+            del self.game_players[handle]  # pylint: disable=unsupported-delete-operation:
         elif self.game_state == GameState.PLAYING:
             self.game_players[handle] = attr.evolve(self.game_players[handle], player_state=PlayerState.QUIT)
         else:
@@ -533,36 +495,16 @@ class TrackedGame:
 
 
 # noinspection PyMethodMayBeStatic
-@attr.s
+@define(slots=False)
 class StateManager:
 
     """Manages system state."""
 
-    lock = attr.ib(type=asyncio.Lock)
-    _websocket_map = attr.ib(type=Dict[WebSocketServerProtocol, TrackedWebsocket])
-    _game_map = attr.ib(type=Dict[str, TrackedGame])
-    _player_map = attr.ib(type=Dict[str, TrackedPlayer])
-    _handle_map = attr.ib(type=Dict[str, str])
-
-    @lock.default
-    def _default_lock(self) -> asyncio.Lock:
-        return asyncio.Lock()
-
-    @_websocket_map.default
-    def _default_websocket_map(self) -> Dict[WebSocketServerProtocol, TrackedWebsocket]:
-        return {}
-
-    @_game_map.default
-    def _default_game_map(self) -> Dict[str, TrackedGame]:
-        return {}
-
-    @_player_map.default
-    def _default_player_map(self) -> Dict[str, TrackedPlayer]:
-        return {}
-
-    @_handle_map.default
-    def _default_handle_map(self) -> Dict[str, str]:
-        return {}
+    lock: asyncio.Lock = field(factory=asyncio.Lock)
+    _websocket_map: Dict[WebSocketServerProtocol, TrackedWebsocket] = field(factory=dict)
+    _game_map: Dict[str, TrackedGame] = field(factory=dict)
+    _player_map: Dict[str, TrackedPlayer] = field(factory=dict)
+    _handle_map: Dict[str, str] = field(factory=dict)
 
     def mark_active(self, player: TrackedPlayer) -> None:
         """Mark a player and its associated websocket as active."""
@@ -584,7 +526,7 @@ class StateManager:
     def delete_websocket(self, websocket: WebSocketServerProtocol) -> None:
         """Delete a websocket, so it is no longer tracked."""
         if websocket in self._websocket_map:
-            del self._websocket_map[websocket]
+            del self._websocket_map[websocket]  # pylint: disable=unsupported-delete-operation:
 
     def get_websocket_count(self) -> int:
         """Return the number of connected websockets in the system."""
@@ -610,7 +552,7 @@ class StateManager:
     def delete_game(self, game: TrackedGame) -> None:
         """Delete a tracked game, so it is no longer tracked."""
         if game.game_id in self._game_map:
-            del self._game_map[game.game_id]
+            del self._game_map[game.game_id]  # pylint: disable=unsupported-delete-operation:
 
     def get_total_game_count(self) -> int:
         """Return the total number of games in the system."""
@@ -670,9 +612,9 @@ class StateManager:
         if player.websocket and player.websocket in self._websocket_map:
             self._websocket_map[player.websocket].player_ids.discard(player.player_id)
         if player.handle in self._handle_map:
-            del self._handle_map[player.handle]
+            del self._handle_map[player.handle]  # pylint: disable=unsupported-delete-operation:
         if player.player_id in self._player_map:
-            del self._player_map[player.player_id]
+            del self._player_map[player.player_id]  # pylint: disable=unsupported-delete-operation:
 
     def get_registered_player_count(self) -> int:
         """Return the number of registered players in the system."""
