@@ -20,9 +20,9 @@ import asyncio
 import logging
 from typing import List, Optional, Set, Tuple, cast
 
-import attr
 import pendulum
 from apologies import Move, RewardV1InputSource, Rules
+from attrs import define, field, frozen
 from ordered_set import OrderedSet  # this makes expected results easier to articulate in test code
 from websockets.legacy.server import WebSocketServerProtocol
 
@@ -34,38 +34,30 @@ from .util import close, send
 log = logging.getLogger("apologies.event")
 
 
-@attr.s(frozen=True)
+@frozen
 class RequestContext:
     """Context provided to a request handler method."""
 
-    message = attr.ib(type=Message)
-    websocket = attr.ib(type=WebSocketServerProtocol)
-    player = attr.ib(type=TrackedPlayer)
-    game = attr.ib(type=Optional[TrackedGame], default=None)
+    message: Message
+    websocket: WebSocketServerProtocol
+    player: TrackedPlayer
+    game: Optional[TrackedGame] = None
 
 
 # noinspection PyMethodMayBeStatic
-@attr.s
+@define(slots=False)
 class TaskQueue:
 
     """A queue of asynchronous tasks to be executed."""
 
-    messages = attr.ib(type=List[Tuple[str, WebSocketServerProtocol]])
-    disconnects = attr.ib(type=Set[WebSocketServerProtocol])
-
-    @messages.default
-    def _messages_default(self) -> List[Tuple[str, WebSocketServerProtocol]]:
-        return []
-
-    @disconnects.default
-    def _disconnects_default(self) -> OrderedSet[WebSocketServerProtocol]:
-        return OrderedSet()
+    messages: List[Tuple[str, WebSocketServerProtocol]] = field(factory=list)
+    disconnects: Set[WebSocketServerProtocol] = field(factory=OrderedSet)
 
     def is_empty(self) -> bool:
         return len(self.messages) == 0 and len(self.disconnects) == 0
 
     def clear(self) -> None:
-        del self.messages[:]
+        del self.messages[:]  # pylint: disable=unsupported-delete-operation:
         self.disconnects.clear()
 
     def message(
@@ -102,15 +94,11 @@ class TaskQueue:
 
 
 # pylint: disable=too-many-public-methods
-@attr.s
+@define(slots=False)
 class EventHandler:
 
-    manager = attr.ib(type=StateManager)
-    queue = attr.ib(type=TaskQueue)
-
-    @queue.default
-    def _default_queue(self) -> TaskQueue:
-        return TaskQueue()
+    manager: StateManager
+    queue: TaskQueue = field(factory=TaskQueue)
 
     def __enter__(self) -> EventHandler:
         self.queue.clear()
