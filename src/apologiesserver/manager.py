@@ -84,10 +84,20 @@ class TrackedWebsocket:
     """The state that is tracked for a websocket within the state manager."""
 
     websocket: WebSocketServerProtocol
-    registration_date: DateTime = field(factory=pendulum.now)
-    last_active_date: DateTime = field(factory=pendulum.now)
+    registration_date: DateTime = field()
+    last_active_date: DateTime = field()
     activity_state: ActivityState = ActivityState.ACTIVE
     player_ids: OrderedSet[str] = field(factory=OrderedSet)
+
+    # noinspection PyUnresolvedReferences
+    @registration_date.default
+    def _default_registration_date(self) -> DateTime:
+        return pendulum.now()  # not using field(factory=pendulum.now) to support mocking in unit tests
+
+    # noinspection PyUnresolvedReferences
+    @last_active_date.default
+    def _default_last_active_date(self) -> DateTime:
+        return pendulum.now()  # not using field(factory=pendulum.now) to support mocking in unit tests
 
     def mark_active(self) -> None:
         """Mark the websocket as active."""
