@@ -11,15 +11,14 @@ import warnings
 from enum import Enum
 from typing import Any, List, Pattern, Type
 
-import attr
-from attr import Attribute, attrs
+from attrs import Attribute, define, field
 
 
-@attrs(repr=False, slots=True, hash=True)
+@define(repr=False, slots=True, hash=True)
 class _EnumValidator:
     """Validator for use by enum(), following the pattern from the standard attrs _InValidator."""
 
-    options = attr.ib(type=Type[Enum])
+    options: Type[Enum]
 
     def __call__(self, instance: Any, attribute: Attribute, value: Enum) -> None:  # type: ignore
         try:
@@ -35,24 +34,25 @@ class _EnumValidator:
             raise ValueError("'%s' must be one of [%s]" % (attribute.name, legal))
 
 
-@attrs(repr=False, slots=True, hash=True)
+@define(repr=False, slots=True, hash=True)
 class _LengthValidator:
     """Validator for use by maxlength(), following the pattern from the standard attrs _InValidator."""
 
-    maxlength = attr.ib(type=int)
+    maxlength: int
 
     def __call__(self, instance: Any, attribute: Attribute, value: str) -> None:  # type: ignore
         if len(value) > self.maxlength:
             raise ValueError("'%s' must not exceed length %d" % (attribute.name, self.maxlength))
 
 
-@attrs(repr=False, slots=True, hash=True)
+@define(repr=False, slots=True, hash=True)
 class _RegexValidator:
     """Validator for use by regex(), following the pattern from the standard attrs _InValidator."""
 
-    pattern = attr.ib(type=str)
-    compiled = attr.ib(type=Pattern[str])
+    pattern: str
+    compiled: Pattern[str] = field()
 
+    # noinspection PyUnresolvedReferences
     @compiled.default
     def _compiled_default(self) -> Pattern[str]:
         return re.compile(self.pattern)
