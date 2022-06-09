@@ -28,6 +28,7 @@ from apologies import Action, ActionType, CardType, GameMode, History, Move, Paw
 from attr import Attribute
 from attr.validators import and_, in_
 from attrs import frozen
+from cattrs.errors import ClassValidationError
 from pendulum.datetime import DateTime
 from pendulum.parser import parse
 
@@ -704,7 +705,7 @@ _ENUMS = [
 _DATE_FORMAT = "YYYY-MM-DDTHH:mm:ss,SSSZ"  # gives us something like "2020-04-27T09:02:14,334+00:00"
 
 
-class _CattrConverter(cattrs.Converter):
+class _CattrConverter(cattrs.GenConverter):
     """
     Cattr converter for requests and events, to standardize conversion of dates and enumerations.
     """
@@ -768,7 +769,7 @@ class Message:
         return json.dumps(d, indent="  ")
 
     @staticmethod
-    def for_json(data: str) -> Message:
+    def for_json(data: str) -> Message:  # pylint: disable=too-many-branches:
         """Create a request based on JSON data."""
         d = json.loads(data)  # pylint: disable=invalid-name
         if "message" not in d or d["message"] is None:
@@ -794,8 +795,18 @@ class Message:
                 raise ValueError("Message type %s requires a context" % message.name)
             try:
                 context = _CONVERTER.structure(d["context"], _CONTEXT[message])  # type: ignore
-            except KeyError as e:
-                raise ValueError("Invalid value %s" % str(e)) from e
-            except TypeError as e:
-                raise ValueError("Message type %s does not support this context" % message.name, e) from e
+            except ClassValidationError as e:
+                # Unfortunately, we can't always distinguish between all different kinds of bad
+                # input.  In particular, it's sometimes difficult to tell apart a single bad field
+                # in a valid context from a context of the wrong type.  We used to be able to
+                # distinguish more cases when using cattrs.Converter, but now that we need
+                # catts.GenConverter, we're stuck with less-useful error messages in some cases.
+                value_errors = [c for c in e.exceptions if isinstance(c, ValueError)]
+                key_errors = [c for c in e.exceptions if isinstance(c, KeyError)]
+                if value_errors:
+                    raise value_errors[0]
+                elif key_errors:
+                    raise ValueError("Invalid value %s" % str(key_errors[0])) from e
+                else:
+                    raise ValueError("Message type %s does not support this context" % message.name, e) from e
         return Message(message, player_id, context)

@@ -283,7 +283,7 @@ class TestGeneral:
           }
         }
         """
-        with pytest.raises(ValueError, match=r"Message type ADVERTISE_GAME does not support this context"):
+        with pytest.raises(ValueError, match=r"Invalid value 'name'"):
             Message.for_json(data)
 
     def test_from_json_unknown_message(self) -> None:
