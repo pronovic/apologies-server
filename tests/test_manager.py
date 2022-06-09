@@ -8,7 +8,6 @@ from unittest.mock import MagicMock, patch
 
 import pendulum
 import pytest
-from apologies.engine import Character
 from apologies.game import GameMode, PlayerColor
 from apologies.rules import Rules
 from apologies.source import NoOpInputSource, RewardV1InputSource
@@ -258,10 +257,11 @@ class TestTrackedEngine:
         colors = engine.start_game(mode, handles)
         assert colors == engine._colors and colors is not engine._colors  # it's a copy
         assert engine._engine.mode == mode
-        assert engine._engine.characters == [
-            Character(name="leela", source=NoOpInputSource()),
-            Character(name="bender", source=NoOpInputSource()),
-        ]
+        assert len(engine._engine.characters) == 2
+        assert engine._engine.characters[0].name == "leela"
+        assert isinstance(engine._engine.characters[0].source, NoOpInputSource)
+        assert engine._engine.characters[1].name == "bender"
+        assert isinstance(engine._engine.characters[1].source, NoOpInputSource)
         assert engine._engine.started is True
         assert "leela" in engine._colors and "bender" in engine._colors and engine._colors["leela"] != engine._colors["bender"]
         assert engine._current is replacement
@@ -684,7 +684,7 @@ class TestTrackedGame:
             }
             return colors
 
-        game._engine.start_game = stubbed_start_game
+        game._engine.start_game = stubbed_start_game  # pylint: disable=assigning-non-slot:
 
         game.game_state = GameState.ADVERTISED  # otherwise it's an illegal state
         game.last_active_date = None

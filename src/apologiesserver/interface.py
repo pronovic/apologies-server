@@ -22,11 +22,12 @@ from abc import ABC
 from enum import Enum
 from typing import Any, Dict, List, Optional, Type
 
-import attr
-import cattr
+import cattrs
 from apologies import Action, ActionType, CardType, GameMode, History, Move, Pawn, Player, PlayerColor, PlayerView, Position
 from attr import Attribute
 from attr.validators import and_, in_
+from attrs import define, field, frozen
+from cattrs.errors import ClassValidationError
 from pendulum.datetime import DateTime
 from pendulum.parser import parse
 
@@ -204,13 +205,13 @@ class MessageType(Enum):
     GAME_PLAYER_TURN = "Game Player Turn"
 
 
-@attr.s(frozen=True, repr=False)
+@frozen(repr=False)
 class ProcessingError(RuntimeError):
     """Exception thrown when there is a general processing error."""
 
-    reason = attr.ib(type=FailureReason)
-    comment = attr.ib(type=Optional[str], default=None)
-    handle = attr.ib(type=Optional[str], default=None)
+    reason: FailureReason
+    comment: Optional[str] = None
+    handle: Optional[str] = None
 
     def __repr__(self) -> str:
         return self.comment if self.comment else self.reason.value
@@ -219,53 +220,53 @@ class ProcessingError(RuntimeError):
         return self.__repr__()
 
 
-@attr.s(frozen=True)
+@frozen
 class GamePlayer:
     """The public definition of a player within a game."""
 
-    handle = attr.ib(type=str)
-    player_color = attr.ib(type=Optional[PlayerColor])
-    player_type = attr.ib(type=PlayerType)
-    player_state = attr.ib(type=PlayerState)
+    handle: str
+    player_color: Optional[PlayerColor]
+    player_type: PlayerType
+    player_state: PlayerState
 
 
-@attr.s(frozen=True)
+@frozen
 class RegisteredPlayer:
     """The public definition of a player registered with the system."""
 
-    handle = attr.ib(type=str)
-    registration_date = attr.ib(type=DateTime)
-    last_active_date = attr.ib(type=DateTime)
-    connection_state = attr.ib(type=ConnectionState)
-    activity_state = attr.ib(type=ActivityState)
-    player_state = attr.ib(type=PlayerState)
-    game_id = attr.ib(type=Optional[str])
+    handle: str
+    registration_date: DateTime
+    last_active_date: DateTime
+    connection_state: ConnectionState
+    activity_state: ActivityState
+    player_state: PlayerState
+    game_id: Optional[str]
 
 
-@attr.s(frozen=True)
+@frozen
 class AdvertisedGame:
     """A game that has been advertised in the system."""
 
-    game_id = attr.ib(type=str)
-    name = attr.ib(type=str)
-    mode = attr.ib(type=GameMode)
-    advertiser_handle = attr.ib(type=str)
-    players = attr.ib(type=int)
-    available = attr.ib(type=int)
-    visibility = attr.ib(type=Visibility)
-    invited_handles = attr.ib(type=List[str])
+    game_id: str
+    name: str
+    mode: GameMode
+    advertiser_handle: str
+    players: int
+    available: int
+    visibility: Visibility
+    invited_handles: List[str]
 
 
-@attr.s(frozen=True)
+@frozen
 class GameStatePawn:
     """State of a pawn in a game."""
 
-    color = attr.ib(type=PlayerColor)
-    id = attr.ib(type=str)
-    start = attr.ib(type=bool)
-    home = attr.ib(type=bool)
-    safe = attr.ib(type=Optional[int])
-    square = attr.ib(type=Optional[int])
+    color: PlayerColor
+    id: str
+    start: bool
+    home: bool
+    safe: Optional[int]
+    square: Optional[int]
 
     @staticmethod
     def for_pawn(pawn: Pawn) -> GameStatePawn:
@@ -290,14 +291,14 @@ class GameStatePawn:
         return GameStatePawn(color, index, start, home, safe, square)
 
 
-@attr.s(frozen=True)
+@frozen
 class GameStatePlayer:
     """Player in a game, when describing the state of the board."""
 
-    color = attr.ib(type=PlayerColor)
-    turns = attr.ib(type=int)
-    hand = attr.ib(type=List[CardType])
-    pawns = attr.ib(type=List[GameStatePawn])
+    color: PlayerColor
+    turns: int
+    hand: List[CardType]
+    pawns: List[GameStatePawn]
 
     @staticmethod
     def for_player(player: Player) -> GameStatePlayer:
@@ -309,26 +310,26 @@ class GameStatePlayer:
         return GameStatePlayer(color, turns, hand, pawns)
 
 
-@attr.s
+@define
 class GameStateHistory:
     """History for a game."""
 
-    action = attr.ib(type=str)
-    color = attr.ib(type=Optional[PlayerColor])
-    card = attr.ib(type=Optional[CardType])
-    timestamp = attr.ib(type=DateTime)
+    action: str
+    color: Optional[PlayerColor]
+    card: Optional[CardType]
+    timestamp: DateTime
 
     @staticmethod
     def for_history(history: History) -> GameStateHistory:
         return GameStateHistory(action=history.action, color=history.color, card=history.card, timestamp=history.timestamp)
 
 
-@attr.s(frozen=True)
+@frozen
 class GameAction:
     """An action applied to a pawn in a game."""
 
-    start = attr.ib(type=GameStatePawn)
-    end = attr.ib(type=GameStatePawn)
+    start: GameStatePawn
+    end: GameStatePawn
 
     @staticmethod
     def for_action(action: Action) -> GameAction:
@@ -339,19 +340,21 @@ class GameAction:
             end = GameStatePawn.for_position(action.pawn, Position().move_to_start())
             return GameAction(start, end)
         else:  # action.actiontype == ActionType.MOVE_TO_POSITION
+            if not action.position:
+                raise ValueError("Action has no associated position")
             start = GameStatePawn.for_pawn(action.pawn)
             end = GameStatePawn.for_position(action.pawn, action.position)
             return GameAction(start, end)
 
 
-@attr.s(frozen=True)
+@frozen
 class GameMove:
     """A move that may be executed as a result of a player's turn."""
 
-    move_id = attr.ib(type=str)
-    card = attr.ib(type=CardType)
-    actions = attr.ib(type=List[GameAction])
-    side_effects = attr.ib(type=List[GameAction])
+    move_id: str
+    card: CardType
+    actions: List[GameAction]
+    side_effects: List[GameAction]
 
     @staticmethod
     def for_move(move: Move) -> GameMove:
@@ -377,202 +380,202 @@ HANDLE_REGEX = r"[a-zA-Z0-9_-]+"
 """Regular expression that handles must match."""
 
 
-@attr.s(frozen=True)
+@frozen
 class RegisterPlayerContext(Context):
     """Context for a REGISTER_PLAYER request."""
 
-    handle = attr.ib(type=str, validator=and_(string, length(MAX_HANDLE), regex(HANDLE_REGEX)))
+    handle: str = field(validator=and_(string, length(MAX_HANDLE), regex(HANDLE_REGEX)))
 
 
-@attr.s(frozen=True)
+@frozen
 class ReregisterPlayerContext(Context):
     """Context for a REREGISTER_PLAYER request."""
 
-    handle = attr.ib(type=str, validator=and_(string, length(MAX_HANDLE), regex(HANDLE_REGEX)))
+    handle: str = field(validator=and_(string, length(MAX_HANDLE), regex(HANDLE_REGEX)))
 
 
-@attr.s(frozen=True)
+@frozen
 class AdvertiseGameContext(Context):
     """Context for an ADVERTISE_GAME request."""
 
-    name = attr.ib(type=str, validator=and_(string, length(MAX_GAME_NAME)))
-    mode = attr.ib(type=GameMode, validator=enum(GameMode))
-    players = attr.ib(type=int, validator=in_([2, 3, 4]))
-    visibility = attr.ib(type=Visibility, validator=enum(Visibility))
-    invited_handles = attr.ib(type=List[str], validator=stringlist)
+    name: str = field(validator=and_(string, length(MAX_GAME_NAME)))
+    mode: GameMode = field(validator=enum(GameMode))
+    players: int = field(validator=in_([2, 3, 4]))
+    visibility: Visibility = field(validator=enum(Visibility))
+    invited_handles: List[str] = field(validator=stringlist)
 
 
-@attr.s(frozen=True)
+@frozen
 class JoinGameContext(Context):
     """Context for a JOIN_GAME request."""
 
-    game_id = attr.ib(type=str, validator=string)
+    game_id: str = field(validator=string)
 
 
-@attr.s(frozen=True)
+@frozen
 class ExecuteMoveContext(Context):
     """Context for an EXECUTE_MOVE request."""
 
-    move_id = attr.ib(type=str, validator=string)
+    move_id: str = field(validator=string)
 
 
-@attr.s(frozen=True)
+@frozen
 class SendMessageContext(Context):
     """Context for an SEND_MESSAGE request."""
 
-    message = attr.ib(type=str, validator=string)
-    recipient_handles = attr.ib(type=List[str], validator=and_(stringlist, notempty))
+    message: str = field(validator=string)
+    recipient_handles: List[str] = field(validator=and_(stringlist, notempty))
 
 
-@attr.s(frozen=True)
+@frozen
 class RequestFailedContext(Context):
     """Context for a REQUEST_FAILED event."""
 
-    reason = attr.ib(type=FailureReason)
-    comment = attr.ib(type=Optional[str])
-    handle = attr.ib(type=Optional[str], default=None)
+    reason: FailureReason
+    comment: Optional[str]
+    handle: Optional[str] = None
 
 
-@attr.s(frozen=True)
+@frozen
 class RegisteredPlayersContext(Context):
     """Context for a REGISTERED_PLAYERS event."""
 
-    players = attr.ib(type=List[RegisteredPlayer])
+    players: List[RegisteredPlayer]
 
 
-@attr.s(frozen=True)
+@frozen
 class AvailableGamesContext(Context):
     """Context for an AVAILABLE_GAMES event."""
 
-    games = attr.ib(type=List[AdvertisedGame])
+    games: List[AdvertisedGame]
 
 
-@attr.s(frozen=True)
+@frozen
 class PlayerRegisteredContext(Context):
     """Context for a PLAYER_REGISTERED event."""
 
-    handle = attr.ib(type=str)
+    handle: str
 
 
-@attr.s(frozen=True)
+@frozen
 class PlayerUnregisteredContext(Context):
     """Context for a PLAYER_UNREGISTERED event."""
 
-    handle = attr.ib(type=str)
+    handle: str
 
 
-@attr.s(frozen=True)
+@frozen
 class PlayerIdleContext(Context):
     """Context for a PLAYER_IDLE event."""
 
-    handle = attr.ib(type=str)
+    handle: str
 
 
-@attr.s(frozen=True)
+@frozen
 class PlayerInactiveContext(Context):
     """Context for a PLAYER_INACTIVE event."""
 
-    handle = attr.ib(type=str)
+    handle: str
 
 
-@attr.s(frozen=True)
+@frozen
 class PlayerMessageReceivedContext(Context):
     """Context for a PLAYER_MESSAGE_RECEIVED event."""
 
-    sender_handle = attr.ib(type=str)
-    recipient_handles = attr.ib(type=List[str])
-    message = attr.ib(type=str)
+    sender_handle: str
+    recipient_handles: List[str]
+    message: str
 
 
-@attr.s(frozen=True)
+@frozen
 class GameAdvertisedContext(Context):
     """Context for a GAME_ADVERTISED event."""
 
-    game = attr.ib(type=AdvertisedGame)
+    game: AdvertisedGame
 
 
-@attr.s(frozen=True)
+@frozen
 class GameInvitationContext(Context):
     """Context for a GAME_INVITATION event."""
 
-    game = attr.ib(type=AdvertisedGame)
+    game: AdvertisedGame
 
 
-@attr.s(frozen=True)
+@frozen
 class GameJoinedContext(Context):
     """Context for a GAME_JOINED event."""
 
-    player_handle = attr.ib(type=str)
-    game_id = attr.ib(type=str)
-    name = attr.ib(type=str)
-    mode = attr.ib(type=GameMode)
-    advertiser_handle = attr.ib(type=str)
+    player_handle: str
+    game_id: str
+    name: str
+    mode: GameMode
+    advertiser_handle: str
 
 
-@attr.s(frozen=True)
+@frozen
 class GameStartedContext(Context):
     """Context for a GAME_STARTED event."""
 
-    game_id = attr.ib(type=str)
+    game_id: str
 
 
-@attr.s(frozen=True)
+@frozen
 class GameCancelledContext(Context):
     """Context for a GAME_CANCELLED event."""
 
-    game_id = attr.ib(type=str)
-    reason = attr.ib(type=CancelledReason)
-    comment = attr.ib(type=Optional[str])
+    game_id: str
+    reason: CancelledReason
+    comment: Optional[str]
 
 
-@attr.s(frozen=True)
+@frozen
 class GameCompletedContext(Context):
     """Context for a GAME_COMPLETED event."""
 
-    game_id = attr.ib(type=str)
-    winner = attr.ib(type=str)
-    comment = attr.ib(type=str)
+    game_id: str
+    winner: str
+    comment: str
 
 
-@attr.s(frozen=True)
+@frozen
 class GameIdleContext(Context):
     """Context for a GAME_IDLE event."""
 
-    game_id = attr.ib(type=str)
+    game_id: str
 
 
-@attr.s(frozen=True)
+@frozen
 class GameInactiveContext(Context):
     """Context for a GAME_INACTIVE event."""
 
-    game_id = attr.ib(type=str)
+    game_id: str
 
 
-@attr.s(frozen=True)
+@frozen
 class GamePlayerQuitContext(Context):
     """Context for a GAME_PLAYER_LEFT event."""
 
-    handle = attr.ib(type=str)
-    game_id = attr.ib(type=str)
+    handle: str
+    game_id: str
 
 
-@attr.s(frozen=True)
+@frozen
 class GamePlayerChangeContext(Context):
     """Context for a GAME_PLAYER_CHANGE event."""
 
-    game_id = attr.ib(type=str)
-    comment = attr.ib(type=Optional[str])
-    players = attr.ib(type=List[GamePlayer])
+    game_id: str
+    comment: Optional[str]
+    players: List[GamePlayer]
 
 
-@attr.s(frozen=True)
+@frozen
 class GameStateChangeContext(Context):
     """Context for a GAME_STATE_CHANGE event."""
 
-    game_id = attr.ib(type=str)
-    recent_history = attr.ib(type=List[GameStateHistory])
-    player = attr.ib(type=GameStatePlayer)
-    opponents = attr.ib(type=List[GameStatePlayer])
+    game_id: str
+    recent_history: List[GameStateHistory]
+    player: GameStatePlayer
+    opponents: List[GameStatePlayer]
 
     @staticmethod
     def for_context(game_id: str, view: PlayerView, history: List[History]) -> GameStateChangeContext:
@@ -583,14 +586,14 @@ class GameStateChangeContext(Context):
         return GameStateChangeContext(game_id=game_id, recent_history=recent_history, player=player, opponents=opponents)
 
 
-@attr.s(frozen=True)
+@frozen
 class GamePlayerTurnContext(Context):
     """Context for a GAME_PLAYER_TURN event."""
 
-    handle = attr.ib(type=str)
-    game_id = attr.ib(type=str)
-    drawn_card = attr.ib(type=Optional[CardType])
-    moves = attr.ib(type=Dict[str, GameMove])
+    handle: str
+    game_id: str
+    drawn_card: Optional[CardType]
+    moves: Dict[str, GameMove]
 
     @staticmethod
     def for_moves(handle: str, game_id: str, moves: List[Move]) -> GamePlayerTurnContext:
@@ -701,7 +704,7 @@ _ENUMS = [
 _DATE_FORMAT = "YYYY-MM-DDTHH:mm:ss,SSSZ"  # gives us something like "2020-04-27T09:02:14,334+00:00"
 
 
-class _CattrConverter(cattr.Converter):
+class _CattrConverter(cattrs.GenConverter):
     """
     Cattr converter for requests and events, to standardize conversion of dates and enumerations.
     """
@@ -720,19 +723,20 @@ _CONVERTER = _CattrConverter()
 
 
 # noinspection PyTypeChecker
-@attr.s(frozen=True)
+@frozen
 class Message:
     """A message that is part of the public interface, either a client request or a published event."""
 
-    message = attr.ib(type=MessageType)
-    player_id = attr.ib(type=Optional[str], default=None, repr=False)  # this is a secret, so we don't want it printed or logged
-    context = attr.ib(type=Any, default=None)
+    message: MessageType = field()
+    player_id: Optional[str] = field(default=None, repr=False)  # this is a secret, so we don't want it printed or logged
+    context: Any = field(default=None)
 
     @message.validator
     def _validate_message(self, attribute: Attribute[MessageType], value: MessageType) -> None:
         if value is None or not isinstance(value, MessageType):
             raise ValueError("'%s' must be a MessageType" % attribute.name)
 
+    # noinspection PyUnresolvedReferences
     @player_id.validator
     def _validate_player_id(self, _attribute: Attribute[str], value: str) -> None:
         if _PLAYER_ID[self.message]:
@@ -765,7 +769,7 @@ class Message:
         return json.dumps(d, indent="  ")
 
     @staticmethod
-    def for_json(data: str) -> Message:
+    def for_json(data: str) -> Message:  # pylint: disable=too-many-branches:
         """Create a request based on JSON data."""
         d = json.loads(data)  # pylint: disable=invalid-name
         if "message" not in d or d["message"] is None:
@@ -791,8 +795,18 @@ class Message:
                 raise ValueError("Message type %s requires a context" % message.name)
             try:
                 context = _CONVERTER.structure(d["context"], _CONTEXT[message])  # type: ignore
-            except KeyError as e:
-                raise ValueError("Invalid value %s" % str(e)) from e
-            except TypeError as e:
-                raise ValueError("Message type %s does not support this context" % message.name, e) from e
+            except ClassValidationError as e:
+                # Unfortunately, we can't always distinguish between all different kinds of bad
+                # input.  In particular, it's sometimes difficult to tell apart a single bad field
+                # in a valid context from a context of the wrong type.  We used to be able to
+                # distinguish more cases when using cattrs.Converter, but now that we need
+                # catts.GenConverter, we're stuck with less-useful error messages in some cases.
+                value_errors = [c for c in e.exceptions if isinstance(c, ValueError)]
+                key_errors = [c for c in e.exceptions if isinstance(c, KeyError)]
+                if value_errors:
+                    raise value_errors[0]
+                elif key_errors:
+                    raise ValueError("Invalid value %s" % str(key_errors[0])) from e
+                else:
+                    raise ValueError("Message type %s does not support this context" % message.name, e) from e
         return Message(message, player_id, context)
