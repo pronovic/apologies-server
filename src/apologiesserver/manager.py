@@ -38,10 +38,9 @@ import random
 from typing import Dict, List, Optional, Tuple
 from uuid import uuid4
 
-import attr
 import pendulum
 from apologies import Character, Engine, GameMode, History, Move, NoOpInputSource, PlayerColor, PlayerView
-from attrs import define, field, frozen
+from attrs import define, evolve, field, frozen
 from ordered_set import OrderedSet  # this makes expected results easier to articulate in test code
 from pendulum.datetime import DateTime
 from websockets.legacy.server import WebSocketServerProtocol
@@ -281,6 +280,7 @@ class TrackedEngine:
         return False, None, None
 
 
+# noinspection PyDataclass
 # pylint: disable=too-many-instance-attributes,too-many-public-methods
 @define(slots=False)
 class TrackedGame:
@@ -436,7 +436,7 @@ class TrackedGame:
             self._mark_joined_programmatic()  # fill in remaining players as necessary
         colors = self._engine.start_game(self.mode, list(self.game_players.keys()))
         for handle in self.game_players:
-            self.game_players[handle] = attr.evolve(
+            self.game_players[handle] = evolve(
                 self.game_players[handle], player_color=colors[handle], player_state=PlayerState.PLAYING
             )
 
@@ -448,7 +448,7 @@ class TrackedGame:
         self.game_state = GameState.COMPLETED
         self.completed_comment = comment
         for handle in self.game_players:
-            self.game_players[handle] = attr.evolve(self.game_players[handle], player_state=PlayerState.FINISHED)
+            self.game_players[handle] = evolve(self.game_players[handle], player_state=PlayerState.FINISHED)
         self._engine.stop_game()
 
     def mark_cancelled(self, reason: CancelledReason, comment: Optional[str] = None) -> None:
@@ -460,7 +460,7 @@ class TrackedGame:
         self.cancelled_reason = reason
         self.completed_comment = comment
         for handle in self.game_players:
-            self.game_players[handle] = attr.evolve(self.game_players[handle], player_state=PlayerState.FINISHED)
+            self.game_players[handle] = evolve(self.game_players[handle], player_state=PlayerState.FINISHED)
         self._engine.stop_game()
 
     def mark_quit(self, handle: str) -> None:
@@ -470,7 +470,7 @@ class TrackedGame:
             # if the game hasn't started, just remove them
             del self.game_players[handle]  # pylint: disable=unsupported-delete-operation:
         elif self.game_state == GameState.PLAYING:
-            self.game_players[handle] = attr.evolve(self.game_players[handle], player_state=PlayerState.QUIT)
+            self.game_players[handle] = evolve(self.game_players[handle], player_state=PlayerState.QUIT)
         else:
             raise ProcessingError(FailureReason.INTERNAL_ERROR, "Illegal state for operation")
 
