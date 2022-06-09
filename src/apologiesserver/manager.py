@@ -121,12 +121,22 @@ class TrackedPlayer:
     player_id: str = field(repr=False)  # treat as read-only; this is a secret, so we don't want it printed or logged
     handle: str  # treat as read-only
     websocket: Optional[WebSocketServerProtocol]
-    registration_date: DateTime = field(factory=pendulum.now)
-    last_active_date: DateTime = field(factory=pendulum.now)
+    registration_date: DateTime = field()
+    last_active_date: DateTime = field()
     activity_state: ActivityState = ActivityState.ACTIVE
     connection_state: ConnectionState = ConnectionState.CONNECTED
     player_state: PlayerState = PlayerState.WAITING
     game_id: Optional[str] = None
+
+    # noinspection PyUnresolvedReferences
+    @registration_date.default
+    def _default_registration_date(self) -> DateTime:
+        return pendulum.now()  # not using field(factory=pendulum.now) to support mocking in unit tests
+
+    # noinspection PyUnresolvedReferences
+    @last_active_date.default
+    def _default_last_active_date(self) -> DateTime:
+        return pendulum.now()  # not using field(factory=pendulum.now) to support mocking in unit tests
 
     @staticmethod
     def for_context(player_id: str, websocket: WebSocketServerProtocol, handle: str) -> TrackedPlayer:
@@ -303,8 +313,8 @@ class TrackedGame:
     players: int  # treat as read-only
     visibility: Visibility  # treat as read-only
     invited_handles: List[str]  # treat as read-only
-    advertised_date: DateTime = field(factory=pendulum.now)
-    last_active_date: DateTime = field(factory=pendulum.now)
+    advertised_date: DateTime = field()
+    last_active_date: DateTime = field()
     started_date: Optional[DateTime] = None
     completed_date: Optional[DateTime] = None
     game_state: GameState = GameState.ADVERTISED
@@ -313,6 +323,16 @@ class TrackedGame:
     completed_comment: Optional[str] = None
     game_players: Dict[str, GamePlayer] = field(factory=dict)
     _engine: TrackedEngine = field(factory=TrackedEngine)
+
+    # noinspection PyUnresolvedReferences
+    @advertised_date.default
+    def _default_registration_date(self) -> DateTime:
+        return pendulum.now()  # not using field(factory=pendulum.now) to support mocking in unit tests
+
+    # noinspection PyUnresolvedReferences
+    @last_active_date.default
+    def _default_last_active_date(self) -> DateTime:
+        return pendulum.now()  # not using field(factory=pendulum.now) to support mocking in unit tests
 
     @staticmethod
     def for_context(advertiser_handle: str, game_id: str, context: AdvertiseGameContext) -> TrackedGame:
