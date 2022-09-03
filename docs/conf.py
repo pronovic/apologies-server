@@ -29,6 +29,7 @@ sys.path.insert(0, os.path.abspath("../src"))
 sys.path.insert(0, os.path.abspath("_themes"))
 
 # Pull metadata from the pyproject.toml file
+# noinspection PyTypeChecker
 metadata = toml.load(Path(__file__).parent.parent / "pyproject.toml")["tool"]["poetry"]
 
 # -- General configuration ------------------------------------------------
@@ -82,6 +83,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "Apologies Server"
+# noinspection PyShadowingBuiltins
 copyright = "2020-2021 Kenneth J. Pronovici"
 author = "Kenneth J. Pronovici"
 
