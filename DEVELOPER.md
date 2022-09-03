@@ -16,7 +16,7 @@ To update dependencies, use `poetry update`.  This will update all of the depend
 
 ## Pre-Commit Hooks
 
-We rely on pre-commit hooks to ensure that the code is properly-formatted,
+I rely on pre-commit hooks to ensure that the code is properly-formatted,
 clean, and type-safe when it's checked in.  The `run install` step described
 below installs the project pre-commit hooks into your repository.  These hooks
 are configured in [`.pre-commit-config.yaml`](.pre-commit-config.yaml).
