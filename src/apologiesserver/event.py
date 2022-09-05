@@ -93,7 +93,7 @@ class TaskQueue:
             await asyncio.wait(tasks)  # TODO: not entirely sure how we handle errors that happen here
 
 
-# pylint: disable=too-many-public-methods
+# pylint: disable=too-many-public-methods,too-many-instance-attributes:
 @define(slots=False)
 class EventHandler:
 

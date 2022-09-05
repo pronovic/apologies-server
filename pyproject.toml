@@ -29,18 +29,18 @@ classifiers=[
 apologies-server = 'apologiesserver.scripts:server'
 
 [tool.poetry.dependencies]
-python = ">=3.7,<4"
+python = ">=3.8,<4"
 apologies = "^0.1.36"
 websockets = "^10.3"
 asyncio-periodic = "^2019.2"
 ordered-set = "^4.1.0"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 pytest = "^7.1.2"
 pytest-testdox = "^3.0.1"
 coverage = "^6.3.2"
 tox = "^3.25.0"
-pylint = "~2.12"  # versions after 2.12 get into an infinite loop on Windows
+pylint = "^2.15.0"
 toml = "^0.10.2"
 pre-commit = "^2.18.1"
 black = "^22.3.0"
@@ -55,7 +55,7 @@ Sphinx = "^4.5.0"
 
 [tool.black]
 line-length = 132
-target-version = ['py37', 'py38', 'py39', 'py310' ]
+target-version = ['py38', 'py39', 'py310' ]
 include = '(src\/scripts\/.*$|\.pyi?$)'
 exclude = '''
 /(

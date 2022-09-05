@@ -124,7 +124,7 @@ async def _handle_exception(exception: Exception, websocket: WebSocketServerProt
         except Exception as e:
             # Note: we don't want to expose internal implementation details in the case of an internal error
             context = RequestFailedContext(FailureReason.INTERNAL_ERROR, FailureReason.INTERNAL_ERROR.value)
-        message = Message(MessageType.REQUEST_FAILED, context=context)
+        message = Message(MessageType.REQUEST_FAILED, context=context)  # pylint: disable=used-before-assignment:
         await send(websocket, message.to_json())
         if disconnect:
             await close(websocket)

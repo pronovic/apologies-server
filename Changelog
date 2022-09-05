@@ -1,3 +1,13 @@
+Version 0.1.23     unreleased
+
+	* Remove support for Python 3.7.
+	* Upgrade to Poetry v1.2.0 and make related build process changes.
+	* Upgrade to Pylint v2.15.0 and make related changes to configuration
+	* Fix Pylint's configured class-attribute-naming-style to be snake_case.
+	* Add dependency caching to GitHub Actions workflow.
+	* Fix the GitHub Actions matrix build to properly target Windows and MacOS.
+	* Address annoying PyUnresolvedReferences warnings in PyCharm.
+
 Version 0.1.22     09 Jun 2022
 
 	* Modernize usage of attrs library.
