@@ -1,4 +1,4 @@
-Version 0.1.23     unreleased
+Version 0.1.23     04 Sep 2022
 
 	* Remove support for Python 3.7.
 	* Upgrade to Poetry v1.2.0 and make related build process changes.
