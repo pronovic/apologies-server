@@ -29,7 +29,7 @@ classifiers=[
 apologies-server = 'apologiesserver.scripts:server'
 
 [tool.poetry.dependencies]
-python = ">=3.7.2,<4"
+python = ">=3.9,<4"
 apologies = "^0.1.36"
 websockets = "^10.3"
 asyncio-periodic = "^2019.2"
@@ -55,7 +55,7 @@ Sphinx = "^4.5.0"
 
 [tool.black]
 line-length = 132
-target-version = ['py37', 'py38', 'py39', 'py310' ]
+target-version = ['py39', 'py310' ]
 include = '(src\/scripts\/.*$|\.pyi?$)'
 exclude = '''
 /(
