@@ -330,6 +330,9 @@ run_demo() {
    shift  # get rid of first argument "demo"
    poetry run python src/scripts/demo $*
 }
+
+# Always disable the keyring by default
+disable_keyring
    
 # Execute one of the developer tasks
 case $1 in
