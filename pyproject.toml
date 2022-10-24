@@ -30,7 +30,7 @@ apologies-server = 'apologiesserver.scripts:server'
 
 [tool.poetry.dependencies]
 python = ">=3.8,<4"
-apologies = "^0.1.36"
+apologies = "^0.1.39"
 websockets = "^10.3"
 asyncio-periodic = "^2019.2"
 ordered-set = "^4.1.0"
