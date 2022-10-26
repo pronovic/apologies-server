@@ -8,7 +8,7 @@ This code should work equivalently on MacOS, Linux, and Windows.
 
 This project uses [Poetry](https://python-poetry.org/) to manage Python packaging and dependencies.  Most day-to-day tasks (such as running unit tests from the command line) are orchestrated through Poetry.
 
-A coding standard is enforced using [Black](https://github.com/psf/black), [isort](https://pypi.org/project/isort/) and [Pylint](https://www.pylint.org/).  Python 3 type hinting is validated using [MyPy](https://pypi.org/project/mypy/).  To reduce boilerplate, classes are defined using [Attrs](https://www.attrs.org/) (see this [rationale](https://glyph.twistedmatrix.com/2016/08/attrs.html)).
+A coding standard is enforced using [Black](https://pypi.org/project/black/), [isort](https://pypi.org/project/isort/) and [Pylint](https://pypi.org/project/pylint/).  Python 3 type hinting is validated using [MyPy](https://pypi.org/project/mypy/).  To reduce boilerplate, classes are defined using [Attrs](https://www.attrs.org/) (see this [rationale](https://glyph.twistedmatrix.com/2016/08/attrs.html)).
 
 To add dependencies use `poetry add package` (for runtime dependencies) or `poetry add --group dev package` (for development environment dependencies).
 
@@ -142,7 +142,7 @@ to be available.  On Windows, it works fine with the standard Git Bash.
 The [`run`](run) script provides shortcuts for common developer tasks:
 
 ```
-$ run --help
+$ ./run --help
 
 ------------------------------------
 Shortcuts for common developer tasks
@@ -176,7 +176,7 @@ To run the server from the codebase for local testing, use the `run server`
 command.  This is equivalent to the installed `apologies-server` script.
 
 ```
-$ run server --help
+$ ./run server --help
 usage: apologies-server [-h] [--quiet] [--verbose] [--debug] [--config CONFIG]
               [--logfile LOGFILE] [--override OVERRIDE]
 
@@ -202,7 +202,7 @@ parameter with "--override param:value".
 The simplest way to start the server is with no arguments:
 
 ```
-$ run server
+$ ./run server
 2020-06-10 14:31:39,831Z --> [INFO   ] Apologies server started
 2020-06-10 14:31:39,832Z --> [INFO   ] Configuration: {
   "logfile_path": null,
@@ -244,7 +244,7 @@ that plays a game as a websockets client, to demonstrate the protocol and the
 websockets client code.
 
 ```
-$ run demo --help
+$ ./run demo --help
 usage: demo [-h] [--quiet] [--verbose] [--debug] [--logfile LOGFILE]
             [--host HOST] [--port PORT]
 
@@ -268,13 +268,13 @@ To run the demo, you must also have a server running elsewhere.  Your
 simplest option is to start the server in one window:
 
 ```
-run server
+./run server
 ```
 
 and the demo in another window:
 
 ```
-run demo
+./run demo
 ```
 
 The demo registers a "human" player, starts a 4-player game (getting 3
@@ -310,7 +310,7 @@ order.  In particular, if you do not run the install step, there will be no
 virtualenv for PyCharm to use:
 
 ```
-run install && run suite
+./run install && ./run suite
 ```
 
 ### Open the Project
@@ -526,7 +526,7 @@ Version 0.1.29     unreleased
 Run the release step:
 
 ```
-run release 0.1.29
+./run release 0.1.29
 ```
 
 This updates `pyproject.toml` and the `Changelog` to reflect the released
@@ -537,7 +537,7 @@ and revert your commit (`git reset HEAD~1`) if you made a mistake.
 Finally, publish the release:
 
 ```
-run publish
+./run publish
 ```
 
 This builds the deployment artifacts, publishes the artifacts to PyPI, and
