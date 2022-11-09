@@ -1,5 +1,6 @@
-Version 0.1.25     unreleased
+Version 0.1.24     unreleased
 
+	* Final release; code is unmaintained going forward.
 	* Refactor the run script and pre-commit hooks to reduce duplication.
 	* Rework the GitHub Actions build process to pull out shared code.
 

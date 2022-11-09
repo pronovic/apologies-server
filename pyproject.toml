@@ -29,7 +29,7 @@ classifiers=[
 apologies-server = 'apologiesserver.scripts:server'
 
 [tool.poetry.dependencies]
-python = ">=3.8,<4"
+python = ">=3.8,<3.11"
 apologies = "^0.1.39"
 websockets = "^10.3"
 asyncio-periodic = "^2019.2"
