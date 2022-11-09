@@ -4,7 +4,6 @@
 [![license](https://img.shields.io/pypi/l/apologiesserver.svg)](https://github.com/pronovic/apologies-server/blob/master/LICENSE)
 [![wheel](https://img.shields.io/pypi/wheel/apologiesserver.svg)](https://pypi.org/project/apologiesserver/)
 [![python](https://img.shields.io/pypi/pyversions/apologiesserver.svg)](https://pypi.org/project/apologiesserver/)
-[![Test Suite](https://github.com/pronovic/apologies-server/workflows/Test%20Suite/badge.svg)](https://github.com/pronovic/apologies-server/actions?query=workflow%3A%22Test+Suite%22)
 [![docs](https://readthedocs.org/projects/apologies-server/badge/?version=stable&style=flat)](https://apologies-server.readthedocs.io/en/stable/)
 [![coverage](https://coveralls.io/repos/github/pronovic/apologies-server/badge.svg?branch=master)](https://coveralls.io/github/pronovic/apologies-server?branch=master)
 
@@ -14,15 +13,8 @@ It was written as a learning exercise and technology demonstration effort, and s
 
 See the [documentation](https://apologies-server.readthedocs.io/en/stable/design.html) for notes about the public interface and the event model.
 
-As of this writing, the published PyPI project does not include a script to run
-the server. The only way to run it is from the codebase, for local testing. See
-the [developer](https://github.com/pronovic/apologies-server/blob/master/DEVELOPER.md#running-the-server) documentation
-at GitHub for more information.
+## Not Maintained
 
-As a technology demonstration effort, the Apologies Server is fairly
-simplistic.  It runs as a single stateful process that maintains game state in
-memory.  It cannot be horizontally scaled, and there is no option for an
-external data store.  There is also only limited support for authentication and
-authorization - any player can register any handle that is not currently being
-used.  We do enforce resource limits (open connections, registered users,
-in-progress games) to limit the amount of damage abusive clients can do.
+I developed this code in mid-2020 during COVID-enforced downtime, as part of an effort to write a UI called [Apologies UI](https://github.com/pronovic/apologies-ui).  Javascript moves really fast, and by mid-2021, the UI implementation was already partially obsolete.  By late 2022, this server implementation was also partially obsolete.  In particular, the [asynctest](https://pypi.org/project/asynctest/) library I choose for unit testing my asynchronous code hasn't been updated for more than 3 years, and does not support Python 3.11.
+
+I don't have the time, or frankly the interest, to rewrite the unit test suite to work with Python 3.11. So, as of November 2022, I have decided to archive this repository and stop maintaining it. It's best to treat this code (in conjunction with Apologies UI itself) as a snapshot of a working design from 2020.  The server code still works fine with earlier versions of Python, and it's still a reasonable example, but it will become less and less relevant as time goes on.

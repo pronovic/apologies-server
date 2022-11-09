@@ -15,9 +15,6 @@ Release v\ |version|
 .. image:: https://img.shields.io/pypi/pyversions/apologiesserver.svg
     :target: https://pypi.org/project/apologiesserver/
 
-.. image:: https://github.com/pronovic/apologies-server/workflows/Test%20Suite/badge.svg
-    :target: https://github.com/pronovic/apologies-server/actions?query=workflow%3A%22Test+Suite%22
-
 .. image:: https://readthedocs.org/projects/apologies-server/badge/?version=stable&style=flat
     :target: https://apologies-server.readthedocs.io/en/stable/
 
@@ -33,14 +30,23 @@ serves as a complete example of how to manage a modern (circa 2020) Python
 project, including style checks, code formatting, integration with IntelliJ, CI
 builds at GitHub, and integration with PyPI and Read the Docs.
 
-As a technology demonstration effort, the Apologies Server is fairly
-simplistic.  It runs as a single stateful process that maintains game state in
-memory.  It cannot be horizontally scaled, and there is no option for an
-external data store.  There is also only limited support for authentication and
-authorization - any player can register any handle that is not currently being
-used.  We do enforce resource limits (open connections, registered users,
-in-progress games) to limit the amount of damage abusive clients can do. 
+Not Maintained
+--------------
 
+I developed this code in mid-2020 during COVID-enforced downtime, as part of an
+effort to write a UI called Apologies UI.  Javascript moves really fast, and by
+mid-2021, the UI implementation was already partially obsolete.  By late 2022,
+this server implementation was also partially obsolete.  In particular, the
+asynctest library I choose for unit testing my asynchronous code hasn't been
+updated for more than 3 years, and does not support Python 3.11.
+
+I don't have the time, or frankly the interest, to rewrite the unit test suite
+to work with Python 3.11. So, as of November 2022, I have decided to archive
+this repository and stop maintaining it. It's best to treat this code (in
+conjunction with Apologies UI itself) as a snapshot of a working design from
+2020.  The server code still works fine with earlier versions of Python, and
+it's still a reasonable example, but it will become less and less relevant as
+time goes on.
 
 Installation
 ------------
@@ -52,6 +58,14 @@ Install the package with pip::
 
 Design Documentation
 --------------------
+
+As a technology demonstration effort, the Apologies Server is fairly
+simplistic.  It runs as a single stateful process that maintains game state in
+memory.  It cannot be horizontally scaled, and there is no option for an
+external data store.  There is also only limited support for authentication and
+authorization - any player can register any handle that is not currently being
+used.  We do enforce resource limits (open connections, registered users,
+in-progress games) to limit the amount of damage abusive clients can do. 
 
 - :doc:`/design`
 

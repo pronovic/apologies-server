@@ -2,7 +2,7 @@
 
 ## Supported Platforms
 
-This code should work equivalently on MacOS, Linux, and Windows.
+This code should work equivalently on MacOS, Linux, and Windows.  However, it only works on Python 3.10 and earlier, because the asynctest library depends on `@asyncio.coroutine`, which was removed in Python 3.11.
 
 ## Packaging and Dependencies
 
