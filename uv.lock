@@ -18,23 +18,45 @@ wheels = [
 
 [[package]]
 name = "apologies"
-version = "0.2.0"
+version = "0.4.1"
 source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "arrow" },
-    { name = "attrs" },
-    { name = "cattrs" },
+resolution-markers = [
+    "python_full_version < '3.11'",
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0c/44/fea0382a94d903ab1090eb838ae635e65deafbdb2812a00ad989a6a42789/apologies-0.2.0.tar.gz", hash = "sha256:4c46606bae118848c18e6f3fce45dd4b4096496a8e93b0cef3b42e742429f33e", size = 59313, upload-time = "2025-01-08T20:37:14.451Z" }
+dependencies = [
+    { name = "arrow", marker = "python_full_version < '3.11'" },
+    { name = "attrs", marker = "python_full_version < '3.11'" },
+    { name = "cattrs", marker = "python_full_version < '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/37/1f/e3dabcc4b3baa9ec57caa564c719534797dc42535f27ee4d69dbc4affa01/apologies-0.4.1.tar.gz", hash = "sha256:08c418bf392ac949c77aea0c9d6a69dbdf407a53a08638b17f964ac13077fc73", size = 60272, upload-time = "2025-09-23T02:09:34.153Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/53/ae/3eaad314add2fea34a20c5e3efae4400b3522538f2652f123dc262e5983c/apologies-0.2.0-py3-none-any.whl", hash = "sha256:37ddd4a09d0564d2b74c175dabdb284b4901510f6e1b7f0779d3b96fd9e391b4", size = 35315, upload-time = "2025-01-08T20:37:12.944Z" },
+    { url = "https://files.pythonhosted.org/packages/f5/0e/8b2e9afe10fa74ed4dcc3f516e70e793f24054e6c970363d31931e25fbb3/apologies-0.4.1-py3-none-any.whl", hash = "sha256:ceb1af348e362cf10a1a3f762071ec950bd542aef981c711acf261488cb1743a", size = 35383, upload-time = "2025-09-23T02:09:33.253Z" },
+]
+
+[[package]]
+name = "apologies"
+version = "0.4.2"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.12'",
+    "python_full_version == '3.11.*'",
+]
+dependencies = [
+    { name = "arrow", marker = "python_full_version >= '3.11'" },
+    { name = "attrs", marker = "python_full_version >= '3.11'" },
+    { name = "cattrs", marker = "python_full_version >= '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e3/7e/7780173dfd5c59ededf63bd86cdd715c456817fb7d653ae7130f2b0571ba/apologies-0.4.2.tar.gz", hash = "sha256:8fbae7654dd86ed9541270ed77c79ddf012aa4e392f507f9c7b620ff2cd1ca82", size = 60365, upload-time = "2025-09-24T17:50:53.292Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b8/2a/eb8e6d3379f924cf5a8993714427a1cbda9c2aa0f8cfebc877e6312b7dc0/apologies-0.4.2-py3-none-any.whl", hash = "sha256:e6921692e85b94eedb5e5891f1a4892f3bd508de43a83d3a83dd77a5c7dbaf63", size = 35384, upload-time = "2025-09-24T17:50:52.124Z" },
 ]
 
 [[package]]
 name = "apologiesserver"
 source = { editable = "." }
 dependencies = [
-    { name = "apologies" },
+    { name = "apologies", version = "0.4.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "apologies", version = "0.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "ordered-set" },
     { name = "websockets" },
 ]
@@ -60,7 +82,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "apologies", specifier = "==0.2.0" },
+    { name = "apologies", specifier = ">=0.4.1,<0.5.0" },
     { name = "ordered-set", specifier = ">=4.1.0,<5.0.0" },
     { name = "sphinx", marker = "extra == 'docs'", specifier = ">=8.1.3,<9.0.0" },
     { name = "sphinx-autoapi", marker = "extra == 'docs'", specifier = ">=3.0.0,<4.0.0" },

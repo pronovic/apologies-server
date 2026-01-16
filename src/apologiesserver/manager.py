@@ -290,7 +290,7 @@ class TrackedEngine:
         done = self._engine.execute_move(color, move)
         if self._engine.completed:
             self._current = None
-            character, player = self._engine.winner()  # type: ignore
+            character, player = self._engine.winner()
             comment = "Player %s won after %d turns" % (character.name, player.turns)
             return True, character.name, comment
         self._current = CurrentTurn.next_player(self._engine) if done else self._current.draw_again(self._engine)
