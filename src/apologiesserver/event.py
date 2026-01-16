@@ -18,7 +18,7 @@ from __future__ import annotations  # see: https://stackoverflow.com/a/33533514/
 import asyncio
 import logging
 import typing
-from typing import cast
+from typing import Self, cast
 
 from apologies import Move, RewardV1InputSource, Rules
 from arrow import Arrow
@@ -143,7 +143,7 @@ class EventHandler:
     manager: StateManager
     queue: TaskQueue = field(factory=TaskQueue)
 
-    def __enter__(self) -> EventHandler:
+    def __enter__(self) -> Self:
         self.queue.clear()
         return self
 
