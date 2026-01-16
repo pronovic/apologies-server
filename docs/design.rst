@@ -6,7 +6,7 @@ Periodic Checks
 
 Periodic checks need somewhere to run.  The initial design is for a single
 server that does not horizontally scale, so there is an obvious place to run
-these checks. A future design that is intended to horizontally scale will need
+these checks. A future design that is intended to horizontally scale would need
 a separate scheduling component.
 
 Idle Websocket Check

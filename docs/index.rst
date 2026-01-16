@@ -21,32 +21,21 @@ Release v\ |version|
 .. image:: https://coveralls.io/repos/github/pronovic/apologies-server/badge.svg?branch=master
     :target: https://coveralls.io/github/pronovic/apologies-server?branch=master
 
-ApologiesServer_  is a Websocket_ server interface used to interactively play a
+ApologiesServer_ is a Websocket_ server interface used to interactively play a
 multi-player game using the Apologies_ library. The Apologies library
 implements a game similar to the Sorry_ board game.
 
-It was written as a learning exercise and technology demonstration effort, and
-serves as a complete example of how to manage a modern (circa 2020) Python
-project, including style checks, code formatting, integration with IntelliJ, CI
-builds at GitHub, and integration with PyPI and Read the Docs.
+I originally developed this code in mid-2020 during COVID-enforced downtime, as
+part of an effort to write a UI to play the Apologies board game in a web
+browser.  However, Javascript moves really fast, and by mid-2021, my UI
+implementation was already partially obsolete, and I abandoned work on it.
 
-Not Maintained
---------------
-
-I developed this code in mid-2020 during COVID-enforced downtime, as part of an
-effort to write a UI called Apologies UI.  Javascript moves really fast, and by
-mid-2021, the UI implementation was already partially obsolete.  By late 2022,
-this server implementation was also partially obsolete.  In particular, the
-asynctest library I choose for unit testing my asynchronous code hasn't been
-updated for more than 3 years, and does not support Python 3.11.
-
-I don't have the time, or frankly the interest, to rewrite the unit test suite
-to work with Python 3.11. So, as of November 2022, I have decided to archive
-this repository and stop maintaining it. It's best to treat this code (in
-conjunction with Apologies UI itself) as a snapshot of a working design from
-2020.  The server code still works fine with earlier versions of Python, and
-it's still a reasonable example, but it will become less and less relevant as
-time goes on.
+This code is still a reasonable example of how to build a Websocket server
+including a state machine to manage board game state.  However, its main
+purpose was to support the process of building that web UI, so it's not
+designed or architected for production use.  It doesn't really look like
+something I wrote write today, given the benefit of more experience with async
+design patterns in Python.  But, it works.
 
 Installation
 ------------
