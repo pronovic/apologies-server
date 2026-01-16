@@ -11,7 +11,6 @@ from apologiesserver.cli import cli
 cli("run_demo")
 EOF
 
-   run_command latestcode
-   poetry_run python "$WORKING_DIR/demo.py" "$@"
+   run_command uvrun python "$WORKING_DIR/demo.py" "$@"
 }
 

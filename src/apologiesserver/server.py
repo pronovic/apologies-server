@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # vim: set ft=python ts=4 sw=4 expandtab:
 
 import asyncio
@@ -6,7 +5,8 @@ import logging
 import signal
 import sys
 from asyncio import AbstractEventLoop, Future  # pylint: disable=unused-import
-from typing import Any, Callable, Coroutine, Union  # pylint: disable=unused-import
+from collections.abc import Callable  # pylint: disable=unused-import
+from typing import Any
 
 from websockets.exceptions import ConnectionClosed
 from websockets.legacy.server import WebSocketServerProtocol, serve
@@ -26,37 +26,37 @@ if sys.platform == "win32":
 else:
     SHUTDOWN_SIGNALS = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)  # pylint: disable=no-member
 
+
 # pylint: disable=too-many-return-statements,too-many-branches
 def _lookup_method(handler: EventHandler, message: MessageType) -> Callable[[RequestContext], None]:
     """Lookup the handler method to invoke for a message type."""
     if message == MessageType.REREGISTER_PLAYER:
         return handler.handle_reregister_player_request
-    elif message == MessageType.UNREGISTER_PLAYER:
+    if message == MessageType.UNREGISTER_PLAYER:
         return handler.handle_unregister_player_request
-    elif message == MessageType.LIST_PLAYERS:
+    if message == MessageType.LIST_PLAYERS:
         return handler.handle_list_players_request
-    elif message == MessageType.ADVERTISE_GAME:
+    if message == MessageType.ADVERTISE_GAME:
         return handler.handle_advertise_game_request
-    elif message == MessageType.LIST_AVAILABLE_GAMES:
+    if message == MessageType.LIST_AVAILABLE_GAMES:
         return handler.handle_list_available_games_request
-    elif message == MessageType.JOIN_GAME:
+    if message == MessageType.JOIN_GAME:
         return handler.handle_join_game_request
-    elif message == MessageType.QUIT_GAME:
+    if message == MessageType.QUIT_GAME:
         return handler.handle_quit_game_request
-    elif message == MessageType.START_GAME:
+    if message == MessageType.START_GAME:
         return handler.handle_start_game_request
-    elif message == MessageType.CANCEL_GAME:
+    if message == MessageType.CANCEL_GAME:
         return handler.handle_cancel_game_request
-    elif message == MessageType.EXECUTE_MOVE:
+    if message == MessageType.EXECUTE_MOVE:
         return handler.handle_execute_move_request
-    elif message == MessageType.OPTIMAL_MOVE:
+    if message == MessageType.OPTIMAL_MOVE:
         return handler.handle_optimal_move_request
-    elif message == MessageType.RETRIEVE_GAME_STATE:
+    if message == MessageType.RETRIEVE_GAME_STATE:
         return handler.handle_retrieve_game_state_request
-    elif message == MessageType.SEND_MESSAGE:
+    if message == MessageType.SEND_MESSAGE:
         return handler.handle_send_message_request
-    else:
-        raise ProcessingError(FailureReason.INTERNAL_ERROR, comment="Invalid request %s" % message.name)
+    raise ProcessingError(FailureReason.INTERNAL_ERROR, comment="Invalid request %s" % message.name)
 
 
 def _handle_message(handler: EventHandler, message: Message, websocket: WebSocketServerProtocol) -> None:
@@ -78,7 +78,7 @@ def _handle_message(handler: EventHandler, message: Message, websocket: WebSocke
             method(request)
 
 
-async def _handle_data(data: Union[str, bytes], websocket: WebSocketServerProtocol) -> None:
+async def _handle_data(data: str | bytes, websocket: WebSocketServerProtocol) -> None:
     """Handle data received from a websocket client."""
     log.debug("Received raw data for websocket %s:\n%s", id(websocket), mask(data))
     message = Message.for_json(str(data))
@@ -116,12 +116,12 @@ async def _handle_exception(exception: Exception, websocket: WebSocketServerProt
         except ProcessingError as e:
             disconnect = e.reason == FailureReason.WEBSOCKET_LIMIT  # this is a special case that can't easily be handled elsewhere
             reason = e.reason
-            comment = e.comment if e.comment else e.reason.value
+            comment = e.comment or e.reason.value
             handle = e.handle
             context = RequestFailedContext(reason=reason, comment=comment, handle=handle)
         except ValueError as e:
             context = RequestFailedContext(FailureReason.INVALID_REQUEST, str(e))
-        except Exception as e:
+        except Exception:
             # Note: we don't want to expose internal implementation details in the case of an internal error
             context = RequestFailedContext(FailureReason.INTERNAL_ERROR, FailureReason.INTERNAL_ERROR.value)
         message = Message(MessageType.REQUEST_FAILED, context=context)  # pylint: disable=used-before-assignment:
@@ -190,7 +190,6 @@ def _schedule_tasks(loop: AbstractEventLoop) -> None:
 
 
 def _run_server(loop: AbstractEventLoop, stop: "Future[Any]") -> None:
-
     """Run the websocket server, stopping and closing the event loop when the server completes."""
 
     # Websockets has this to say about closing connections:

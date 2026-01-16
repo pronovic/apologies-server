@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # vim: set ft=python ts=4 sw=4 expandtab:
 
 """
@@ -8,8 +7,9 @@ System configuration.
 import configparser
 import json
 import os
+import pathlib
 from configparser import ConfigParser, SectionProxy
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 import cattrs
 from attrs import frozen
@@ -68,6 +68,7 @@ DEFAULTS = {
     "obsolete_game_check_delay_sec": OBSOLETE_GAME_CHECK_DELAY_SEC,
 }
 
+
 # pylint: disable=too-many-instance-attributes
 @frozen
 class SystemConfig:
@@ -100,7 +101,7 @@ class SystemConfig:
         obsolete_game_check_delay_sec(int): Number of seconds to delay before the first Idle Player Check task
     """
 
-    logfile_path: Optional[str] = DEFAULT_LOGFILE_PATH
+    logfile_path: str | None = DEFAULT_LOGFILE_PATH
     server_host: str = DEFAULT_SERVER_HOST
     server_port: int = DEFAULT_SERVER_PORT
     close_timeout_sec: int = DEFAULT_CLOSE_TIMEOUT_SEC
@@ -129,22 +130,18 @@ class SystemConfig:
         return json.dumps(cattrs.unstructure(self), indent="  ")
 
 
-_CONFIG: Optional[SystemConfig] = None
+_CONFIG: SystemConfig | None = None
 
 
-def _get(
-    parser: Union[Optional[ConfigParser], SectionProxy], key: str, overrides: Optional[Dict[str, Any]], defaults: Dict[str, Any]
-) -> Any:
+def _get(parser: ConfigParser | None | SectionProxy, key: str, overrides: dict[str, Any] | None, defaults: dict[str, Any]) -> Any:
     """Get a value from a parser, overriding or setting a default as necessary."""
     override = overrides[key] if overrides and key in overrides else None
     default = defaults[key] if defaults and key in defaults else None
-    return override if override else parser.get(key, default) if parser else default
+    return override or (parser.get(key, default) if parser else default)  # type: ignore
 
 
 # pylint: disable=too-many-locals
-def _parse(
-    parser: Union[Optional[ConfigParser], SectionProxy], overrides: Optional[Dict[str, Any]], defaults: Dict[str, Any]
-) -> SystemConfig:
+def _parse(parser: ConfigParser | None | SectionProxy, overrides: dict[str, Any] | None, defaults: dict[str, Any]) -> SystemConfig:
     """Create an SystemConfig based on configuration, applying defaults to values that are not available."""
     logfile_path = _get(parser, "logfile_path", overrides, defaults)
     server_host = _get(parser, "server_host", overrides, defaults)
@@ -196,22 +193,21 @@ def _parse(
     )
 
 
-def _load(config_path: str, overrides: Optional[Dict[str, Any]], defaults: Dict[str, Any]) -> SystemConfig:
+def _load(config_path: str, overrides: dict[str, Any] | None, defaults: dict[str, Any]) -> SystemConfig:
     """Load configuration from disk, applying defaults for any value that is not found."""
-    if not os.path.exists(config_path):
+    if not pathlib.Path(config_path).exists():
         return _parse(None, overrides, defaults)
-    else:
-        parser = configparser.ConfigParser()
-        parser.read(config_path)
-        return _parse(parser["Server"], overrides, defaults)
+    parser = configparser.ConfigParser()
+    parser.read(config_path)
+    return _parse(parser["Server"], overrides, defaults)
 
 
-def load_config(config_path: Optional[str] = None, overrides: Optional[Dict[str, Any]] = None) -> None:
+def load_config(config_path: str | None = None, overrides: dict[str, Any] | None = None) -> None:
     """Load global configuration for later use, applying defaults for any value that is not found."""
     global _CONFIG  # pylint: disable=global-statement
     if config_path:
         # if they override the config path, the file must exist
-        if not os.path.exists(config_path):
+        if not pathlib.Path(config_path).exists():
             raise ValueError("Config path does not exist: %s" % config_path)
         _CONFIG = _load(config_path, overrides, DEFAULTS)
     else:

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=unsubscriptable-object
 
@@ -9,7 +8,8 @@ Implements various generic attrs validators.
 import re
 import warnings
 from enum import Enum
-from typing import Any, List, Pattern, Type
+from re import Pattern
+from typing import Any
 
 from attrs import Attribute, define, field
 
@@ -18,7 +18,7 @@ from attrs import Attribute, define, field
 class _EnumValidator:
     """Validator for use by enum(), following the pattern from the standard attrs _InValidator."""
 
-    options: Type[Enum]
+    options: type[Enum]
 
     def __call__(self, instance: Any, attribute: Attribute, value: Enum) -> None:  # type: ignore
         try:
@@ -30,7 +30,7 @@ class _EnumValidator:
         except TypeError:
             in_options = False
         if not in_options:
-            legal = ", ".join(sorted([option.name for option in list(self.options)]))  # type: ignore
+            legal = ", ".join(sorted([option.name for option in list(self.options)]))
             raise ValueError("'%s' must be one of [%s]" % (attribute.name, legal))
 
 
@@ -62,7 +62,7 @@ class _RegexValidator:
             raise ValueError("'%s' does not match regex '%s'" % (attribute.name, self.pattern))
 
 
-def enum(options: Type[Enum]) -> _EnumValidator:
+def enum(options: type[Enum]) -> _EnumValidator:
     """attrs validator to ensure that a value is a legal enumeration."""
     return _EnumValidator(options)
 
@@ -91,7 +91,7 @@ def string(_instance: Any, attribute: Attribute, value: str) -> None:  # type: i
         raise ValueError("'%s' must be a non-empty string" % attribute.name)
 
 
-def stringlist(_instance: Any, attribute: Attribute, value: List[str]) -> None:  # type: ignore
+def stringlist(_instance: Any, attribute: Attribute, value: list[str]) -> None:  # type: ignore
     """attrs validator to ensure that a string list contains non-empty values."""
     # Annoyingly, due to some quirk in the CattrConverter, we end up with "None" rather than None for strings set to JSON null
     # As a result, we need to prevent "None" as a legal value, but that's probably better anyway.
