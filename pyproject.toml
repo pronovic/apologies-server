@@ -183,7 +183,6 @@ ignore = [
   "SIM118",     # for now, don't apply dict-related standards
   "BLE001",     # for now, don't enforce standards for blind exception
   "PLW0603",    # for now, ignore global _CONFIG
-  "PT",         # for now, don't apply PT standards
 ]
 
 [tool.ruff.lint.per-file-ignores]

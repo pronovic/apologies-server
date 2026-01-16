@@ -642,10 +642,10 @@ class TestTrackedGame:
     def test_mark_joined_illegal_state(self):
         game = create_test_game()
         for game_state in [game_state for game_state in GameState if game_state != GameState.ADVERTISED]:
+            game.game_state = game_state
             with pytest.raises(ProcessingError, match=r"Illegal state for operation"):
-                game.game_state = game_state
                 game.mark_joined("handle")
-                assert "leela" not in game.game_players
+            assert "leela" not in game.game_players
 
     def test_mark_joined(self):
         game = create_test_game()
@@ -663,8 +663,8 @@ class TestTrackedGame:
         game.mark_joined("leela")
         game.mark_joined("bender")
         for game_state in [game_state for game_state in GameState if game_state != GameState.ADVERTISED]:
+            game.game_state = game_state
             with pytest.raises(ProcessingError, match=r"Illegal state for operation"):
-                game.game_state = game_state
                 game.mark_started()
             assert game.game_state == game_state  # should not change
 
@@ -722,8 +722,8 @@ class TestTrackedGame:
     def test_mark_completed_illegal_state(self):
         game = create_test_game()
         for game_state in [game_state for game_state in GameState if game_state != GameState.PLAYING]:
+            game.game_state = game_state
             with pytest.raises(ProcessingError, match=r"Illegal state for operation"):
-                game.game_state = game_state
                 game.mark_completed("comment")
             assert game.game_state == game_state  # should not change
             game._engine.stop_game.assert_not_called()
@@ -750,8 +750,8 @@ class TestTrackedGame:
     def test_mark_cancelled_illegal_state(self):
         game = create_test_game()
         for game_state in [game_state for game_state in GameState if game_state not in (GameState.PLAYING, GameState.ADVERTISED)]:
+            game.game_state = game_state
             with pytest.raises(ProcessingError, match=r"Illegal state for operation"):
-                game.game_state = game_state
                 game.mark_cancelled(CancelledReason.CANCELLED, "comment")
             assert game.game_state == game_state  # should not change
             game._engine.stop_game.assert_not_called()
