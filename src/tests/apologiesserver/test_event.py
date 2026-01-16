@@ -935,6 +935,7 @@ class TestEventMethods:
         handler.manager.track_player.assert_called_once_with(websocket, "leela")
         handler.queue.message.assert_called_once_with(message, websockets=[websocket])
 
+    @pytest.mark.filterwarnings("ignore:coroutine 'close' was never awaited")
     def test_handle_player_reregistered_event(self):
         websocket = MagicMock()
         player = MagicMock(player_id="player_id", handle="handle")
