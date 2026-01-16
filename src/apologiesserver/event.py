@@ -63,6 +63,7 @@ from apologiesserver.util import close, send
 if typing.TYPE_CHECKING:
     # noinspection PyUnresolvedReferences
     import datetime
+    from types import TracebackType
 
     from websockets.asyncio.server import ServerConnection
 
@@ -147,7 +148,12 @@ class EventHandler:
         self.queue.clear()
         return self
 
-    def __exit__(self, _type, _value, _tb) -> None:  # type: ignore
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         self.queue.clear()
 
     async def execute_tasks(self) -> None:
