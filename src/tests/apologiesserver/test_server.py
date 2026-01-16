@@ -84,6 +84,7 @@ class TestFunctions:
 
     @patch("apologiesserver.server.config")
     @patch("apologiesserver.server._websocket_server")
+    @pytest.mark.filterwarnings("ignore:There is no current event loop")
     def test_run_server(self, websocket_server, config):
         # I'm not entirely sure I'm testing this properly.
         # I can't find a good way to prove that _websocket_server(stop) was passed to run_until_complete

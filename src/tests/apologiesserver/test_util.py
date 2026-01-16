@@ -10,6 +10,7 @@ from apologiesserver.util import close, homedir, mask, receive, send, setup_logg
 from tests.conftest import coroutine_mock
 
 
+@pytest.mark.filterwarnings("ignore:There is no current event loop")
 class TestUtil:
     """
     Unit tests for utilities.
