@@ -174,7 +174,6 @@ ignore = [
   "TRY003",     # allow long messages in exceptions; this is often a false-positive that has little benefit
 
   # Exclusions of rule categories and specific rules, customized for this repository
-  "T201",       # for now, we're using print() for server output
   "PTH",        # for now, don't apply PTH standards
   "UP031",      # for now, don't require format specifiers
   "PGH003",     # for now, don't require specific rule codes for type: ignore
