@@ -17,10 +17,12 @@ from __future__ import annotations  # see: https://stackoverflow.com/a/33533514/
 
 import asyncio
 import logging
+import typing
 from typing import cast
 
-import pendulum
 from apologies import Move, RewardV1InputSource, Rules
+from arrow import Arrow
+from arrow import utcnow as arrow_utcnow
 from attrs import define, field, frozen
 from ordered_set import OrderedSet  # this makes expected results easier to articulate in test code
 from websockets.legacy.server import WebSocketServerProtocol
@@ -29,6 +31,10 @@ from .config import config
 from .interface import *
 from .manager import StateManager, TrackedGame, TrackedPlayer, TrackedWebsocket
 from .util import close, send
+
+if typing.TYPE_CHECKING:
+    # noinspection PyUnresolvedReferences
+    import datetime
 
 log = logging.getLogger("apologies.event")
 
@@ -115,12 +121,12 @@ class EventHandler:
         log.info("Scheduled - IDLE_WEBSOCKET_CHECK")
         idle = 0
         inactive = 0
-        now = pendulum.now()
+        now = arrow_utcnow()
         idle_thresh_min = config().websocket_idle_thresh_min
         inactive_thresh_min = config().websocket_inactive_thresh_min
         for websocket, last_active_date, players in self.manager.lookup_websocket_activity():
             if players < 1:  # by definition, a websocket is not idle until or unless it has no registered players
-                since_active = now.diff(last_active_date).in_minutes()
+                since_active = diff_in_minutes(now, last_active_date)
                 if since_active >= inactive_thresh_min:
                     inactive += 1
                     self.handle_websocket_inactive_event(websocket)
@@ -136,12 +142,12 @@ class EventHandler:
         log.info("Scheduled - IDLE_PLAYER_CHECK")
         idle = 0
         inactive = 0
-        now = pendulum.now()
+        now = arrow_utcnow()
         idle_thresh_min = config().player_idle_thresh_min
         inactive_thresh_min = config().player_inactive_thresh_min
         for player, last_active_date, connection_state in self.manager.lookup_player_activity():
             disconnected = connection_state == ConnectionState.DISCONNECTED
-            since_active = now.diff(last_active_date).in_minutes()
+            since_active = diff_in_minutes(now, last_active_date)
             if since_active >= inactive_thresh_min:
                 inactive += 1
                 self.handle_player_inactive_event(player)
@@ -161,11 +167,11 @@ class EventHandler:
         log.info("Scheduled - IDLE_GAME_CHECK")
         idle = 0
         inactive = 0
-        now = pendulum.now()
+        now = arrow_utcnow()
         idle_thresh_min = config().game_idle_thresh_min
         inactive_thresh_min = config().game_inactive_thresh_min
         for game, last_active_date in self.manager.lookup_game_activity():
-            since_active = now.diff(last_active_date).in_minutes()
+            since_active = diff_in_minutes(now, last_active_date)
             if since_active >= inactive_thresh_min:
                 inactive += 1
                 self.handle_game_inactive_event(game)
@@ -180,13 +186,14 @@ class EventHandler:
         """Execute the Obsolete Game Check task returning obsolete games."""
         log.info("Scheduled - OBSOLETE_GAME_CHECK")
         obsolete = 0
-        now = pendulum.now()
+        now = arrow_utcnow()
         retention_thresh_min = config().game_retention_thresh_min
         for game, completed_date in self.manager.lookup_game_completion():
-            since_completed = now.diff(completed_date).in_minutes()
-            if since_completed >= retention_thresh_min:
-                obsolete += 1
-                self.handle_game_obsolete_event(game)
+            if completed_date is not None:
+                since_completed = diff_in_minutes(now, completed_date)
+                if since_completed >= retention_thresh_min:
+                    obsolete += 1
+                    self.handle_game_obsolete_event(game)
         log.debug("Obsolete game check completed, found %d obsolete games", obsolete)
         return obsolete
 
@@ -657,3 +664,9 @@ class EventHandler:
         context = GamePlayerTurnContext.for_moves(handle=player.handle, game_id=player.game_id, moves=moves)  # type: ignore
         message = Message(MessageType.GAME_PLAYER_TURN, context=context)
         self.queue.message(message, players=[player])
+
+
+def diff_in_minutes(left: Arrow, right: Arrow) -> float:
+    """Return the difference between two dates (left - right), expressed in minutes."""
+    delta = typing.cast("datetime.timedelta", left - right)  # MyPy gets confused and see this as Arrow instead
+    return delta.total_seconds() / 60  # there's no direct way to get the difference in minutes

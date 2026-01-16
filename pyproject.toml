@@ -29,10 +29,10 @@ classifiers = [
    "Topic :: Games/Entertainment :: Board Games",
 ]
 dependencies = [
-   "apologies (==0.1.56)",  # TODO: this code still relies on Pendulum from apologies
+   "apologies (==0.2.0)",  # TODO: upgrade this, set to first version with Arrow instead of Pendulum
    "websockets (==10.3)", # TODO: upgrade when possible, check that it's maintained
    "asyncio-periodic (==2019.2)", # TODO: upgrade when possible, check that it's maintained
-   "ordered-set (==4.1.0)" # TODO: remove/replace if possible, apparently not maintained
+   "ordered-set (==4.1.0)", # TODO: remove/replace if possible, apparently not maintained
 ]
 
 [project.urls]

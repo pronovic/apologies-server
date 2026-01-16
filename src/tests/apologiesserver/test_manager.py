@@ -4,11 +4,11 @@
 import random
 from unittest.mock import MagicMock, patch
 
-import pendulum
 import pytest
 from apologies.game import GameMode, PlayerColor
 from apologies.rules import Rules
 from apologies.source import NoOpInputSource, RewardV1InputSource
+from arrow import utcnow as arrow_utcnow
 from ordered_set import OrderedSet
 
 from apologiesserver.interface import *
@@ -77,7 +77,7 @@ class TestTrackedWebsocket:
 
     # noinspection PyTypeChecker
     def test_mark_active(self):
-        now = pendulum.now()
+        now = arrow_utcnow()
         tracked = TrackedWebsocket(MagicMock())
         tracked.last_active_date = None
         tracked.activity_state = None
@@ -104,7 +104,7 @@ class TestTrackedPlayer:
     """
 
     def test_for_context(self):
-        now = pendulum.now()
+        now = arrow_utcnow()
         websocket = MagicMock()
         player = TrackedPlayer.for_context("id", websocket, "handle")
         assert player.player_id == "id"
@@ -131,7 +131,7 @@ class TestTrackedPlayer:
 
     # noinspection PyTypeChecker
     def test_mark_active(self):
-        now = pendulum.now()
+        now = arrow_utcnow()
         player = create_test_player()
         player.last_active_date = None
         player.activity_state = None
@@ -424,7 +424,7 @@ class TestTrackedGame:
     """
 
     def test_for_context(self):
-        now = pendulum.now()
+        now = arrow_utcnow()
         context = AdvertiseGameContext("name", GameMode.STANDARD, 3, Visibility.PUBLIC, ["a", "b"])
         game = TrackedGame.for_context("handle", "game_id", context)
         assert game.game_id == "game_id"
@@ -609,7 +609,7 @@ class TestTrackedGame:
 
     # noinspection PyTypeChecker
     def test_mark_active(self):
-        now = pendulum.now()
+        now = arrow_utcnow()
         game = create_test_game()
         game.last_active_date = None
         game.activity_state = None
@@ -660,7 +660,7 @@ class TestTrackedGame:
 
     # noinspection PyTypeChecker
     def test_mark_started(self):
-        now = pendulum.now()
+        now = arrow_utcnow()
         game = create_test_game()
         game.players = 4
         game.mark_joined("leela")
@@ -724,7 +724,7 @@ class TestTrackedGame:
         gp2 = GamePlayer("gp2", PlayerColor.RED, PlayerType.HUMAN, PlayerState.PLAYING)
         gp1_copy = GamePlayer("gp1", PlayerColor.YELLOW, PlayerType.PROGRAMMATIC, PlayerState.FINISHED)
         gp2_copy = GamePlayer("gp2", PlayerColor.RED, PlayerType.HUMAN, PlayerState.FINISHED)
-        now = pendulum.now()
+        now = arrow_utcnow()
         game = create_test_game()
         game.game_players = {"gp1": gp1, "gp2": gp2}
         game.completed_date = None
@@ -753,7 +753,7 @@ class TestTrackedGame:
             gp2 = GamePlayer("gp2", PlayerColor.RED, PlayerType.HUMAN, PlayerState.PLAYING)
             gp1_copy = GamePlayer("gp1", PlayerColor.YELLOW, PlayerType.PROGRAMMATIC, PlayerState.FINISHED)
             gp2_copy = GamePlayer("gp2", PlayerColor.RED, PlayerType.HUMAN, PlayerState.FINISHED)
-            now = pendulum.now()
+            now = arrow_utcnow()
             game = create_test_game()
             game.game_players = {"gp1": gp1, "gp2": gp2}
             game.completed_date = None
@@ -861,7 +861,7 @@ class TestStateManager:
             mgr.track_websocket(websocket)
         assert mgr._websocket_map[websocket] is original
 
-    @patch("apologiesserver.manager.pendulum.now")
+    @patch("apologiesserver.manager.arrow_utcnow")
     def test_track_websocket(self, now):
         now.return_value = to_date("2020-05-11T16:57:00,000")
         websocket = MagicMock()
@@ -910,7 +910,7 @@ class TestStateManager:
         mgr._websocket_map[websocket].player_ids.add("bogus")
         assert mgr.lookup_players_for_websocket(websocket) == [player]
 
-    @patch("apologiesserver.manager.pendulum.now")
+    @patch("apologiesserver.manager.arrow_utcnow")
     @patch("apologiesserver.manager.uuid4")
     def test_track_game(self, uuid4, now):
         uuid4.return_value = "game_id"
@@ -1019,7 +1019,7 @@ class TestStateManager:
         game2.is_available.assert_called_once_with("handle")
         game3.is_available.assert_called_once_with("handle")
 
-    @patch("apologiesserver.manager.pendulum.now")
+    @patch("apologiesserver.manager.arrow_utcnow")
     @patch("apologiesserver.manager.uuid4")
     def test_track_player(self, uuid4, now):
         uuid4.return_value = "player_id"
@@ -1039,7 +1039,7 @@ class TestStateManager:
         assert mgr._player_map["player_id"] is player
         assert mgr._handle_map["handle"] == "player_id"
 
-    @patch("apologiesserver.manager.pendulum.now")
+    @patch("apologiesserver.manager.arrow_utcnow")
     def test_retrack_player(self, now):
         now.return_value = to_date("2020-05-11T16:57:00,000")
         player = MagicMock(player_id="player_id")
