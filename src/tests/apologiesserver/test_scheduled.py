@@ -1,11 +1,9 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=wildcard-import
 
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from asynctest import CoroutineMock, patch
-from asynctest import MagicMock as AsyncMock
 
 from apologiesserver.scheduled import (
     _execute_idle_game_check,
@@ -18,8 +16,7 @@ from apologiesserver.scheduled import (
     _schedule_obsolete_game_check,
     scheduled_tasks,
 )
-
-from .util import mock_handler
+from tests.conftest import coroutine_mock, mock_handler
 
 
 class TestFunctions:
@@ -101,7 +98,7 @@ class TestCoroutines:
     @patch("apologiesserver.scheduled.Periodic", autospec=True)
     async def test_schedule_idle_websocket_check(self, periodic, config):
         p = AsyncMock()
-        p.start = CoroutineMock()
+        p.start = coroutine_mock()
         periodic.return_value = p
         config.return_value = MagicMock(idle_websocket_check_period_sec=1, idle_websocket_check_delay_sec=2)
         await _schedule_idle_websocket_check()
@@ -112,7 +109,7 @@ class TestCoroutines:
     @patch("apologiesserver.scheduled.Periodic", autospec=True)
     async def test_schedule_idle_player_check(self, periodic, config):
         p = AsyncMock()
-        p.start = CoroutineMock()
+        p.start = coroutine_mock()
         periodic.return_value = p
         config.return_value = MagicMock(idle_player_check_period_sec=1, idle_player_check_delay_sec=2)
         await _schedule_idle_player_check()
@@ -123,7 +120,7 @@ class TestCoroutines:
     @patch("apologiesserver.scheduled.Periodic", autospec=True)
     async def test_schedule_idle_game_check(self, periodic, config):
         p = AsyncMock()
-        p.start = CoroutineMock()
+        p.start = coroutine_mock()
         periodic.return_value = p
         config.return_value = MagicMock(idle_game_check_period_sec=1, idle_game_check_delay_sec=2)
         await _schedule_idle_game_check()
@@ -134,7 +131,7 @@ class TestCoroutines:
     @patch("apologiesserver.scheduled.Periodic", autospec=True)
     async def test_schedule_obsolete_game_check(self, periodic, config):
         p = AsyncMock()
-        p.start = CoroutineMock()
+        p.start = coroutine_mock()
         periodic.return_value = p
         config.return_value = MagicMock(obsolete_game_check_period_sec=1, obsolete_game_check_delay_sec=2)
         await _schedule_obsolete_game_check()

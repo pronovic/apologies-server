@@ -58,7 +58,6 @@ dev = [
    "mypy (>=1.6.0,<2.0.0)",
    "colorama (>=0.4.6,<1.0.0)",
    "pytest-asyncio (==0.18.3)",
-   "asynctest (==0.13.0)", # TODO: remove, not maintained
 ]
 
 [project.scripts]
@@ -92,8 +91,7 @@ precision = 1
 [tool.pytest.ini_options]
 asyncio_mode = "strict"
 filterwarnings = [
-    # TODO: put this back after fixing deprecation warnings
-    #'error',  # turn all Python warnings into test failures, so they're hard to miss
+    'error',  # turn all Python warnings into test failures, so they're hard to miss
 ]
 
 [tool.ruff]

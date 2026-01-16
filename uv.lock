@@ -49,7 +49,6 @@ docs = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "asynctest" },
     { name = "colorama" },
     { name = "coverage" },
     { name = "mypy" },
@@ -73,7 +72,6 @@ provides-extras = ["docs"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "asynctest", specifier = "==0.13.0" },
     { name = "colorama", specifier = ">=0.4.6,<1.0.0" },
     { name = "coverage", specifier = ">=7.4.4,<8.0.0" },
     { name = "mypy", specifier = ">=1.6.0,<2.0.0" },
@@ -119,15 +117,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/e4/7b/f3ecfed1ed9ef52395ffa908e9dd7c48130510f6e266fe591c9da4c9e167/asyncio-periodic-2019.2.tar.gz", hash = "sha256:1dfeaa51e27a1c0c46775100edd3e57aed7a8e2df0e6ab3a879ceefaf59da5f2", size = 2875, upload-time = "2019-02-27T22:49:00.743Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/bf/69/ac044fc8a82e72c32830dfef85ef7975de08771bfd676fd57e526ae03e71/asyncio_periodic-2019.2-py3-none-any.whl", hash = "sha256:9f45cd105cd28cd3c315c53d2f18f73286f51ce317075a789158336b4fc1ee34", size = 4219, upload-time = "2019-02-27T22:48:58.506Z" },
-]
-
-[[package]]
-name = "asynctest"
-version = "0.13.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/0c/0f/6056f4435923d2f8c89ac9ef2d18506a569348d8f9cc827b0dd7a4c8acc4/asynctest-0.13.0.tar.gz", hash = "sha256:c27862842d15d83e6a34eb0b2866c323880eb3a75e4485b079ea11748fd77fac", size = 42301, upload-time = "2019-05-14T16:42:24.242Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e8/b6/8d17e169d577ca7678b11cd0d3ceebb0a6089a7f4a2de4b945fe4b1c86db/asynctest-0.13.0-py3-none-any.whl", hash = "sha256:5da6118a7e6d6b54d83a8f7197769d046922a44d2a99c21382f0a6e4fadae676", size = 26427, upload-time = "2019-05-14T16:42:22.894Z" },
 ]
 
 [[package]]

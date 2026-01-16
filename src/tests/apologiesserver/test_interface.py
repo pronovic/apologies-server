@@ -7,8 +7,7 @@ from apologies.game import Card, CardType, GameMode, History, Pawn, Player, Play
 from apologies.rules import Action, ActionType, Move
 
 from apologiesserver.interface import *
-
-from .util import to_date
+from tests.conftest import to_date
 
 
 def roundtrip(message: Message) -> None:
