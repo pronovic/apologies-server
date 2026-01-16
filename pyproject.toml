@@ -253,3 +253,8 @@ disable_error_code = ["import-untyped"]
 module = "tests.*"
 check_untyped_defs = false
 allow_untyped_defs = true
+
+# This code does not come with any type hints
+[[tool.mypy.overrides]]
+module = "apologiesserver.periodic.*"
+ignore_missing_imports = true
