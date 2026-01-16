@@ -133,7 +133,7 @@ class SystemConfig:
 _CONFIG: SystemConfig | None = None
 
 
-def _get(parser: ConfigParser | None | SectionProxy, key: str, overrides: dict[str, Any] | None, defaults: dict[str, Any]) -> Any:
+def _get(parser: ConfigParser | SectionProxy | None, key: str, overrides: dict[str, Any] | None, defaults: dict[str, Any]) -> Any:
     """Get a value from a parser, overriding or setting a default as necessary."""
     override = overrides[key] if overrides and key in overrides else None
     default = defaults[key] if defaults and key in defaults else None
@@ -141,7 +141,7 @@ def _get(parser: ConfigParser | None | SectionProxy, key: str, overrides: dict[s
 
 
 # pylint: disable=too-many-locals
-def _parse(parser: ConfigParser | None | SectionProxy, overrides: dict[str, Any] | None, defaults: dict[str, Any]) -> SystemConfig:
+def _parse(parser: ConfigParser | SectionProxy | None, overrides: dict[str, Any] | None, defaults: dict[str, Any]) -> SystemConfig:
     """Create an SystemConfig based on configuration, applying defaults to values that are not available."""
     logfile_path = _get(parser, "logfile_path", overrides, defaults)
     server_host = _get(parser, "server_host", overrides, defaults)

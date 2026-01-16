@@ -188,7 +188,6 @@ ignore = [
   "G201",       # for now, ignore logging.exception suggestions
   "LOG014",     # for now, ignore logging.exception suggestions
   "PLW0603",    # for now, ignore global _CONFIG
-  "RUF036",     # for now, don't enforce this
   "TC001",      # for now, don't enforce this
   "TC002",      # for now, don't enforce this
   "ANN001",     # for now, don't enforce this
