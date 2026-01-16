@@ -12,6 +12,7 @@ from apologiesserver.interface import *
 from tests.conftest import coroutine_mock, to_date
 
 
+@pytest.mark.filterwarnings("ignore:There is no current event loop")
 class TestTaskQueue:
     """
     Test the TaskQueue class.
@@ -777,7 +778,7 @@ class TestRequestMethods:
         request = RequestContext(message, websocket, player, game)
         with pytest.raises(ProcessingError, match=r"Game is not being played"):
             handler.handle_retrieve_game_state_request(request)
-        handler.handle_game_state_change_event.called_once_with(game, player)
+        handler.handle_game_state_change_event.assert_not_called()
 
     def test_handle_retrieve_game_state_request(self):
         handler = EventHandler(MagicMock())
@@ -789,7 +790,7 @@ class TestRequestMethods:
         game.is_playing.return_value = True
         request = RequestContext(message, websocket, player, game)
         handler.handle_retrieve_game_state_request(request)
-        handler.handle_game_state_change_event.called_once_with(game, player)
+        handler.handle_game_state_change_event.assert_called_once_with(game, player)
 
     def test_handle_send_message_request(self):
         handler = EventHandler(MagicMock())
@@ -797,11 +798,11 @@ class TestRequestMethods:
         context = SendMessageContext(message="hello", recipient_handles=["fry", "bender"])
         message = Message(MessageType.SEND_MESSAGE, player_id="id", context=context)
         websocket = MagicMock()
-        player = MagicMock()
+        player = MagicMock(handle="handle")
         game = MagicMock()
         request = RequestContext(message, websocket, player, game)
         handler.handle_send_message_request(request)
-        handler.handle_player_message_received_event.called_once_with("handle", ["fry", "bender"], "hello")
+        handler.handle_player_message_received_event.assert_called_once_with("handle", ["fry", "bender"], "hello")
 
 
 # pylint: disable=assigning-non-slot:
