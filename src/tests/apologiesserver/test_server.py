@@ -39,8 +39,7 @@ def data():
     for f in os.listdir(FIXTURE_DIR):
         p = os.path.join(FIXTURE_DIR, f)
         if pathlib.Path(p).is_file():
-            with pathlib.Path(p).open(encoding="utf-8") as r:
-                data[f] = r.read()
+            data[f] = pathlib.Path(p).read_text(encoding="utf-8")
     return data
 
 

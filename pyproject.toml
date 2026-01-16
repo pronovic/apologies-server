@@ -177,7 +177,6 @@ ignore = [
   "PTH",        # for now, don't apply PTH standards
   "UP031",      # for now, don't require format specifiers
   "PGH003",     # for now, don't require specific rule codes for type: ignore
-  "FURB101",    # for now, ignore Path optimizations
 ]
 
 [tool.ruff.lint.per-file-ignores]
