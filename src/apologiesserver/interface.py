@@ -340,7 +340,6 @@ class GameAction:
             start = GameStatePawn.for_pawn(action.pawn)
             end = GameStatePawn.for_position(action.pawn, Position().move_to_start())
             return GameAction(start, end)
-        # action.actiontype == ActionType.MOVE_TO_POSITION
         if not action.position:
             raise ValueError("Action has no associated position")
         start = GameStatePawn.for_pawn(action.pawn)

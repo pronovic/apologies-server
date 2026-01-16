@@ -189,7 +189,6 @@ ignore = [
   "LOG014",     # for now, ignore logging.exception suggestions
   "PLW0603",    # for now, ignore global _CONFIG
   "ANN001",     # for now, don't enforce this
-  "ERA001",     # for now, don't enforce this
   "PT",         # for now, don't apply PT standards
   "SIM",        # for now, don't apply SIM standards
   "PLR",        # for now, don't apply PLR standards
