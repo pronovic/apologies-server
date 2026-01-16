@@ -123,11 +123,13 @@ class TestFunctions:
         run_server.assert_called_once_with(loop, stop)
 
     def test_handle_message_register(self):
-        handler = MagicMock()
-        message = MagicMock(message=MessageType.REGISTER_PLAYER)
-        websocket = MagicMock()
-        _handle_message(handler, message, websocket)
-        handler.handle_register_player_request.assert_called_once_with(message, websocket)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")  # ignore warnings about coroutines
+            handler = MagicMock()
+            message = MagicMock(message=MessageType.REGISTER_PLAYER)
+            websocket = MagicMock()
+            _handle_message(handler, message, websocket)
+            handler.handle_register_player_request.assert_called_once_with(message, websocket)
 
     @patch("apologiesserver.server._lookup_method")
     def test_handle_message(self, lookup_method):
