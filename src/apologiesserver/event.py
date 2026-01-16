@@ -560,7 +560,12 @@ class EventHandler:
         self.handle_game_next_turn_event(game)
 
     def handle_game_cancelled_event(
-        self, game: TrackedGame, reason: CancelledReason, comment: str | None = None, notify: bool = True
+        self,
+        game: TrackedGame,
+        reason: CancelledReason,
+        comment: str | None = None,
+        *,
+        notify: bool = True,
     ) -> None:
         """Handle the Game Cancelled event."""
         log.info("Event - GAME CANCELLED - %s for %s (%s)", game.game_id, reason, "'%s'" % comment if comment else None)

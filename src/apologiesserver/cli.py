@@ -37,7 +37,7 @@ def run_server(argv: list[str]) -> None:
         overrides["logfile_path"] = args.logfile  # we want to expose this a little more explicitly in the argument list
 
     load_config(args.config, overrides)
-    setup_logging(args.quiet, args.verbose, args.debug, config().logfile_path)
+    setup_logging(quiet=args.quiet, verbose=args.verbose, debug=args.debug, logfile_path=config().logfile_path)
 
     server()
 
@@ -60,7 +60,7 @@ def run_demo(argv: list[str]) -> None:
     parser.add_argument("--port", type=int, default=DEFAULT_SERVER_PORT, help="port where the server is running on the host")
 
     args = parser.parse_args(args=argv)
-    setup_logging(args.quiet, args.verbose, args.debug, args.logfile)
+    setup_logging(quiet=args.quiet, verbose=args.verbose, debug=args.debug, logfile_path=args.logfile)
     demo(host=args.host, port=args.port)
 
 

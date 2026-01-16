@@ -40,7 +40,7 @@ class TestRunServer:
         argv = []
         run_server(argv=argv)
         load_config.assert_called_once_with(None, {})
-        setup_logging.assert_called_once_with(False, False, False, "path")
+        setup_logging.assert_called_once_with(quiet=False, verbose=False, debug=False, logfile_path="path")
         server.assert_called_once()
 
     def test_run_server_h(self, _load_config, _setup_logging, config, _server):
@@ -60,7 +60,7 @@ class TestRunServer:
         argv = ["--quiet"]
         run_server(argv=argv)
         load_config.assert_called_once_with(None, {})
-        setup_logging.assert_called_once_with(True, False, False, "path")
+        setup_logging.assert_called_once_with(quiet=True, verbose=False, debug=False, logfile_path="path")
         server.assert_called_once()
 
     def test_run_server_verbose(self, load_config, setup_logging, config, server):
@@ -68,7 +68,7 @@ class TestRunServer:
         argv = ["--verbose"]
         run_server(argv=argv)
         load_config.assert_called_once_with(None, {})
-        setup_logging.assert_called_once_with(False, True, False, "path")
+        setup_logging.assert_called_once_with(quiet=False, verbose=True, debug=False, logfile_path="path")
         server.assert_called_once()
 
     def test_run_server_debug(self, load_config, setup_logging, config, server):
@@ -76,7 +76,7 @@ class TestRunServer:
         argv = ["--debug"]
         run_server(argv=argv)
         load_config.assert_called_once_with(None, {})
-        setup_logging.assert_called_once_with(False, False, True, "path")
+        setup_logging.assert_called_once_with(quiet=False, verbose=False, debug=True, logfile_path="path")
         server.assert_called_once()
 
     def test_run_server_config(self, load_config, setup_logging, config, server):
@@ -84,7 +84,7 @@ class TestRunServer:
         argv = ["--config", "/path/to/config"]
         run_server(argv=argv)
         load_config.assert_called_once_with("/path/to/config", {})
-        setup_logging.assert_called_once_with(False, False, False, "path")
+        setup_logging.assert_called_once_with(quiet=False, verbose=False, debug=False, logfile_path="path")
         server.assert_called_once()
 
     def test_run_server_logfile(self, load_config, setup_logging, config, server):
@@ -92,7 +92,7 @@ class TestRunServer:
         argv = ["--logfile", "/path/to/log"]
         run_server(argv=argv)
         load_config.assert_called_once_with(None, {"logfile_path": "/path/to/log"})
-        setup_logging.assert_called_once_with(False, False, False, "path")
+        setup_logging.assert_called_once_with(quiet=False, verbose=False, debug=False, logfile_path="path")
         server.assert_called_once()
 
     def test_run_server_override_single(self, load_config, setup_logging, config, server):
@@ -100,7 +100,7 @@ class TestRunServer:
         argv = ["--override", "one:ONE"]
         run_server(argv=argv)
         load_config.assert_called_once_with(None, {"one": "ONE"})
-        setup_logging.assert_called_once_with(False, False, False, "path")
+        setup_logging.assert_called_once_with(quiet=False, verbose=False, debug=False, logfile_path="path")
         server.assert_called_once()
 
     def test_run_server_override_multiple(self, load_config, setup_logging, config, server):
@@ -108,7 +108,7 @@ class TestRunServer:
         argv = ["--override", "one:ONE", "--logfile", "/path/to/log", "--override", "two:TWO"]
         run_server(argv=argv)
         load_config.assert_called_once_with(None, {"one": "ONE", "two": "TWO", "logfile_path": "/path/to/log"})
-        setup_logging.assert_called_once_with(False, False, False, "path")
+        setup_logging.assert_called_once_with(quiet=False, verbose=False, debug=False, logfile_path="path")
         server.assert_called_once()
 
 
@@ -122,7 +122,7 @@ class TestRunDemo:
     def test_run_demo_defaults(self, setup_logging, demo):
         argv = []
         run_demo(argv=argv)
-        setup_logging.assert_called_once_with(False, False, False, None)
+        setup_logging.assert_called_once_with(quiet=False, verbose=False, debug=False, logfile_path=None)
         demo.assert_called_once()
 
     def test_run_demo_h(self, _setup_logging, _demo):
@@ -138,35 +138,35 @@ class TestRunDemo:
     def test_run_demo_host(self, setup_logging, demo):
         argv = ["--host", "server"]
         run_demo(argv=argv)
-        setup_logging.assert_called_once_with(False, False, False, None)
+        setup_logging.assert_called_once_with(quiet=False, verbose=False, debug=False, logfile_path=None)
         demo.assert_called_once_with(host="server", port=8080)
 
     def test_run_demo_port(self, setup_logging, demo):
         argv = ["--port", "9000"]
         run_demo(argv=argv)
-        setup_logging.assert_called_once_with(False, False, False, None)
+        setup_logging.assert_called_once_with(quiet=False, verbose=False, debug=False, logfile_path=None)
         demo.assert_called_once_with(host="localhost", port=9000)
 
     def test_run_demo_quiet(self, setup_logging, demo):
         argv = ["--quiet"]
         run_demo(argv=argv)
-        setup_logging.assert_called_once_with(True, False, False, None)
+        setup_logging.assert_called_once_with(quiet=True, verbose=False, debug=False, logfile_path=None)
         demo.assert_called_once_with(host="localhost", port=8080)
 
     def test_run_demo_verbose(self, setup_logging, demo):
         argv = ["--verbose"]
         run_demo(argv=argv)
-        setup_logging.assert_called_once_with(False, True, False, None)
+        setup_logging.assert_called_once_with(quiet=False, verbose=True, debug=False, logfile_path=None)
         demo.assert_called_once_with(host="localhost", port=8080)
 
     def test_run_demo_debug(self, setup_logging, demo):
         argv = ["--debug"]
         run_demo(argv=argv)
-        setup_logging.assert_called_once_with(False, False, True, None)
+        setup_logging.assert_called_once_with(quiet=False, verbose=False, debug=True, logfile_path=None)
         demo.assert_called_once_with(host="localhost", port=8080)
 
     def test_run_demo_logfile(self, setup_logging, demo):
         argv = ["--logfile", "/path/to/log"]
         run_demo(argv=argv)
-        setup_logging.assert_called_once_with(False, False, False, "/path/to/log")
+        setup_logging.assert_called_once_with(quiet=False, verbose=False, debug=False, logfile_path="/path/to/log")
         demo.assert_called_once_with(host="localhost", port=8080)

@@ -197,9 +197,6 @@ ignore = [
   "B904",       # for now, don't enforce this
   "B024",       # for now, don't enforce this
   "PYI034",     # for now, don't enforce this
-  "FBT001",     # for now, don't enforce standards for boolean positional arguments
-  "FBT002",     # for now, don't enforce standards for boolean positional arguments
-  "A004",       # for now, don't enforce standards for shadowing
   "PT",         # for now, don't apply PT standards
   "SIM",        # for now, don't apply SIM standards
   "PLR",        # for now, don't apply PLR standards

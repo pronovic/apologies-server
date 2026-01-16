@@ -70,7 +70,7 @@ async def receive(websocket: Connection, timeout_sec: int | None = None) -> Mess
         return None
 
 
-def setup_logging(quiet: bool, verbose: bool, debug: bool, logfile_path: str | None = None) -> None:
+def setup_logging(*, quiet: bool, verbose: bool, debug: bool, logfile_path: str | None = None) -> None:
     """Set up Python logging."""
     logger = logging.getLogger("apologies")
     logger.setLevel(logging.DEBUG)
