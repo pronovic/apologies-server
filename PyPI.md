@@ -18,7 +18,7 @@ This code is still a reasonable example of how to build a Websocket server
 including a state machine to manage board game state.  However, its main
 purpose was to support the process of building that web UI, so it's not
 designed or architected for production use.  It doesn't really look like
-something I wrote write today, given the benefit of more experience with async
+something I would write today, given the benefit of more experience with async
 design patterns in Python.  But, it works.
 
 See the [documentation](https://apologies-server.readthedocs.io/en/stable/design.html) for notes about the public interface and the event model.
