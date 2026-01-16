@@ -42,4 +42,4 @@ jobs:
     needs: [ linux-build-and-test, macos-build-and-test, windows-build-and-test ]
     secrets: inherit
     with:
-      publish-pypi: false
+      publish-pypi: true
