@@ -1,12 +1,11 @@
-# -*- coding: utf-8 -*-
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=unsubscriptable-object
 
 """
 Definition of the public interface for the server.
 
-Both requests (message sent from a client to the server) and events (published 
-from the server to one or more clients) can be serialized and deserialized to 
+Both requests (message sent from a client to the server) and events (published
+from the server to one or more clients) can be serialized and deserialized to
 and from JSON.  However, we apply much tighter validation rules on the context
 associated with requests, since the input is untrusted.  We assume that the
 unit tests and the Python type validations imposed by MyPy give us everything
@@ -20,7 +19,7 @@ from __future__ import annotations  # see: https://stackoverflow.com/a/33533514/
 import json
 from abc import ABC
 from enum import Enum
-from typing import Any, Dict, List, Optional, Type
+from typing import Any
 
 import cattrs
 from apologies import Action, ActionType, CardType, GameMode, History, Move, Pawn, Player, PlayerColor, PlayerView, Position
@@ -34,51 +33,51 @@ from pendulum.parser import parse
 from .validator import enum, length, notempty, regex, string, stringlist
 
 __all__ = [
-    "Visibility",
-    "CancelledReason",
-    "PlayerType",
-    "PlayerState",
-    "ConnectionState",
     "ActivityState",
-    "GameState",
-    "FailureReason",
-    "MessageType",
-    "ProcessingError",
-    "GamePlayer",
-    "RegisteredPlayer",
-    "AdvertisedGame",
-    "GameStatePawn",
-    "GameStatePlayer",
-    "GameStateHistory",
-    "GameAction",
-    "GameMove",
-    "RegisterPlayerContext",
-    "ReregisterPlayerContext",
     "AdvertiseGameContext",
-    "JoinGameContext",
-    "ExecuteMoveContext",
-    "SendMessageContext",
-    "RequestFailedContext",
-    "RegisteredPlayersContext",
+    "AdvertisedGame",
     "AvailableGamesContext",
-    "PlayerRegisteredContext",
-    "PlayerUnregisteredContext",
-    "PlayerIdleContext",
-    "PlayerInactiveContext",
-    "PlayerMessageReceivedContext",
+    "CancelledReason",
+    "ConnectionState",
+    "ExecuteMoveContext",
+    "FailureReason",
+    "GameAction",
     "GameAdvertisedContext",
-    "GameInvitationContext",
-    "GameJoinedContext",
-    "GameStartedContext",
     "GameCancelledContext",
     "GameCompletedContext",
     "GameIdleContext",
     "GameInactiveContext",
-    "GamePlayerQuitContext",
+    "GameInvitationContext",
+    "GameJoinedContext",
+    "GameMove",
+    "GamePlayer",
     "GamePlayerChangeContext",
-    "GameStateChangeContext",
+    "GamePlayerQuitContext",
     "GamePlayerTurnContext",
+    "GameStartedContext",
+    "GameState",
+    "GameStateChangeContext",
+    "GameStateHistory",
+    "GameStatePawn",
+    "GameStatePlayer",
+    "JoinGameContext",
     "Message",
+    "MessageType",
+    "PlayerIdleContext",
+    "PlayerInactiveContext",
+    "PlayerMessageReceivedContext",
+    "PlayerRegisteredContext",
+    "PlayerState",
+    "PlayerType",
+    "PlayerUnregisteredContext",
+    "ProcessingError",
+    "RegisterPlayerContext",
+    "RegisteredPlayer",
+    "RegisteredPlayersContext",
+    "RequestFailedContext",
+    "ReregisterPlayerContext",
+    "SendMessageContext",
+    "Visibility",
 ]
 
 
@@ -210,11 +209,11 @@ class ProcessingError(RuntimeError):
     """Exception thrown when there is a general processing error."""
 
     reason: FailureReason
-    comment: Optional[str] = None
-    handle: Optional[str] = None
+    comment: str | None = None
+    handle: str | None = None
 
     def __repr__(self) -> str:
-        return self.comment if self.comment else self.reason.value
+        return self.comment or self.reason.value
 
     def __str__(self) -> str:
         return self.__repr__()
@@ -225,7 +224,7 @@ class GamePlayer:
     """The public definition of a player within a game."""
 
     handle: str
-    player_color: Optional[PlayerColor]
+    player_color: PlayerColor | None
     player_type: PlayerType
     player_state: PlayerState
 
@@ -240,7 +239,7 @@ class RegisteredPlayer:
     connection_state: ConnectionState
     activity_state: ActivityState
     player_state: PlayerState
-    game_id: Optional[str]
+    game_id: str | None
 
 
 @frozen
@@ -254,7 +253,7 @@ class AdvertisedGame:
     players: int
     available: int
     visibility: Visibility
-    invited_handles: List[str]
+    invited_handles: list[str]
 
 
 @frozen
@@ -265,8 +264,8 @@ class GameStatePawn:
     id: str
     start: bool
     home: bool
-    safe: Optional[int]
-    square: Optional[int]
+    safe: int | None
+    square: int | None
 
     @staticmethod
     def for_pawn(pawn: Pawn) -> GameStatePawn:
@@ -297,8 +296,8 @@ class GameStatePlayer:
 
     color: PlayerColor
     turns: int
-    hand: List[CardType]
-    pawns: List[GameStatePawn]
+    hand: list[CardType]
+    pawns: list[GameStatePawn]
 
     @staticmethod
     def for_player(player: Player) -> GameStatePlayer:
@@ -315,8 +314,8 @@ class GameStateHistory:
     """History for a game."""
 
     action: str
-    color: Optional[PlayerColor]
-    card: Optional[CardType]
+    color: PlayerColor | None
+    card: CardType | None
     timestamp: DateTime
 
     @staticmethod
@@ -339,12 +338,12 @@ class GameAction:
             start = GameStatePawn.for_pawn(action.pawn)
             end = GameStatePawn.for_position(action.pawn, Position().move_to_start())
             return GameAction(start, end)
-        else:  # action.actiontype == ActionType.MOVE_TO_POSITION
-            if not action.position:
-                raise ValueError("Action has no associated position")
-            start = GameStatePawn.for_pawn(action.pawn)
-            end = GameStatePawn.for_position(action.pawn, action.position)
-            return GameAction(start, end)
+        # action.actiontype == ActionType.MOVE_TO_POSITION
+        if not action.position:
+            raise ValueError("Action has no associated position")
+        start = GameStatePawn.for_pawn(action.pawn)
+        end = GameStatePawn.for_position(action.pawn, action.position)
+        return GameAction(start, end)
 
 
 @frozen
@@ -353,8 +352,8 @@ class GameMove:
 
     move_id: str
     card: CardType
-    actions: List[GameAction]
-    side_effects: List[GameAction]
+    actions: list[GameAction]
+    side_effects: list[GameAction]
 
     @staticmethod
     def for_move(move: Move) -> GameMove:
@@ -402,7 +401,7 @@ class AdvertiseGameContext(Context):
     mode: GameMode = field(validator=enum(GameMode))
     players: int = field(validator=in_([2, 3, 4]))
     visibility: Visibility = field(validator=enum(Visibility))
-    invited_handles: List[str] = field(validator=stringlist)
+    invited_handles: list[str] = field(validator=stringlist)
 
 
 @frozen
@@ -424,7 +423,7 @@ class SendMessageContext(Context):
     """Context for an SEND_MESSAGE request."""
 
     message: str = field(validator=string)
-    recipient_handles: List[str] = field(validator=and_(stringlist, notempty))
+    recipient_handles: list[str] = field(validator=and_(stringlist, notempty))
 
 
 @frozen
@@ -432,22 +431,22 @@ class RequestFailedContext(Context):
     """Context for a REQUEST_FAILED event."""
 
     reason: FailureReason
-    comment: Optional[str]
-    handle: Optional[str] = None
+    comment: str | None
+    handle: str | None = None
 
 
 @frozen
 class RegisteredPlayersContext(Context):
     """Context for a REGISTERED_PLAYERS event."""
 
-    players: List[RegisteredPlayer]
+    players: list[RegisteredPlayer]
 
 
 @frozen
 class AvailableGamesContext(Context):
     """Context for an AVAILABLE_GAMES event."""
 
-    games: List[AdvertisedGame]
+    games: list[AdvertisedGame]
 
 
 @frozen
@@ -483,7 +482,7 @@ class PlayerMessageReceivedContext(Context):
     """Context for a PLAYER_MESSAGE_RECEIVED event."""
 
     sender_handle: str
-    recipient_handles: List[str]
+    recipient_handles: list[str]
     message: str
 
 
@@ -525,7 +524,7 @@ class GameCancelledContext(Context):
 
     game_id: str
     reason: CancelledReason
-    comment: Optional[str]
+    comment: str | None
 
 
 @frozen
@@ -564,8 +563,8 @@ class GamePlayerChangeContext(Context):
     """Context for a GAME_PLAYER_CHANGE event."""
 
     game_id: str
-    comment: Optional[str]
-    players: List[GamePlayer]
+    comment: str | None
+    players: list[GamePlayer]
 
 
 @frozen
@@ -573,12 +572,12 @@ class GameStateChangeContext(Context):
     """Context for a GAME_STATE_CHANGE event."""
 
     game_id: str
-    recent_history: List[GameStateHistory]
+    recent_history: list[GameStateHistory]
     player: GameStatePlayer
-    opponents: List[GameStatePlayer]
+    opponents: list[GameStatePlayer]
 
     @staticmethod
-    def for_context(game_id: str, view: PlayerView, history: List[History]) -> GameStateChangeContext:
+    def for_context(game_id: str, view: PlayerView, history: list[History]) -> GameStateChangeContext:
         """Create a GameStateChangeContext based on apologies.game.PlayerView."""
         player = GameStatePlayer.for_player(view.player)
         recent_history = [GameStateHistory.for_history(entry) for entry in history]
@@ -592,11 +591,11 @@ class GamePlayerTurnContext(Context):
 
     handle: str
     game_id: str
-    drawn_card: Optional[CardType]
-    moves: Dict[str, GameMove]
+    drawn_card: CardType | None
+    moves: dict[str, GameMove]
 
     @staticmethod
-    def for_moves(handle: str, game_id: str, moves: List[Move]) -> GamePlayerTurnContext:
+    def for_moves(handle: str, game_id: str, moves: list[Move]) -> GamePlayerTurnContext:
         """Create a GamePlayerTurnContext based on a sequence of apologies.rules.Move."""
         cards = {move.card.cardtype for move in moves}
         drawn_card = None if len(cards) > 1 else next(iter(cards))  # if there's only one card, it's the one they drew from the deck
@@ -605,7 +604,7 @@ class GamePlayerTurnContext(Context):
 
 
 # Map from MessageType to whether player id field is allowed/required
-_PLAYER_ID: Dict[MessageType, bool] = {
+_PLAYER_ID: dict[MessageType, bool] = {
     MessageType.REGISTER_PLAYER: False,
     MessageType.REREGISTER_PLAYER: True,
     MessageType.UNREGISTER_PLAYER: True,
@@ -646,7 +645,7 @@ _PLAYER_ID: Dict[MessageType, bool] = {
 }
 
 # Map from MessageType to context
-_CONTEXT: Dict[MessageType, Optional[Type[Context]]] = {
+_CONTEXT: dict[MessageType, type[Context] | None] = {
     MessageType.REGISTER_PLAYER: RegisterPlayerContext,
     MessageType.REREGISTER_PLAYER: ReregisterPlayerContext,
     MessageType.UNREGISTER_PLAYER: None,
@@ -728,7 +727,7 @@ class Message:
     """A message that is part of the public interface, either a client request or a published event."""
 
     message: MessageType = field()
-    player_id: Optional[str] = field(default=None, repr=False)  # this is a secret, so we don't want it printed or logged
+    player_id: str | None = field(default=None, repr=False)  # this is a secret, so we don't want it printed or logged
     context: Any = field(default=None)
 
     @message.validator
@@ -742,9 +741,8 @@ class Message:
         if _PLAYER_ID[self.message]:
             if value is None:
                 raise ValueError("Message type %s requires a player id" % self.message.name)
-        else:
-            if value is not None:
-                raise ValueError("Message type %s does not allow a player id" % self.message.name)
+        elif value is not None:
+            raise ValueError("Message type %s does not allow a player id" % self.message.name)
 
     # noinspection PyTypeHints
     @context.validator
@@ -752,11 +750,10 @@ class Message:
         if _CONTEXT[self.message] is not None:
             if value is None:
                 raise ValueError("Message type %s requires a context" % self.message.name)
-            elif not isinstance(value, _CONTEXT[self.message]):  # type: ignore
+            if not isinstance(value, _CONTEXT[self.message]):  # type: ignore
                 raise ValueError("Message type %s does not support this context" % self.message.name)
-        else:
-            if value is not None:
-                raise ValueError("Message type %s does not allow a context" % self.message.name)
+        elif value is not None:
+            raise ValueError("Message type %s does not allow a context" % self.message.name)
 
     def to_json(self) -> str:
         """Convert the request to JSON."""
@@ -805,8 +802,7 @@ class Message:
                 key_errors = [c for c in e.exceptions if isinstance(c, KeyError)]
                 if value_errors:
                     raise value_errors[0]
-                elif key_errors:
+                if key_errors:
                     raise ValueError("Invalid value %s" % str(key_errors[0])) from e
-                else:
-                    raise ValueError("Message type %s does not support this context" % message.name, e) from e
+                raise ValueError("Message type %s does not support this context" % message.name, e) from e
         return Message(message, player_id, context)

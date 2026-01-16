@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=wildcard-import
 
@@ -10,7 +9,7 @@ of the interface classes.  That greatly simplifies the implementation.
 But, the entire demo takes place over a network connection, so it is
 a real test of the websockets server.
 
-See also: the TestGame class in test_manager.py, which implements a 
+See also: the TestGame class in test_manager.py, which implements a
 similar flow of control synchronously against the internal manager
 interface.  If you need to debug something, that's probably easier
 to work with.
@@ -23,7 +22,7 @@ import random
 import signal
 import sys
 from asyncio import AbstractEventLoop, CancelledError
-from typing import List, Optional, Tuple, cast
+from typing import cast
 
 from apologies import GameMode
 from websockets.legacy.client import WebSocketClientProtocol, connect
@@ -58,7 +57,7 @@ async def _advertise_game(websocket: WebSocketClientProtocol, player_id: str) ->
     mode = GameMode.STANDARD
     players = 4
     visibility = Visibility.PUBLIC
-    invited_handles: List[str] = []
+    invited_handles: list[str] = []
     context = AdvertiseGameContext(name, mode, players, visibility, invited_handles)
     request = Message(MessageType.ADVERTISE_GAME, player_id=player_id, context=context)
     await send(websocket, request)
@@ -72,31 +71,31 @@ async def _start_game(websocket: WebSocketClientProtocol, player_id: str) -> Non
 
 def _handle_game_joined(_player_id: str, message: Message) -> None:
     """Handle the game joined event."""
-    context = cast(GameJoinedContext, message.context)
+    context = cast("GameJoinedContext", message.context)
     log.info("Joined game %s", context.game_id)
 
 
 def _handle_game_advertised(_player_id: str, message: Message) -> None:
     """Handle the game advertised event."""
-    context = cast(GameAdvertisedContext, message.context)
+    context = cast("GameAdvertisedContext", message.context)
     log.info("Advertised game '%s': %s", context.game.name, context.game.game_id)
 
 
 def _handle_game_started(_player_id: str, message: Message) -> None:
     """Handle the game started event."""
-    context = cast(GameStartedContext, message.context)
+    context = cast("GameStartedContext", message.context)
     log.info("Started game: %s", context.game_id)
 
 
 def _handle_game_completed(_player_id: str, message: Message) -> None:
     """Handle the game completed event."""
-    context = cast(GameCompletedContext, message.context)
-    log.info("Game completed: %s", context.comment if context.comment else "")
+    context = cast("GameCompletedContext", message.context)
+    log.info("Game completed: %s", context.comment or "")
 
 
 def _handle_game_state_change(_player_id: str, message: Message) -> None:
     """Handle the game state change event"""
-    context = cast(GameStateChangeContext, message.context)
+    context = cast("GameStateChangeContext", message.context)
     if context.recent_history:
         history = context.recent_history[-1]
         color = "General" if not history.color else history.color.value
@@ -106,22 +105,22 @@ def _handle_game_state_change(_player_id: str, message: Message) -> None:
 
 def _handle_game_player_change(_player_id: str, message: Message) -> None:
     """Handle the game player change event."""
-    context = cast(GamePlayerChangeContext, message.context)
+    context = cast("GamePlayerChangeContext", message.context)
     players = [
         "%s%s" % (player.handle, " (%s)" % player.player_color.value if player.player_color else "") for player in context.players
     ]
     log.info("Game players are: %s", players)
 
 
-def _handle_game_player_turn(player_id: str, message: Message) -> Optional[Message]:
+def _handle_game_player_turn(player_id: str, message: Message) -> Message | None:
     """Handle the game player turn event."""
-    context = cast(GamePlayerTurnContext, message.context)
+    context = cast("GamePlayerTurnContext", message.context)
     move: GameMove = random.choice(list(context.moves.values()))
     log.info("Demo player turn, %d move(s), chose %s for card %s", len(context.moves), move.move_id, move.card.name)
     return Message(MessageType.EXECUTE_MOVE, player_id=player_id, context=ExecuteMoveContext(move_id=move.move_id))
 
 
-def _handle_message(player_id: str, message: Message) -> Tuple[bool, Optional[Message]]:
+def _handle_message(player_id: str, message: Message) -> tuple[bool, Message | None]:
     """Handle any message received from the connection."""
     completed = False
     response = None

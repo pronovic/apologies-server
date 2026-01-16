@@ -5,9 +5,9 @@ help_format() {
 }
 
 task_format() {
+   run_command ruffformat
    echo ""
-   run_command black
+   run_command ruffautofix "$@"
    echo ""
-   run_command isort
 }
 

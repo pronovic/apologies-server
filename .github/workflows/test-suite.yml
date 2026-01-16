@@ -4,37 +4,42 @@ name: Test Suite
 on:
   push:
     branches:
-      - master
+      - main
+    tags:
+      - "v*"
   pull_request:
-    branches:
-      - master
-  schedule:
-    - cron: '05 17 15 * *'  # 15th of the month at 5:05pm UTC
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   linux-build-and-test:
-    uses: pronovic/gha-shared-workflows/.github/workflows/poetry-build-and-test.yml@v2
+    name: "Linux"
+    uses: pronovic/gha-shared-workflows/.github/workflows/uv-build-and-test.yml@v10
     secrets: inherit
     with:
       matrix-os-version: "[ 'ubuntu-latest' ]"
-      matrix-python-version: "[ '3.8', '3.9', '3.10' ]"  # run Linux tests on all supported Python versions
-      poetry-version: "1.2.2"
+      matrix-python-version: "[ '3.10' ]"  # run Linux tests on all supported Python versions
       enable-coveralls: true  # only report to coveralls.io for tests that run on Linux
+      persist-python-version: "3.10"  # persist artifacts for the oldest supported Python version
   macos-build-and-test:
-    uses: pronovic/gha-shared-workflows/.github/workflows/poetry-build-and-test.yml@v2
+    name: "MacOS"
+    uses: pronovic/gha-shared-workflows/.github/workflows/uv-build-and-test.yml@v10
     secrets: inherit
     with:
       matrix-os-version: "[ 'macos-latest' ]"
       matrix-python-version: "[ '3.10' ]"  # only run MacOS tests on latest Python
-      poetry-version: "1.2.2"
-      enable-coveralls: false 
   windows-build-and-test:
-    uses: pronovic/gha-shared-workflows/.github/workflows/poetry-build-and-test.yml@v2
+    name: "Windows"
+    uses: pronovic/gha-shared-workflows/.github/workflows/uv-build-and-test.yml@v10
     secrets: inherit
     with:
       matrix-os-version: "[ 'windows-latest' ]"
       matrix-python-version: "[ '3.10' ]"  # only run Windows tests on latest Python
-      poetry-version: "1.2.2"
-      enable-coveralls: false 
+  release:
+    name: "Release"
+    if: github.ref_type == 'tag'
+    uses: pronovic/gha-shared-workflows/.github/workflows/release.yml@v10
+    needs: [ linux-build-and-test, macos-build-and-test, windows-build-and-test ]
+    secrets: inherit
+    with:
+      publish-pypi: false

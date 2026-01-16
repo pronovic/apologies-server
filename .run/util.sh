@@ -2,8 +2,8 @@
 # General utility functions for use by the run script
 
 # This is the set of basic tasks that must always exist
-BASIC_TASKS="install format checks build test suite"
-BASIC_TASKS_REGEX="^install$|^format$|^checks$|^build$|^test$|^suite$"
+BASIC_TASKS="install update outdated format checks build test suite clean"
+BASIC_TASKS_REGEX="^install$|^update$|^outdated$|^format$|^checks$|^build$|^test$|^suite$|^clean$"
 
 # Run a command
 run_command() {
@@ -29,25 +29,6 @@ run_command() {
       exit 1
    fi
 } 
-
-# Wrap "poetry run", confirming that the command is installed first
-poetry_run() {
-   local COMMAND
-
-   COMMAND="$1"
-   shift 1
-
-   poetry run which "$COMMAND" > /dev/null
-   if [ $? != 0 ]; then
-      run_command virtualenv
-   fi
-
-   poetry run "$COMMAND" "$@"
-   if [ $? != 0 ]; then
-      echo "Command failed: poetry run $COMMAND $*"
-      exit 1
-   fi
-}
 
 # Get a list of basic tasks
 basic_tasks() {
@@ -83,8 +64,6 @@ run_task() {
    TASK="$1"
    shift 1
 
-   run_command disablekeyring
-
    source "$DOTRUN_DIR/tasks/$TASK.sh"
    if [ $? != 0 ]; then
       echo "Unable to source task: $TASK"
@@ -110,15 +89,30 @@ task_help() {
 
 # Setup the runtime environment
 setup_environment() {
+   local EARLIEST_YEAR LATEST_YEAR
+
    DOTRUN_DIR="$REPO_DIR/.run"
+
    WORKING_DIR=$(mktemp -d)
    trap "rm -rf '$WORKING_DIR'" EXIT SIGINT SIGTERM
 }
 
 # Add addendum information to the end of the help output
 add_addendum() {
+   echo "The Python interpreter version is controlled by the .python-version file.  To"
+   echo "test with a different version of Python temporarily, set \$UV_PYTHON in your"
+   echo "shell, and execute 'run install'.  Make sure to unset and reinstall when done."
+   echo ""
    if [ -f "$REPO_DIR/.run/addendum.sh" ]; then
       bash "$REPO_DIR/.run/addendum.sh"
+      echo ""
    fi 
 }
 
+# Whether the current platform is Windows
+is_windows() {
+   case "$OSTYPE" in
+      msys*|cygwin*) true;;
+      *) false;;
+   esac
+}

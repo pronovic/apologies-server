@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=wildcard-import,too-many-lines
 
@@ -24,9 +23,9 @@ The design would be different if we were using a database to save state, but thi
 like the best compromise for the simple in-memory design that we're using now.
 
 The transaction boundary is handled by a single lock on the StateManager object.  Callers
-must ensure that they get that lock before reading or modifying state in any way.  Other 
-than that, none of the objects defined in this module are thread-safe, or even thread-aware.  
-There are no asynchronous methods or await calls.  This simplifies the implementation and 
+must ensure that they get that lock before reading or modifying state in any way.  Other
+than that, none of the objects defined in this module are thread-safe, or even thread-aware.
+There are no asynchronous methods or await calls.  This simplifies the implementation and
 avoids confusion.
 """
 
@@ -35,7 +34,6 @@ from __future__ import annotations  # see: https://stackoverflow.com/a/33533514/
 import asyncio
 import logging
 import random
-from typing import Dict, List, Optional, Tuple
 from uuid import uuid4
 
 import pendulum
@@ -120,13 +118,13 @@ class TrackedPlayer:
 
     player_id: str = field(repr=False)  # treat as read-only; this is a secret, so we don't want it printed or logged
     handle: str  # treat as read-only
-    websocket: Optional[WebSocketServerProtocol]
+    websocket: WebSocketServerProtocol | None
     registration_date: DateTime = field()
     last_active_date: DateTime = field()
     activity_state: ActivityState = ActivityState.ACTIVE
     connection_state: ConnectionState = ConnectionState.CONNECTED
     player_state: PlayerState = PlayerState.WAITING
-    game_id: Optional[str] = None
+    game_id: str | None = None
 
     # noinspection PyUnresolvedReferences
     @registration_date.default
@@ -193,12 +191,11 @@ class TrackedPlayer:
 
 @frozen
 class CurrentTurn:
-
     handle: str
     color: PlayerColor
     view: PlayerView
-    movelist: List[Move]
-    movedict: Dict[str, Move]
+    movelist: list[Move]
+    movedict: dict[str, Move]
 
     def draw_again(self, engine: Engine) -> CurrentTurn:
         return CurrentTurn.for_handle(engine, self.handle, self.color)
@@ -220,11 +217,11 @@ class CurrentTurn:
 class TrackedEngine:
     """Wrapper over an Apologies game engine, to manage game play state for TrackedGame."""
 
-    _engine: Optional[Engine] = None
-    _colors: Dict[str, PlayerColor] = field(factory=dict)
-    _current: Optional[CurrentTurn] = None
+    _engine: Engine | None = None
+    _colors: dict[str, PlayerColor] = field(factory=dict)
+    _current: CurrentTurn | None = None
 
-    def start_game(self, mode: GameMode, handles: List[str]) -> Dict[str, PlayerColor]:
+    def start_game(self, mode: GameMode, handles: list[str]) -> dict[str, PlayerColor]:
         """Start the game, returning a map from handle to assigned color."""
         if self._engine:
             raise ProcessingError(FailureReason.INTERNAL_ERROR, "Illegal state for operation")
@@ -247,7 +244,7 @@ class TrackedEngine:
             raise ProcessingError(FailureReason.INTERNAL_ERROR, "Illegal state for operation")
         return self._current.handle
 
-    def get_legal_moves(self, handle: str) -> List[Move]:
+    def get_legal_moves(self, handle: str) -> list[Move]:
         """Get the legal moves for the player at this stage in the game."""
         if not self._current or handle != self._current.handle:
             raise ProcessingError(FailureReason.INTERNAL_ERROR, "Illegal state for operation")
@@ -260,7 +257,7 @@ class TrackedEngine:
         color = self._colors[handle]
         return self._engine.game.create_player_view(color)
 
-    def get_recent_history(self, max_entries: int) -> List[History]:
+    def get_recent_history(self, max_entries: int) -> list[History]:
         """Return up to a certain number of game history entries."""
         if not self._engine or not self._engine.game:
             raise ProcessingError(FailureReason.INTERNAL_ERROR, "Illegal state for operation")
@@ -278,7 +275,7 @@ class TrackedEngine:
             raise ProcessingError(FailureReason.INTERNAL_ERROR, "Illegal state for operation")
         return handle == self._current.handle and move_id in self._current.movedict
 
-    def execute_move(self, handle: str, move_id: str) -> Tuple[bool, Optional[str], Optional[str]]:
+    def execute_move(self, handle: str, move_id: str) -> tuple[bool, str | None, str | None]:
         """Execute a player's move, returning whether the game was completed (and the winner and a comment if so)."""
         if (
             not self._engine
@@ -312,16 +309,16 @@ class TrackedGame:
     mode: GameMode  # treat as read-only
     players: int  # treat as read-only
     visibility: Visibility  # treat as read-only
-    invited_handles: List[str]  # treat as read-only
+    invited_handles: list[str]  # treat as read-only
     advertised_date: DateTime = field()
     last_active_date: DateTime = field()
-    started_date: Optional[DateTime] = None
-    completed_date: Optional[DateTime] = None
+    started_date: DateTime | None = None
+    completed_date: DateTime | None = None
     game_state: GameState = GameState.ADVERTISED
     activity_state: ActivityState = ActivityState.ACTIVE
-    cancelled_reason: Optional[CancelledReason] = None
-    completed_comment: Optional[str] = None
-    game_players: Dict[str, GamePlayer] = field(factory=dict)
+    cancelled_reason: CancelledReason | None = None
+    completed_comment: str | None = None
+    game_players: dict[str, GamePlayer] = field(factory=dict)
     _engine: TrackedEngine = field(factory=TrackedEngine)
 
     # noinspection PyUnresolvedReferences
@@ -365,11 +362,11 @@ class TrackedGame:
             invited_handles=self.invited_handles[:],
         )
 
-    def get_game_players(self) -> List[GamePlayer]:
+    def get_game_players(self) -> list[GamePlayer]:
         """Get a list of game players."""
         return list(self.game_players.values())
 
-    def get_available_players(self) -> List[GamePlayer]:
+    def get_available_players(self) -> list[GamePlayer]:
         """Get the players that are still available to play the game."""
         return [
             player for player in self.get_game_players() if player.player_state not in (PlayerState.QUIT, PlayerState.DISCONNECTED)
@@ -379,13 +376,13 @@ class TrackedGame:
         """Get the number of players that are still available to play the game."""
         return len(self.get_available_players())
 
-    def get_next_turn(self) -> Tuple[str, PlayerType]:
+    def get_next_turn(self) -> tuple[str, PlayerType]:
         """Get the next turn to be played."""
         handle = self._engine.get_next_turn()
         player = self.game_players[handle]
         return handle, player.player_type
 
-    def get_legal_moves(self, handle: str) -> List[Move]:
+    def get_legal_moves(self, handle: str) -> list[Move]:
         """Get the legal moves for the player at this stage in the game."""
         return self._engine.get_legal_moves(handle)
 
@@ -393,7 +390,7 @@ class TrackedGame:
         """Get the player's view of the game state."""
         return self._engine.get_player_view(handle)
 
-    def get_recent_history(self, max_entries: int) -> List[History]:
+    def get_recent_history(self, max_entries: int) -> list[History]:
         """Return up to a certain number of game history entries."""
         return self._engine.get_recent_history(max_entries)
 
@@ -422,8 +419,7 @@ class TrackedGame:
         # Advertised games are always viable. Otherwise, the game is only viable if at least two players remain to play turns.
         if self.is_advertised():
             return True
-        else:
-            return self.get_available_player_count() >= 2
+        return self.get_available_player_count() >= 2
 
     def is_move_pending(self, handle: str) -> bool:
         """Whether a move is pending for the player with the passed-in handle."""
@@ -462,7 +458,7 @@ class TrackedGame:
         self.game_state = GameState.PLAYING
         self.last_active_date = pendulum.now()
         self.started_date = pendulum.now()
-        for _ in range(0, self.players - len(self.game_players)):
+        for _ in range(self.players - len(self.game_players)):
             self._mark_joined_programmatic()  # fill in remaining players as necessary
         colors = self._engine.start_game(self.mode, list(self.game_players.keys()))
         for handle in self.game_players:
@@ -470,7 +466,7 @@ class TrackedGame:
                 self.game_players[handle], player_color=colors[handle], player_state=PlayerState.PLAYING
             )
 
-    def mark_completed(self, comment: Optional[str]) -> None:
+    def mark_completed(self, comment: str | None) -> None:
         """Mark the game as completed."""
         if self.game_state != GameState.PLAYING:
             raise ProcessingError(FailureReason.INTERNAL_ERROR, "Illegal state for operation")
@@ -481,7 +477,7 @@ class TrackedGame:
             self.game_players[handle] = evolve(self.game_players[handle], player_state=PlayerState.FINISHED)
         self._engine.stop_game()
 
-    def mark_cancelled(self, reason: CancelledReason, comment: Optional[str] = None) -> None:
+    def mark_cancelled(self, reason: CancelledReason, comment: str | None = None) -> None:
         """Mark the game as cancelled."""
         if self.game_state not in [GameState.ADVERTISED, GameState.PLAYING]:
             raise ProcessingError(FailureReason.INTERNAL_ERROR, "Illegal state for operation")
@@ -504,7 +500,7 @@ class TrackedGame:
         else:
             raise ProcessingError(FailureReason.INTERNAL_ERROR, "Illegal state for operation")
 
-    def execute_move(self, handle: str, move_id: str) -> Tuple[bool, Optional[str], Optional[str]]:
+    def execute_move(self, handle: str, move_id: str) -> tuple[bool, str | None, str | None]:
         """Execute a player's move, returning an indication of whether the game was completed (and a comment if so)."""
         return self._engine.execute_move(handle, move_id)
 
@@ -527,14 +523,13 @@ class TrackedGame:
 # noinspection PyMethodMayBeStatic
 @define(slots=False)
 class StateManager:
-
     """Manages system state."""
 
     lock: asyncio.Lock = field(factory=asyncio.Lock)
-    _websocket_map: Dict[WebSocketServerProtocol, TrackedWebsocket] = field(factory=dict)
-    _game_map: Dict[str, TrackedGame] = field(factory=dict)
-    _player_map: Dict[str, TrackedPlayer] = field(factory=dict)
-    _handle_map: Dict[str, str] = field(factory=dict)
+    _websocket_map: dict[WebSocketServerProtocol, TrackedWebsocket] = field(factory=dict)
+    _game_map: dict[str, TrackedGame] = field(factory=dict)
+    _player_map: dict[str, TrackedPlayer] = field(factory=dict)
+    _handle_map: dict[str, str] = field(factory=dict)
 
     def mark_active(self, player: TrackedPlayer) -> None:
         """Mark a player and its associated websocket as active."""
@@ -562,11 +557,11 @@ class StateManager:
         """Return the number of connected websockets in the system."""
         return len(self._websocket_map)
 
-    def lookup_all_websockets(self) -> List[WebSocketServerProtocol]:
+    def lookup_all_websockets(self) -> list[WebSocketServerProtocol]:
         """Return a list of websockets for all tracked players."""
         return list(self._websocket_map.keys())
 
-    def lookup_players_for_websocket(self, websocket: WebSocketServerProtocol) -> List[TrackedPlayer]:
+    def lookup_players_for_websocket(self, websocket: WebSocketServerProtocol) -> list[TrackedPlayer]:
         """Look up the players associated with a websocket, if any."""
         players = []
         if websocket in self._websocket_map:
@@ -592,30 +587,29 @@ class StateManager:
         """Return the number of in-progress games in the system."""
         return len([game for game in self._game_map.values() if game.is_in_progress()])
 
-    def lookup_game(self, game_id: Optional[str] = None, player: Optional[TrackedPlayer] = None) -> Optional[TrackedGame]:
+    def lookup_game(self, game_id: str | None = None, player: TrackedPlayer | None = None) -> TrackedGame | None:
         """Look up a game by id, returning None if the game is not found."""
         if game_id:
             return self._game_map[game_id] if game_id in self._game_map else None
-        elif player:
+        if player:
             return self.lookup_game(game_id=player.game_id)
-        else:
-            return None
+        return None
 
-    def lookup_all_games(self) -> List[TrackedGame]:
+    def lookup_all_games(self) -> list[TrackedGame]:
         """Return a list of all tracked games."""
         return list(self._game_map.values())
 
-    def lookup_in_progress_games(self) -> List[TrackedGame]:
+    def lookup_in_progress_games(self) -> list[TrackedGame]:
         """Return a list of all in-progress games."""
         return [game for game in self.lookup_all_games() if game.is_in_progress()]
 
-    def lookup_game_players(self, game: TrackedGame) -> List[TrackedPlayer]:
+    def lookup_game_players(self, game: TrackedGame) -> list[TrackedPlayer]:
         """Lookup the players that are currently playing a game."""
         handles = [player.handle for player in game.game_players.values() if player.player_type == PlayerType.HUMAN]
         players = [self.lookup_player(handle=handle) for handle in handles]
         return [player for player in players if player is not None]
 
-    def lookup_available_games(self, player: TrackedPlayer) -> List[TrackedGame]:
+    def lookup_available_games(self, player: TrackedPlayer) -> list[TrackedGame]:
         """Return a list of games the passed-in player may join."""
         games = self.lookup_all_games()
         return [game for game in games if game.is_available(player.handle)]
@@ -650,45 +644,44 @@ class StateManager:
         """Return the number of registered players in the system."""
         return len(self._player_map)
 
-    def lookup_player(self, player_id: Optional[str] = None, handle: Optional[str] = None) -> Optional[TrackedPlayer]:
+    def lookup_player(self, player_id: str | None = None, handle: str | None = None) -> TrackedPlayer | None:
         """Look up a player by either player id or handle."""
         if player_id:
             return self._player_map[player_id] if player_id in self._player_map else None
-        elif handle:
+        if handle:
             player_id = self._handle_map[handle] if handle in self._handle_map else None
             return self.lookup_player(player_id=player_id)
-        else:
-            return None
+        return None
 
-    def lookup_all_players(self) -> List[TrackedPlayer]:
+    def lookup_all_players(self) -> list[TrackedPlayer]:
         """Return a list of all tracked players."""
         return list(self._player_map.values())
 
-    def lookup_websocket_activity(self) -> List[Tuple[TrackedWebsocket, DateTime, int]]:
+    def lookup_websocket_activity(self) -> list[tuple[TrackedWebsocket, DateTime, int]]:
         """Look up the last active date and number of registered players for all websockets."""
-        result: List[Tuple[TrackedWebsocket, DateTime, int]] = []
+        result: list[tuple[TrackedWebsocket, DateTime, int]] = []
         for websocket in self._websocket_map.values():
             result.append((websocket, websocket.last_active_date, len(websocket.player_ids)))
         return result
 
-    def lookup_player_activity(self) -> List[Tuple[TrackedPlayer, DateTime, ConnectionState]]:
+    def lookup_player_activity(self) -> list[tuple[TrackedPlayer, DateTime, ConnectionState]]:
         """Look up the last active date and connection state for all players."""
-        result: List[Tuple[TrackedPlayer, DateTime, ConnectionState]] = []
+        result: list[tuple[TrackedPlayer, DateTime, ConnectionState]] = []
         for player in self._player_map.values():
             result.append((player, player.last_active_date, player.connection_state))
         return result
 
-    def lookup_game_activity(self) -> List[Tuple[TrackedGame, DateTime]]:
+    def lookup_game_activity(self) -> list[tuple[TrackedGame, DateTime]]:
         """Look up the last active date for all games."""
-        result: List[Tuple[TrackedGame, DateTime]] = []
+        result: list[tuple[TrackedGame, DateTime]] = []
         for game in self._game_map.values():
             if not game.completed:
                 result.append((game, game.last_active_date))
         return result
 
-    def lookup_game_completion(self) -> List[Tuple[TrackedGame, Optional[DateTime]]]:
+    def lookup_game_completion(self) -> list[tuple[TrackedGame, DateTime | None]]:
         """Look up the completed date for all completed games."""
-        result: List[Tuple[TrackedGame, Optional[DateTime]]] = []
+        result: list[tuple[TrackedGame, DateTime | None]] = []
         for game in self._game_map.values():
             if game.completed:
                 result.append((game, game.completed_date))

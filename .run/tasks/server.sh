@@ -6,7 +6,5 @@ help_server() {
 }
 
 task_server() {
-   run_command latestcode
-   poetry_run apologies-server "$@"
+   run_command uvrun apologies-server "$@"
 }
-

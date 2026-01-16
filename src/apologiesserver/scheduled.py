@@ -1,18 +1,17 @@
-# -*- coding: utf-8 -*-
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=wildcard-import
 
 """Coroutines to handle scheduled tasks, executed on a periodic basis."""
 
 import logging
-from typing import Any, Callable, Coroutine, List
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 from periodic import Periodic
 
 from .config import config
 from .event import *
 from .event import EventHandler
-from .interface import ConnectionState, GameState
 from .manager import manager
 
 log = logging.getLogger("apologies.scheduled")
@@ -86,6 +85,6 @@ async def _schedule_obsolete_game_check() -> None:
     log.debug("Completed scheduling obsolete game check with period %d and delay %d", period, delay)
 
 
-def scheduled_tasks() -> List[Callable[[], Coroutine[Any, Any, None]]]:
+def scheduled_tasks() -> list[Callable[[], Coroutine[Any, Any, None]]]:
     """Get a list of tasks that need to be scheduled."""
     return [_schedule_idle_websocket_check, _schedule_idle_player_check, _schedule_idle_game_check, _schedule_obsolete_game_check]

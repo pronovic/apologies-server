@@ -1,9 +1,8 @@
-# -*- coding: utf-8 -*-
 # vim: set ft=python ts=4 sw=4 expandtab:
 
 import argparse
 import sys
-from typing import Any, List
+from typing import Any
 
 from .config import DEFAULT_CONFIG_PATH, DEFAULT_SERVER_HOST, DEFAULT_SERVER_PORT, config, load_config
 from .demo import demo
@@ -11,7 +10,7 @@ from .server import server
 from .util import setup_logging
 
 
-def run_server(argv: List[str]) -> None:
+def run_server(argv: list[str]) -> None:
     """Start the Apologies server."""
 
     parser = argparse.ArgumentParser(
@@ -43,7 +42,7 @@ def run_server(argv: List[str]) -> None:
     server()
 
 
-def run_demo(argv: List[str]) -> None:
+def run_demo(argv: list[str]) -> None:
     """Start the Apologies demo client."""
 
     parser = argparse.ArgumentParser(
@@ -65,9 +64,9 @@ def run_demo(argv: List[str]) -> None:
     demo(host=args.host, port=args.port)
 
 
-def _example(argv: List[str]) -> List[str]:
+def _example(argv: list[str]) -> list[str]:
     """Example method."""
-    return argv[:]
+    return argv.copy()
 
 
 def _lookup_method(method: str) -> Any:
