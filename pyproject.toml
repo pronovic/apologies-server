@@ -250,9 +250,6 @@ strict_optional = true
 warn_no_return = true
 warn_unreachable = true
 
-# TODO: fix this once I can figure out why it's needed
-disable_error_code = ["import-untyped"]
-
 # It's hard to make tests compliant using unittest.mock
 [[tool.mypy.overrides]]
 module = "tests.*"
