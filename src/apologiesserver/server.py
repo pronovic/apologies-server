@@ -176,7 +176,7 @@ def _add_signal_handlers(loop: AbstractEventLoop) -> "Future[Any]":
     stop = loop.create_future()
     for sig in SHUTDOWN_SIGNALS:
         if sys.platform == "win32":
-            signal.signal(sig, lambda s, f: stop.set_result(None))
+            signal.signal(sig, lambda _s, _f: stop.set_result(None))
         else:
             loop.add_signal_handler(sig, stop.set_result, None)
     return stop

@@ -20,7 +20,7 @@ class _EnumValidator:
 
     options: type[Enum]
 
-    def __call__(self, instance: Any, attribute: Attribute, value: Enum) -> None:  # type: ignore
+    def __call__(self, _instance: Any, attribute: Attribute, value: Enum) -> None:  # type: ignore
         try:
             # This gives us "DeprecationWarning: using non-Enums in containment checks will raise TypeError in Python 3.8"
             # Uh, yeah.  I know.  I'm catching TypeError.  And anyway, this method is restricted to enums.
@@ -40,7 +40,7 @@ class _LengthValidator:
 
     maxlength: int
 
-    def __call__(self, instance: Any, attribute: Attribute, value: str) -> None:  # type: ignore
+    def __call__(self, _instance: Any, attribute: Attribute, value: str) -> None:  # type: ignore
         if len(value) > self.maxlength:
             raise ValueError("'%s' must not exceed length %d" % (attribute.name, self.maxlength))
 
@@ -57,7 +57,7 @@ class _RegexValidator:
     def _compiled_default(self) -> Pattern[str]:
         return re.compile(self.pattern)
 
-    def __call__(self, instance: Any, attribute: Attribute, value: str) -> None:  # type: ignore
+    def __call__(self, _instance: Any, attribute: Attribute, value: str) -> None:  # type: ignore
         if not self.compiled.fullmatch(value):
             raise ValueError("'%s' does not match regex '%s'" % (attribute.name, self.pattern))
 
