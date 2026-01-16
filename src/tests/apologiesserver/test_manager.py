@@ -702,7 +702,7 @@ class TestTrackedGame:
         assert game.started_date >= now
         assert len(game.game_players) == 4  # the two we added and two programmatic ones
 
-        programmatic = [handle for handle in game.game_players.keys() if handle not in ("leela", "bender")]
+        programmatic = [handle for handle in game.game_players if handle not in ("leela", "bender")]
         assert len(programmatic) == 2
         for handle in programmatic:
             assert handle in _NAMES  # the name gets randomly assigned
@@ -711,7 +711,7 @@ class TestTrackedGame:
             assert game.game_players[handle].player_type == PlayerType.PROGRAMMATIC
             assert game.game_players[handle].player_state == PlayerState.PLAYING
 
-        human = [handle for handle in game.game_players.keys() if handle in ("leela", "bender")]
+        human = [handle for handle in game.game_players if handle in ("leela", "bender")]
         assert len(human) == 2
         for handle in ["leela", "bender"]:
             assert game.game_players[handle].handle == handle
