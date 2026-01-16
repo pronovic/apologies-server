@@ -112,7 +112,7 @@ async def _handle_exception(exception: Exception, websocket: ServerConnection) -
         disconnect = False
         try:
             log.error("Handling exception: %s", str(exception), exc_info=True)
-            raise exception
+            raise exception  # noqa: TRY301
         except ProcessingError as e:
             disconnect = e.reason == FailureReason.WEBSOCKET_LIMIT  # this is a special case that can't easily be handled elsewhere
             reason = e.reason
@@ -128,14 +128,14 @@ async def _handle_exception(exception: Exception, websocket: ServerConnection) -
         await send(websocket, message.to_json())
         if disconnect:
             await close(websocket)
-    except Exception as e:
+    except Exception:
         # We don't propogate errors like this to the caller.  We just ignore them and
         # hope that we can recover for future requests.  If the websocket is dead,
         # we presume (hope?) that it will eventually get disconnected by the library.
         # It's not entirely clear what would be a better approach.  The only other
         # obvious option is to drop the client because we failed to send them an error,
         # which doesn't seem quite right, either.
-        log.error("Failed to handle exception: %s", str(e))
+        log.exception("Failed to handle exception: %s")
 
 
 # pylint: disable=broad-except

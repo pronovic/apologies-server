@@ -183,8 +183,6 @@ ignore = [
   "SIM118",     # for now, don't apply dict-related standards
   "BLE001",     # for now, don't enforce standards for blind exception
   "RUF065",     # for now, ignore unnecessary str()
-  "TRY301",     # for now, ignore this
-  "TRY400",     # for now, ignore logging.exception suggestions
   "G201",       # for now, ignore logging.exception suggestions
   "LOG014",     # for now, ignore logging.exception suggestions
   "PLW0603",    # for now, ignore global _CONFIG
