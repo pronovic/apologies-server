@@ -27,14 +27,14 @@ jobs:
     secrets: inherit
     with:
       matrix-os-version: "[ 'macos-latest' ]"
-      matrix-python-version: "[ '3.11' ]"  # only run MacOS tests on latest Python
+      matrix-python-version: "[ '3.14' ]"  # only run MacOS tests on latest Python
   windows-build-and-test:
     name: "Windows"
     uses: pronovic/gha-shared-workflows/.github/workflows/uv-build-and-test.yml@v10
     secrets: inherit
     with:
       matrix-os-version: "[ 'windows-latest' ]"
-      matrix-python-version: "[ '3.11' ]"  # only run Windows tests on latest Python
+      matrix-python-version: "[ '3.14' ]"  # only run Windows tests on latest Python
   release:
     name: "Release"
     if: github.ref_type == 'tag'
