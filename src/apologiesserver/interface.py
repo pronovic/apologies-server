@@ -23,12 +23,12 @@ from typing import Any
 
 import cattrs
 from apologies import Action, ActionType, CardType, GameMode, History, Move, Pawn, Player, PlayerColor, PlayerView, Position
+from arrow import Arrow
+from arrow import get as arrow_get
 from attr import Attribute
 from attr.validators import and_, in_
 from attrs import define, field, frozen
 from cattrs.errors import ClassValidationError
-from pendulum.datetime import DateTime
-from pendulum.parser import parse
 
 from .validator import enum, length, notempty, regex, string, stringlist
 
@@ -234,8 +234,8 @@ class RegisteredPlayer:
     """The public definition of a player registered with the system."""
 
     handle: str
-    registration_date: DateTime
-    last_active_date: DateTime
+    registration_date: Arrow
+    last_active_date: Arrow
     connection_state: ConnectionState
     activity_state: ActivityState
     player_state: PlayerState
@@ -316,7 +316,7 @@ class GameStateHistory:
     action: str
     color: PlayerColor | None
     card: CardType | None
-    timestamp: DateTime
+    timestamp: Arrow
 
     @staticmethod
     def for_history(history: History) -> GameStateHistory:
@@ -710,8 +710,8 @@ class _CattrConverter(cattrs.GenConverter):
 
     def __init__(self) -> None:
         super().__init__()
-        self.register_unstructure_hook(DateTime, lambda value: value.format(_DATE_FORMAT) if value else None)
-        self.register_structure_hook(DateTime, lambda value, _: parse(value) if value else None)
+        self.register_unstructure_hook(Arrow, lambda value: value.format(_DATE_FORMAT) if value else None)
+        self.register_structure_hook(Arrow, lambda value, _: arrow_get(value) if value else None)
         for element in _ENUMS:
             self.register_unstructure_hook(element, lambda value: value.name if value else None)
             self.register_structure_hook(element, lambda value, _, e=element: e[value] if value else None)  # type: ignore

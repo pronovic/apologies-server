@@ -2,8 +2,8 @@ import random
 import string
 from unittest.mock import AsyncMock, MagicMock
 
-from pendulum.datetime import DateTime
-from pendulum.parser import parse
+from arrow import Arrow
+from arrow import get as arrow_get
 
 
 def coroutine_mock() -> AsyncMock:
@@ -22,10 +22,8 @@ def random_string(length: int = 10) -> str:
     return "".join([random.choice(chars) for _ in range(length)])
 
 
-# noinspection PyTypeChecker
-def to_date(date: str) -> DateTime:
-    # This function seems to have the wrong type hint
-    return parse(date)  # type: ignore
+def to_date(date: str) -> Arrow:
+    return arrow_get(date)
 
 
 def mock_handler() -> MagicMock:

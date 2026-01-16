@@ -36,11 +36,11 @@ import logging
 import random
 from uuid import uuid4
 
-import pendulum
 from apologies import Character, Engine, GameMode, History, Move, NoOpInputSource, PlayerColor, PlayerView
+from arrow import Arrow
+from arrow import utcnow as arrow_utcnow
 from attrs import define, evolve, field, frozen
 from ordered_set import OrderedSet  # this makes expected results easier to articulate in test code
-from pendulum.datetime import DateTime
 from websockets.legacy.server import WebSocketServerProtocol
 
 from .interface import *
@@ -82,24 +82,24 @@ class TrackedWebsocket:
     """The state that is tracked for a websocket within the state manager."""
 
     websocket: WebSocketServerProtocol
-    registration_date: DateTime = field()
-    last_active_date: DateTime = field()
+    registration_date: Arrow = field()
+    last_active_date: Arrow = field()
     activity_state: ActivityState = ActivityState.ACTIVE
     player_ids: OrderedSet[str] = field(factory=OrderedSet)
 
     # noinspection PyUnresolvedReferences
     @registration_date.default
-    def _default_registration_date(self) -> DateTime:
-        return pendulum.now()  # not using field(factory=pendulum.now) to support mocking in unit tests
+    def _default_registration_date(self) -> Arrow:
+        return arrow_utcnow()  # not using field(factory=arrow_utcnow) to support mocking in unit tests
 
     # noinspection PyUnresolvedReferences
     @last_active_date.default
-    def _default_last_active_date(self) -> DateTime:
-        return pendulum.now()  # not using field(factory=pendulum.now) to support mocking in unit tests
+    def _default_last_active_date(self) -> Arrow:
+        return arrow_utcnow()  # not using field(factory=arrow_utcnow) to support mocking in unit tests
 
     def mark_active(self) -> None:
         """Mark the websocket as active."""
-        self.last_active_date = pendulum.now()
+        self.last_active_date = arrow_utcnow()
         self.activity_state = ActivityState.ACTIVE
 
     def mark_idle(self) -> None:
@@ -119,8 +119,8 @@ class TrackedPlayer:
     player_id: str = field(repr=False)  # treat as read-only; this is a secret, so we don't want it printed or logged
     handle: str  # treat as read-only
     websocket: WebSocketServerProtocol | None
-    registration_date: DateTime = field()
-    last_active_date: DateTime = field()
+    registration_date: Arrow = field()
+    last_active_date: Arrow = field()
     activity_state: ActivityState = ActivityState.ACTIVE
     connection_state: ConnectionState = ConnectionState.CONNECTED
     player_state: PlayerState = PlayerState.WAITING
@@ -128,13 +128,13 @@ class TrackedPlayer:
 
     # noinspection PyUnresolvedReferences
     @registration_date.default
-    def _default_registration_date(self) -> DateTime:
-        return pendulum.now()  # not using field(factory=pendulum.now) to support mocking in unit tests
+    def _default_registration_date(self) -> Arrow:
+        return arrow_utcnow()  # not using field(factory=arrow_utcnow) to support mocking in unit tests
 
     # noinspection PyUnresolvedReferences
     @last_active_date.default
-    def _default_last_active_date(self) -> DateTime:
-        return pendulum.now()  # not using field(factory=pendulum.now) to support mocking in unit tests
+    def _default_last_active_date(self) -> Arrow:
+        return arrow_utcnow()  # not using field(factory=arrow_utcnow) to support mocking in unit tests
 
     @staticmethod
     def for_context(player_id: str, websocket: WebSocketServerProtocol, handle: str) -> TrackedPlayer:
@@ -155,7 +155,7 @@ class TrackedPlayer:
 
     def mark_active(self) -> None:
         """Mark the player as active."""
-        self.last_active_date = pendulum.now()
+        self.last_active_date = arrow_utcnow()
         self.activity_state = ActivityState.ACTIVE
         self.connection_state = ConnectionState.CONNECTED
 
@@ -310,10 +310,10 @@ class TrackedGame:
     players: int  # treat as read-only
     visibility: Visibility  # treat as read-only
     invited_handles: list[str]  # treat as read-only
-    advertised_date: DateTime = field()
-    last_active_date: DateTime = field()
-    started_date: DateTime | None = None
-    completed_date: DateTime | None = None
+    advertised_date: Arrow = field()
+    last_active_date: Arrow = field()
+    started_date: Arrow | None = None
+    completed_date: Arrow | None = None
     game_state: GameState = GameState.ADVERTISED
     activity_state: ActivityState = ActivityState.ACTIVE
     cancelled_reason: CancelledReason | None = None
@@ -323,13 +323,13 @@ class TrackedGame:
 
     # noinspection PyUnresolvedReferences
     @advertised_date.default
-    def _default_registration_date(self) -> DateTime:
-        return pendulum.now()  # not using field(factory=pendulum.now) to support mocking in unit tests
+    def _default_registration_date(self) -> Arrow:
+        return arrow_utcnow()  # not using field(factory=arrow_utcnow) to support mocking in unit tests
 
     # noinspection PyUnresolvedReferences
     @last_active_date.default
-    def _default_last_active_date(self) -> DateTime:
-        return pendulum.now()  # not using field(factory=pendulum.now) to support mocking in unit tests
+    def _default_last_active_date(self) -> Arrow:
+        return arrow_utcnow()  # not using field(factory=arrow_utcnow) to support mocking in unit tests
 
     @staticmethod
     def for_context(advertiser_handle: str, game_id: str, context: AdvertiseGameContext) -> TrackedGame:
@@ -431,7 +431,7 @@ class TrackedGame:
 
     def mark_active(self) -> None:
         """Mark the game as active."""
-        self.last_active_date = pendulum.now()
+        self.last_active_date = arrow_utcnow()
         self.activity_state = ActivityState.ACTIVE
 
     def mark_idle(self) -> None:
@@ -456,8 +456,8 @@ class TrackedGame:
         if self.game_state != GameState.ADVERTISED:
             raise ProcessingError(FailureReason.INTERNAL_ERROR, "Illegal state for operation")
         self.game_state = GameState.PLAYING
-        self.last_active_date = pendulum.now()
-        self.started_date = pendulum.now()
+        self.last_active_date = arrow_utcnow()
+        self.started_date = arrow_utcnow()
         for _ in range(self.players - len(self.game_players)):
             self._mark_joined_programmatic()  # fill in remaining players as necessary
         colors = self._engine.start_game(self.mode, list(self.game_players.keys()))
@@ -470,7 +470,7 @@ class TrackedGame:
         """Mark the game as completed."""
         if self.game_state != GameState.PLAYING:
             raise ProcessingError(FailureReason.INTERNAL_ERROR, "Illegal state for operation")
-        self.completed_date = pendulum.now()
+        self.completed_date = arrow_utcnow()
         self.game_state = GameState.COMPLETED
         self.completed_comment = comment
         for handle in self.game_players:
@@ -481,7 +481,7 @@ class TrackedGame:
         """Mark the game as cancelled."""
         if self.game_state not in [GameState.ADVERTISED, GameState.PLAYING]:
             raise ProcessingError(FailureReason.INTERNAL_ERROR, "Illegal state for operation")
-        self.completed_date = pendulum.now()
+        self.completed_date = arrow_utcnow()
         self.game_state = GameState.CANCELLED
         self.cancelled_reason = reason
         self.completed_comment = comment
@@ -657,31 +657,31 @@ class StateManager:
         """Return a list of all tracked players."""
         return list(self._player_map.values())
 
-    def lookup_websocket_activity(self) -> list[tuple[TrackedWebsocket, DateTime, int]]:
+    def lookup_websocket_activity(self) -> list[tuple[TrackedWebsocket, Arrow, int]]:
         """Look up the last active date and number of registered players for all websockets."""
-        result: list[tuple[TrackedWebsocket, DateTime, int]] = []
+        result: list[tuple[TrackedWebsocket, Arrow, int]] = []
         for websocket in self._websocket_map.values():
             result.append((websocket, websocket.last_active_date, len(websocket.player_ids)))
         return result
 
-    def lookup_player_activity(self) -> list[tuple[TrackedPlayer, DateTime, ConnectionState]]:
+    def lookup_player_activity(self) -> list[tuple[TrackedPlayer, Arrow, ConnectionState]]:
         """Look up the last active date and connection state for all players."""
-        result: list[tuple[TrackedPlayer, DateTime, ConnectionState]] = []
+        result: list[tuple[TrackedPlayer, Arrow, ConnectionState]] = []
         for player in self._player_map.values():
             result.append((player, player.last_active_date, player.connection_state))
         return result
 
-    def lookup_game_activity(self) -> list[tuple[TrackedGame, DateTime]]:
+    def lookup_game_activity(self) -> list[tuple[TrackedGame, Arrow]]:
         """Look up the last active date for all games."""
-        result: list[tuple[TrackedGame, DateTime]] = []
+        result: list[tuple[TrackedGame, Arrow]] = []
         for game in self._game_map.values():
             if not game.completed:
                 result.append((game, game.last_active_date))
         return result
 
-    def lookup_game_completion(self) -> list[tuple[TrackedGame, DateTime | None]]:
+    def lookup_game_completion(self) -> list[tuple[TrackedGame, Arrow | None]]:
         """Look up the completed date for all completed games."""
-        result: list[tuple[TrackedGame, DateTime | None]] = []
+        result: list[tuple[TrackedGame, Arrow | None]] = []
         for game in self._game_map.values():
             if game.completed:
                 result.append((game, game.completed_date))

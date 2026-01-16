@@ -164,11 +164,11 @@ class TestTaskMethods:
     """
 
     # pylint: disable=invalid-name,too-many-locals
-    @patch("apologiesserver.event.pendulum")
+    @patch("apologiesserver.event.arrow_utcnow")
     @patch("apologiesserver.event.config")
-    def test_handle_idle_websocket_check_task(self, config, pendulum):
+    def test_handle_idle_websocket_check_task(self, config, now):
         config.return_value = MagicMock(websocket_idle_thresh_min=10, websocket_inactive_thresh_min=20)
-        pendulum.now.return_value = to_date("2020-05-11T10:22:00,000")
+        now.return_value = to_date("2020-05-11T10:22:00,000")
 
         w1 = MagicMock()
         w2 = MagicMock()
@@ -213,11 +213,11 @@ class TestTaskMethods:
         handler.handle_websocket_inactive_event.assert_has_calls(inactive_calls)
 
     # pylint: disable=too-many-locals,invalid-name
-    @patch("apologiesserver.event.pendulum")
+    @patch("apologiesserver.event.arrow_utcnow")
     @patch("apologiesserver.event.config")
-    def test_handle_idle_player_check_task(self, config, pendulum):
+    def test_handle_idle_player_check_task(self, config, now):
         config.return_value = MagicMock(player_idle_thresh_min=10, player_inactive_thresh_min=20)
-        pendulum.now.return_value = to_date("2020-05-11T10:22:00,000")
+        now.return_value = to_date("2020-05-11T10:22:00,000")
 
         p1 = MagicMock()
         p2 = MagicMock()
@@ -254,11 +254,11 @@ class TestTaskMethods:
         handler.handle_player_inactive_event.assert_has_calls(inactive_calls)
 
     # pylint: disable=invalid-name
-    @patch("apologiesserver.event.pendulum")
+    @patch("apologiesserver.event.arrow_utcnow")
     @patch("apologiesserver.event.config")
-    def test_handle_idle_game_check_task(self, config, pendulum):
+    def test_handle_idle_game_check_task(self, config, now):
         config.return_value = MagicMock(game_idle_thresh_min=10, game_inactive_thresh_min=20)
-        pendulum.now.return_value = to_date("2020-05-11T10:22:00,000")
+        now.return_value = to_date("2020-05-11T10:22:00,000")
 
         g1 = MagicMock()
         g2 = MagicMock()
@@ -286,11 +286,11 @@ class TestTaskMethods:
         handler.handle_game_inactive_event.assert_has_calls(inactive_calls)
 
     # pylint: disable=invalid-name
-    @patch("apologiesserver.event.pendulum")
+    @patch("apologiesserver.event.arrow_utcnow")
     @patch("apologiesserver.event.config")
-    def test_handle_obsolete_game_check_task(self, config, pendulum):
+    def test_handle_obsolete_game_check_task(self, config, now):
         config.return_value = MagicMock(game_retention_thresh_min=10)
-        pendulum.now.return_value = to_date("2020-05-11T10:22:00,000")
+        now.return_value = to_date("2020-05-11T10:22:00,000")
 
         g1 = MagicMock()
         g2 = MagicMock()
