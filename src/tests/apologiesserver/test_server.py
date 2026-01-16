@@ -190,6 +190,7 @@ class TestFunctions:
         assert _lookup_method(handler, MessageType.SEND_MESSAGE) == handler.handle_send_message_request
 
 
+@pytest.mark.filterwarnings("ignore:coroutine 'AsyncMockMixin._execute_mock_call' was never awaited")
 class TestCoroutines:
     """
     Test Python coroutines.
