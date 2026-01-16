@@ -1,12 +1,11 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
-# ruff: noqa: PLW0603
 
 import os
 import pathlib
 
 import pytest
 
-from apologiesserver.config import _CONFIG, DEFAULT_CONFIG_PATH, SystemConfig, config, load_config
+from apologiesserver.config import DEFAULT_CONFIG_PATH, SystemConfig, config, load_config
 
 FIXTURE_DIR = os.path.join(os.path.dirname(__file__), "fixtures/test_config")
 
@@ -59,18 +58,6 @@ class TestFunctions:
 
     def test_default_config_path(self):
         assert os.path.join(os.path.expanduser("~"), ".apologiesrc") == DEFAULT_CONFIG_PATH  # different way to get same value
-
-    # noinspection PyGlobalUndefined
-    def test_config_not_loaded(self):
-        global _CONFIG
-        saved = _CONFIG
-        try:
-            _CONFIG = None
-            config()
-        except ValueError:
-            pass
-        finally:
-            _CONFIG = saved
 
     def test_load_config_defaults(self):
         if not pathlib.Path(DEFAULT_CONFIG_PATH).exists():

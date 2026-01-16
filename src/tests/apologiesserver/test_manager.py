@@ -510,6 +510,7 @@ class TestTrackedGame:
         game = create_test_game()
         game._engine.get_legal_moves.return_value = [move]
         assert game.get_legal_moves("handle") == [move]
+        # noinspection PyUnresolvedReferences
         game._engine.get_legal_moves.assert_called_once_with("handle")
 
     def test_get_player_view(self):
@@ -517,6 +518,7 @@ class TestTrackedGame:
         game = create_test_game()
         game._engine.get_player_view.return_value = view
         assert game.get_player_view("handle") == view
+        # noinspection PyUnresolvedReferences
         game._engine.get_player_view.assert_called_once_with("handle")
 
     def test_get_recent_history(self):
@@ -524,6 +526,7 @@ class TestTrackedGame:
         game = create_test_game()
         game._engine.get_recent_history.return_value = [history]
         assert game.get_recent_history(10) == [history]
+        # noinspection PyUnresolvedReferences
         game._engine.get_recent_history.assert_called_once_with(10)
 
     def test_is_available_public(self):
@@ -610,12 +613,14 @@ class TestTrackedGame:
         game = create_test_game()
         game._engine.is_move_pending.return_value = True
         assert game.is_move_pending("handle") is True
+        # noinspection PyUnresolvedReferences
         game._engine.is_move_pending.assert_called_once_with("handle")
 
     def test_is_legal_move(self):
         game = create_test_game()
         game._engine.is_legal_move.return_value = True
         assert game.is_legal_move("handle", "move_id") is True
+        # noinspection PyUnresolvedReferences
         game._engine.is_legal_move.assert_called_once_with("handle", "move_id")
 
     # noinspection PyTypeChecker
@@ -727,6 +732,7 @@ class TestTrackedGame:
             with pytest.raises(ProcessingError, match=r"Illegal state for operation"):
                 game.mark_completed("comment")
             assert game.game_state == game_state  # should not change
+            # noinspection PyUnresolvedReferences
             game._engine.stop_game.assert_not_called()
 
     # noinspection PyTypeChecker
@@ -746,6 +752,7 @@ class TestTrackedGame:
         assert game.game_state == GameState.COMPLETED
         assert game.completed_comment == "comment"
         assert game.game_players == {"gp1": gp1_copy, "gp2": gp2_copy}
+        # noinspection PyUnresolvedReferences
         game._engine.stop_game.assert_called_once()
 
     def test_mark_cancelled_illegal_state(self):
@@ -755,6 +762,7 @@ class TestTrackedGame:
             with pytest.raises(ProcessingError, match=r"Illegal state for operation"):
                 game.mark_cancelled(CancelledReason.CANCELLED, "comment")
             assert game.game_state == game_state  # should not change
+            # noinspection PyUnresolvedReferences
             game._engine.stop_game.assert_not_called()
 
     # noinspection PyTypeChecker
@@ -776,6 +784,7 @@ class TestTrackedGame:
             assert game.cancelled_reason == CancelledReason.NOT_VIABLE
             assert game.completed_comment == "comment"
             assert game.game_players == {"gp1": gp1_copy, "gp2": gp2_copy}
+            # noinspection PyUnresolvedReferences
             game._engine.stop_game.assert_called_once()
 
     def test_mark_quit_illegal_state(self):
@@ -809,6 +818,7 @@ class TestTrackedGame:
     def test_execute_move(self):
         game = create_test_game()
         game.execute_move("handle", "move_id")
+        # noinspection PyUnresolvedReferences
         game._engine.execute_move.assert_called_once_with("handle", "move_id")
 
     def test_mark_joined_programmatic(self):
@@ -861,6 +871,7 @@ class TestStateManager:
         mgr._websocket_map[websocket] = MagicMock()
         mgr.mark_active(player)
         player.mark_active.assert_called_once()
+        # noinspection PyUnresolvedReferences
         mgr._websocket_map[websocket].mark_active.assert_called_once()
 
     def test_track_websocket_duplicate(self):
