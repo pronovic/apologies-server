@@ -34,6 +34,7 @@ from __future__ import annotations  # see: https://stackoverflow.com/a/33533514/
 import asyncio
 import logging
 import random
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from apologies import Character, Engine, GameMode, History, Move, NoOpInputSource, PlayerColor, PlayerView
@@ -41,7 +42,6 @@ from arrow import Arrow
 from arrow import utcnow as arrow_utcnow
 from attrs import define, evolve, field, frozen
 from ordered_set import OrderedSet  # this makes expected results easier to articulate in test code
-from websockets.asyncio.server import ServerConnection
 
 from apologiesserver.interface import (
     ActivityState,
@@ -58,6 +58,9 @@ from apologiesserver.interface import (
     RegisteredPlayer,
     Visibility,
 )
+
+if TYPE_CHECKING:
+    from websockets.asyncio.server import ServerConnection
 
 log = logging.getLogger("apologies.manager")
 

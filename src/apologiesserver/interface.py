@@ -19,18 +19,20 @@ from __future__ import annotations  # see: https://stackoverflow.com/a/33533514/
 import json
 from abc import ABC
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import cattrs
 from apologies import Action, ActionType, CardType, GameMode, History, Move, Pawn, Player, PlayerColor, PlayerView, Position
 from arrow import Arrow
 from arrow import get as arrow_get
-from attr import Attribute
 from attr.validators import and_, in_
 from attrs import define, field, frozen
 from cattrs.errors import ClassValidationError
 
 from apologiesserver.validator import enum, length, notempty, regex, string, stringlist
+
+if TYPE_CHECKING:
+    from attr import Attribute
 
 __all__ = [
     "ActivityState",

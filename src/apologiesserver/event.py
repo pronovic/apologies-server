@@ -25,7 +25,6 @@ from arrow import Arrow
 from arrow import utcnow as arrow_utcnow
 from attrs import define, field, frozen
 from ordered_set import OrderedSet  # this makes expected results easier to articulate in test code
-from websockets.asyncio.server import ServerConnection
 
 from apologiesserver.config import config
 from apologiesserver.interface import (
@@ -59,12 +58,13 @@ from apologiesserver.interface import (
     ProcessingError,
     RegisteredPlayersContext,
 )
-from apologiesserver.manager import StateManager, TrackedGame, TrackedPlayer, TrackedWebsocket
 from apologiesserver.util import close, send
 
 if typing.TYPE_CHECKING:
     # noinspection PyUnresolvedReferences
     import datetime
+
+    from websockets.asyncio.server import ServerConnection
 
     # noinspection PyUnresolvedReferences
     from apologiesserver.interface import (
@@ -74,6 +74,7 @@ if typing.TYPE_CHECKING:
         RegisterPlayerContext,
         SendMessageContext,
     )
+    from apologiesserver.manager import StateManager, TrackedGame, TrackedPlayer, TrackedWebsocket
 
 log = logging.getLogger("apologies.event")
 
