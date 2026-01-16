@@ -805,6 +805,8 @@ class TestRequestMethods:
 
 
 # pylint: disable=assigning-non-slot:
+@pytest.mark.filterwarnings("ignore:coroutine 'send' was never awaited")
+@pytest.mark.filterwarnings("ignore:coroutine 'close' was never awaited")
 class TestEventMethods:
     """
     Test the event-related methods on EventHandler.
@@ -935,8 +937,6 @@ class TestEventMethods:
         handler.manager.track_player.assert_called_once_with(websocket, "leela")
         handler.queue.message.assert_called_once_with(message, websockets=[websocket])
 
-    @pytest.mark.filterwarnings("ignore:coroutine 'send' was never awaited")
-    @pytest.mark.filterwarnings("ignore:coroutine 'close' was never awaited")
     def test_handle_player_reregistered_event(self):
         websocket = MagicMock()
         player = MagicMock(player_id="player_id", handle="handle")
@@ -949,8 +949,6 @@ class TestEventMethods:
         handler.manager.retrack_player.assert_called_once_with(player, websocket)
         handler.queue.message.assert_called_once_with(message, players=[player])
 
-    @pytest.mark.filterwarnings("ignore:coroutine 'send' was never awaited")
-    @pytest.mark.filterwarnings("ignore:coroutine 'close' was never awaited")
     def test_handle_player_unregistered_event_no_game(self):
         player = MagicMock(player_id="player_id", handle="leela")
         context = PlayerUnregisteredContext(handle="leela")
