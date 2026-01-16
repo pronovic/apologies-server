@@ -11,12 +11,12 @@ from typing import Any
 from websockets.asyncio.server import ServerConnection, serve
 from websockets.exceptions import ConnectionClosed
 
-from .config import config
-from .event import EventHandler, RequestContext
-from .interface import FailureReason, Message, MessageType, ProcessingError, RequestFailedContext
-from .manager import manager
-from .scheduled import scheduled_tasks
-from .util import close, mask, send
+from apologiesserver.config import config
+from apologiesserver.event import EventHandler, RequestContext
+from apologiesserver.interface import FailureReason, Message, MessageType, ProcessingError, RequestFailedContext
+from apologiesserver.manager import manager
+from apologiesserver.scheduled import scheduled_tasks
+from apologiesserver.util import close, mask, send
 
 log = logging.getLogger("apologies.server")
 

@@ -4,10 +4,10 @@ import argparse
 import sys
 from typing import Any
 
-from .config import DEFAULT_CONFIG_PATH, DEFAULT_SERVER_HOST, DEFAULT_SERVER_PORT, config, load_config
-from .demo import demo
-from .server import server
-from .util import setup_logging
+from apologiesserver.config import DEFAULT_CONFIG_PATH, DEFAULT_SERVER_HOST, DEFAULT_SERVER_PORT, config, load_config
+from apologiesserver.demo import demo
+from apologiesserver.server import server
+from apologiesserver.util import setup_logging
 
 
 def run_server(argv: list[str]) -> None:

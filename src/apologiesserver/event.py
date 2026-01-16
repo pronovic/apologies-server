@@ -27,10 +27,10 @@ from attrs import define, field, frozen
 from ordered_set import OrderedSet  # this makes expected results easier to articulate in test code
 from websockets.asyncio.server import ServerConnection
 
-from .config import config
-from .interface import *
-from .manager import StateManager, TrackedGame, TrackedPlayer, TrackedWebsocket
-from .util import close, send
+from apologiesserver.config import config
+from apologiesserver.interface import *
+from apologiesserver.manager import StateManager, TrackedGame, TrackedPlayer, TrackedWebsocket
+from apologiesserver.util import close, send
 
 if typing.TYPE_CHECKING:
     # noinspection PyUnresolvedReferences

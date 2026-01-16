@@ -18,11 +18,11 @@ from typing import cast
 from websockets.asyncio.connection import Connection
 from websockets.typing import Data
 
-from .interface import Message, MessageType, ProcessingError
+from apologiesserver.interface import Message, MessageType, ProcessingError
 
 if typing.TYPE_CHECKING:
     # noinspection PyUnresolvedReferences
-    from .interface import RequestFailedContext
+    from apologiesserver.interface import RequestFailedContext
 
 log = logging.getLogger("apologies.util")
 

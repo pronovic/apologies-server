@@ -2,7 +2,7 @@
 
 """Scripts that are installed by Poetry in the published package."""
 
-from .cli import cli
+from apologiesserver.cli import cli
 
 
 def server() -> None:

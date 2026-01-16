@@ -30,7 +30,7 @@ from attr.validators import and_, in_
 from attrs import define, field, frozen
 from cattrs.errors import ClassValidationError
 
-from .validator import enum, length, notempty, regex, string, stringlist
+from apologiesserver.validator import enum, length, notempty, regex, string, stringlist
 
 __all__ = [
     "ActivityState",

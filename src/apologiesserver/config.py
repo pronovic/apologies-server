@@ -14,7 +14,7 @@ from typing import Any
 import cattrs
 from attrs import frozen
 
-from .util import homedir
+from apologiesserver.util import homedir
 
 # Configuration defaults
 DEFAULT_CONFIG_PATH = os.path.join(homedir(), ".apologiesrc")

@@ -27,9 +27,9 @@ from typing import cast
 from apologies import GameMode
 from websockets.asyncio.client import ClientConnection, connect
 
-from .interface import *
-from .server import SHUTDOWN_SIGNALS
-from .util import receive, send
+from apologiesserver.interface import *
+from apologiesserver.server import SHUTDOWN_SIGNALS
+from apologiesserver.util import receive, send
 
 log = logging.getLogger("apologies.demo")
 

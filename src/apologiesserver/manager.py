@@ -43,7 +43,7 @@ from attrs import define, evolve, field, frozen
 from ordered_set import OrderedSet  # this makes expected results easier to articulate in test code
 from websockets.asyncio.server import ServerConnection
 
-from .interface import *
+from apologiesserver.interface import *
 
 log = logging.getLogger("apologies.manager")
 
