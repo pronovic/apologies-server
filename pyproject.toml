@@ -174,9 +174,9 @@ ignore = [
   "TRY003",     # allow long messages in exceptions; this is often a false-positive that has little benefit
 
   # Exclusions of rule categories and specific rules, customized for this repository
-  "PTH",        # for now, don't apply PTH standards
-  "UP031",      # for now, don't require format specifiers
-  "PGH003",     # for now, don't require specific rule codes for type: ignore
+  "PGH003",     # allow 'type: ignore' with no specific error codes
+  "PTH",        # allow use of older-style path operations
+  "UP031",      # allow use of older-style %-format strings
 ]
 
 [tool.ruff.lint.per-file-ignores]
