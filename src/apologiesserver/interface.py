@@ -367,7 +367,7 @@ class GameMove:
         return GameMove(move_id, card, actions, side_effects)
 
 
-class Context(ABC):
+class Context(ABC):  # noqa: B024
     """Abstract message context."""
 
 
@@ -803,7 +803,7 @@ class Message:
                 value_errors = [c for c in e.exceptions if isinstance(c, ValueError)]
                 key_errors = [c for c in e.exceptions if isinstance(c, KeyError)]
                 if value_errors:
-                    raise value_errors[0]
+                    raise value_errors[0] from None
                 if key_errors:
                     raise ValueError("Invalid value %s" % str(key_errors[0])) from e
                 raise ValueError("Message type %s does not support this context" % message.name, e) from e

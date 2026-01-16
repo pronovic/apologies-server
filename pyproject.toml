@@ -191,8 +191,6 @@ ignore = [
   "ANN001",     # for now, don't enforce this
   "ERA001",     # for now, don't enforce this
   "F403",       # for now, don't enforce this
-  "B904",       # for now, don't enforce this
-  "B024",       # for now, don't enforce this
   "PT",         # for now, don't apply PT standards
   "SIM",        # for now, don't apply SIM standards
   "PLR",        # for now, don't apply PLR standards
