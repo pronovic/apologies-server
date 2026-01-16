@@ -181,7 +181,6 @@ ignore = [
   "FURB101",    # for now, ignore Path optimizations
   "RUF015",     # for now, don't apply standards for single-element slices
   "SIM118",     # for now, don't apply dict-related standards
-  "W291",       # for now, ignore trailing whitespace in text blocks
   "ARG002",     # for now, don't enforce unused method arguments
   "ARG005",     # for now, don't enforce unused lambda arguments
   "BLE001",     # for now, don't enforce standards for blind exception
