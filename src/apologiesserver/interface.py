@@ -730,6 +730,7 @@ class Message:
     player_id: str | None = field(default=None, repr=False)  # this is a secret, so we don't want it printed or logged
     context: Any = field(default=None)
 
+    # noinspection PyUnresolvedReferences
     @message.validator
     def _validate_message(self, attribute: Attribute[MessageType], value: MessageType) -> None:
         if value is None or not isinstance(value, MessageType):
