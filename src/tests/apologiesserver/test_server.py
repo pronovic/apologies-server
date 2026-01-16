@@ -30,8 +30,7 @@ from apologiesserver.server import (
     _websocket_server,
     server,
 )
-
-from .util import mock_handler
+from tests.conftest import mock_handler
 
 FIXTURE_DIR = os.path.join(os.path.dirname(__file__), "fixtures/test_server")
 

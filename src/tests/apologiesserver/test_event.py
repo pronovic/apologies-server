@@ -11,8 +11,7 @@ from asynctest import MagicMock as AsyncMock
 
 from apologiesserver.event import EventHandler, RequestContext, TaskQueue
 from apologiesserver.interface import *
-
-from .util import to_date
+from tests.conftest import to_date
 
 
 class TestTaskQueue:

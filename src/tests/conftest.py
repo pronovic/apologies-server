@@ -1,10 +1,3 @@
-# vim: set ft=python ts=4 sw=4 expandtab:
-# pylint: disable=unsubscriptable-object
-
-"""
-Shared test utilities.
-"""
-
 import random
 import string
 from unittest.mock import MagicMock

@@ -18,8 +18,7 @@ from apologiesserver.scheduled import (
     _schedule_obsolete_game_check,
     scheduled_tasks,
 )
-
-from .util import mock_handler
+from tests.conftest import mock_handler
 
 
 class TestFunctions:

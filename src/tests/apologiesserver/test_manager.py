@@ -23,8 +23,7 @@ from apologiesserver.manager import (
     TrackedWebsocket,
     manager,
 )
-
-from .util import random_string, to_date
+from tests.conftest import random_string, to_date
 
 
 def create_test_player(player_id="id", handle="handle"):
