@@ -22,6 +22,3 @@ something I would write today, given the benefit of more experience with async
 design patterns in Python.  But, it works.
 
 See the [documentation](https://apologies-server.readthedocs.io/en/stable/design.html) for notes about the public interface and the event model.
-
-## Prototype Code
-
