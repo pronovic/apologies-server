@@ -186,7 +186,6 @@ ignore = [
   "PT",         # for now, don't apply PT standards
   "SIM",        # for now, don't apply SIM standards
   "PLR",        # for now, don't apply PLR standards
-  "PERF",       # for now, don't apply PERF standards
 ]
 
 [tool.ruff.lint.per-file-ignores]
