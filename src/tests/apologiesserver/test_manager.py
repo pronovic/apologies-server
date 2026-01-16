@@ -815,7 +815,7 @@ class TestTrackedGame:
         game.game_players = {}
         game._mark_joined_programmatic()
         assert len(game.game_players) == 1
-        gp1 = list(game.game_players.values())[0]
+        gp1 = next(iter(game.game_players.values()))
         assert gp1.handle in _NAMES
         assert gp1.player_color is None  # will be assigned later
         assert gp1.player_type == PlayerType.PROGRAMMATIC

@@ -179,7 +179,6 @@ ignore = [
   "UP031",      # for now, don't require format specifiers
   "PGH003",     # for now, don't require specific rule codes for type: ignore
   "FURB101",    # for now, ignore Path optimizations
-  "RUF015",     # for now, don't apply standards for single-element slices
 ]
 
 [tool.ruff.lint.per-file-ignores]
