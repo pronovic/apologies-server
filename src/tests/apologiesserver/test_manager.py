@@ -1,5 +1,4 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
-# pylint: disable=redefined-outer-name,wildcard-import,protected-access,too-many-lines
 
 import random
 from unittest.mock import MagicMock, patch
@@ -429,7 +428,6 @@ class TestTrackedEngine:
         engine._engine.execute_move.assert_called_once_with(PlayerColor.RED, move)
 
 
-# pylint: disable=too-many-public-methods
 class TestTrackedGame:
     """
     Test the TrackedGame class.
@@ -693,7 +691,7 @@ class TestTrackedGame:
             }
             return colors
 
-        game._engine.start_game = stubbed_start_game  # pylint: disable=assigning-non-slot:
+        game._engine.start_game = stubbed_start_game
 
         game.game_state = GameState.ADVERTISED  # otherwise it's an illegal state
         game.last_active_date = None
@@ -1176,8 +1174,6 @@ class TestGame:
 
     def test_complete_game_adult(self):
         TestGame.play_game(mode=GameMode.ADULT, player_count=3, handles=["leela"])
-
-    # pylint: disable=too-many-locals
 
     @staticmethod
     def play_game(mode: GameMode, player_count: int, handles: list[str]) -> None:

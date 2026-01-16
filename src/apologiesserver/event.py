@@ -1,5 +1,4 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
-# pylint: disable=wildcard-import
 
 """
 Event handlers.
@@ -102,7 +101,7 @@ class TaskQueue:
         return len(self.messages) == 0 and len(self.disconnects) == 0
 
     def clear(self) -> None:
-        del self.messages[:]  # pylint: disable=unsupported-delete-operation:
+        del self.messages[:]
         self.disconnects.clear()
 
     def message(
@@ -138,8 +137,7 @@ class TaskQueue:
             await asyncio.wait(tasks)  # TODO: not entirely sure how we handle errors that happen here
 
 
-# pylint: disable=too-many-public-methods,too-many-instance-attributes:
-@define(slots=False)
+@define(slots=False)  # noqa: PLR0904
 class EventHandler:
     manager: StateManager
     queue: TaskQueue = field(factory=TaskQueue)
@@ -695,19 +693,18 @@ class EventHandler:
         message = Message(MessageType.GAME_PLAYER_CHANGE, context=context)
         self.queue.message(message, players=players)
 
-    # pylint: disable=redefined-argument-from-local
     def handle_game_state_change_event(self, game: TrackedGame, player: TrackedPlayer | None = None) -> None:
         """Handle the Game State Change event."""
         log.info("Event - GAME STATE CHANGE - %s for %s", game.game_id, player.handle if player else None)
         game.mark_active()
         if game.is_playing():
             players = [player] if player else self.manager.lookup_game_players(game)
-            for player in players:
-                view = game.get_player_view(player.handle)
+            for p in players:
+                view = game.get_player_view(p.handle)
                 history = game.get_recent_history(10)  # the last 10 entries in history
                 context = GameStateChangeContext.for_context(game_id=game.game_id, view=view, history=history)
                 message = Message(MessageType.GAME_STATE_CHANGE, context=context)
-                self.queue.message(message, players=[player])
+                self.queue.message(message, players=[p])
 
     def handle_game_player_turn_event(self, player: TrackedPlayer, moves: list[Move]) -> None:
         """Handle the Game Player Turn event."""

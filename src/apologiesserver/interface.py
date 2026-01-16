@@ -1,5 +1,4 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
-# pylint: disable=unsubscriptable-object
 
 """
 Definition of the public interface for the server.
@@ -758,7 +757,7 @@ class Message:
 
     def to_json(self) -> str:
         """Convert the request to JSON."""
-        d = _CONVERTER.unstructure(self)  # pylint: disable=invalid-name
+        d = _CONVERTER.unstructure(self)
         d["context"] = _CONVERTER.unstructure(self.context)
         if d["player_id"] is None:
             del d["player_id"]
@@ -767,9 +766,9 @@ class Message:
         return json.dumps(d, indent="  ")
 
     @staticmethod
-    def for_json(data: str) -> Message:  # pylint: disable=too-many-branches:
+    def for_json(data: str) -> Message:  # noqa: PLR0912
         """Create a request based on JSON data."""
-        d = json.loads(data)  # pylint: disable=invalid-name
+        d = json.loads(data)
         if "message" not in d or d["message"] is None:
             raise ValueError("Message type is required")
         try:

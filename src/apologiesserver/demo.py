@@ -1,5 +1,4 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
-# pylint: disable=wildcard-import
 
 """
 Implements a quick'n'dirty game-playing client as a demo.
@@ -187,7 +186,7 @@ async def _websocket_client(uri: str) -> None:
     try:
         async with connect(uri=uri) as websocket:
             await _handle_connection(websocket)
-    except Exception:  # pylint: disable=broad-except
+    except Exception:
         log.exception("Error with connection: %s")
 
 

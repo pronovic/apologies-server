@@ -1,5 +1,4 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
-# pylint: disable=wildcard-import
 
 """Coroutines to handle scheduled tasks, executed on a periodic basis."""
 

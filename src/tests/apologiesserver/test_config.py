@@ -1,5 +1,4 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
-# pylint: disable=invalid-name,global-statement
 
 import os
 import pathlib

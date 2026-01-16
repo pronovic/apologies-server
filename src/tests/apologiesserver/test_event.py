@@ -1,5 +1,4 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
-# pylint: disable=redefined-outer-name,wildcard-import,too-many-lines,use-implicit-booleaness-not-comparison
 
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
@@ -194,7 +193,6 @@ class TestTaskMethods:
     Test the task-related methods on EventHandler.
     """
 
-    # pylint: disable=invalid-name,too-many-locals
     @patch("apologiesserver.event.arrow_utcnow")
     @patch("apologiesserver.event.config")
     def test_handle_idle_websocket_check_task(self, config, now):
@@ -243,7 +241,6 @@ class TestTaskMethods:
         handler.handle_websocket_idle_event.assert_has_calls(idle_calls)
         handler.handle_websocket_inactive_event.assert_has_calls(inactive_calls)
 
-    # pylint: disable=too-many-locals,invalid-name
     @patch("apologiesserver.event.arrow_utcnow")
     @patch("apologiesserver.event.config")
     def test_handle_idle_player_check_task(self, config, now):
@@ -284,7 +281,6 @@ class TestTaskMethods:
         handler.handle_player_idle_event.assert_has_calls(idle_calls)
         handler.handle_player_inactive_event.assert_has_calls(inactive_calls)
 
-    # pylint: disable=invalid-name
     @patch("apologiesserver.event.arrow_utcnow")
     @patch("apologiesserver.event.config")
     def test_handle_idle_game_check_task(self, config, now):
@@ -316,7 +312,6 @@ class TestTaskMethods:
         handler.handle_game_idle_event.assert_has_calls(idle_calls)
         handler.handle_game_inactive_event.assert_has_calls(inactive_calls)
 
-    # pylint: disable=invalid-name
     @patch("apologiesserver.event.arrow_utcnow")
     @patch("apologiesserver.event.config")
     def test_handle_obsolete_game_check_task(self, config, now):
@@ -342,7 +337,6 @@ class TestTaskMethods:
         handler.handle_game_obsolete_event.assert_has_calls(obsolete_calls)
 
 
-# pylint: disable=too-many-public-methods
 class TestRequestMethods:
     """
     Test the request-related methods on EventHandler.
@@ -833,7 +827,6 @@ class TestRequestMethods:
         handler.handle_player_message_received_event.assert_called_once_with("handle", ["fry", "bender"], "hello")
 
 
-# pylint: disable=assigning-non-slot:
 class TestEventMethods:
     """
     Test the event-related methods on EventHandler.

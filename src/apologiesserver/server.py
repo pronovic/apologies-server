@@ -4,8 +4,8 @@ import asyncio
 import logging
 import signal
 import sys
-from asyncio import AbstractEventLoop, Future  # pylint: disable=unused-import
-from collections.abc import Callable  # pylint: disable=unused-import
+from asyncio import AbstractEventLoop, Future
+from collections.abc import Callable
 from typing import Any
 
 from websockets.asyncio.server import ServerConnection, serve
@@ -24,11 +24,13 @@ log = logging.getLogger("apologies.server")
 if sys.platform == "win32":
     SHUTDOWN_SIGNALS = (signal.SIGTERM, signal.SIGINT)
 else:
-    SHUTDOWN_SIGNALS = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)  # pylint: disable=no-member
+    SHUTDOWN_SIGNALS = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
 
 
-# pylint: disable=too-many-return-statements,too-many-branches
-def _lookup_method(handler: EventHandler, message: MessageType) -> Callable[[RequestContext], None]:
+def _lookup_method(  # noqa: PLR0911,PLR0912
+    handler: EventHandler,
+    message: MessageType,
+) -> Callable[[RequestContext], None]:
     """Lookup the handler method to invoke for a message type."""
     if message == MessageType.REREGISTER_PLAYER:
         return handler.handle_reregister_player_request
@@ -104,7 +106,6 @@ async def _handle_disconnect(websocket: ServerConnection) -> None:
         await handler.execute_tasks()
 
 
-# pylint: disable=broad-except
 # noinspection PyBroadException
 async def _handle_exception(exception: Exception, websocket: ServerConnection) -> None:
     """Handle an exception by sending a request failed event."""
@@ -124,7 +125,7 @@ async def _handle_exception(exception: Exception, websocket: ServerConnection) -
         except Exception:
             # Note: we don't want to expose internal implementation details in the case of an internal error
             context = RequestFailedContext(FailureReason.INTERNAL_ERROR, FailureReason.INTERNAL_ERROR.value)
-        message = Message(MessageType.REQUEST_FAILED, context=context)  # pylint: disable=used-before-assignment:
+        message = Message(MessageType.REQUEST_FAILED, context=context)
         await send(websocket, message.to_json())
         if disconnect:
             await close(websocket)
@@ -138,7 +139,6 @@ async def _handle_exception(exception: Exception, websocket: ServerConnection) -
         log.exception("Failed to handle exception: %s")
 
 
-# pylint: disable=broad-except
 # noinspection PyBroadException
 async def _handle_connection(websocket: ServerConnection) -> None:
     """Handle a client connection, invoked once for each client that connects to the server."""
