@@ -7,12 +7,11 @@ import logging
 from collections.abc import Callable, Coroutine
 from typing import Any
 
-from periodic import Periodic
-
 from .config import config
 from .event import *
 from .event import EventHandler
 from .manager import manager
+from .periodic import Periodic
 
 log = logging.getLogger("apologies.scheduled")
 
