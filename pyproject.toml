@@ -11,7 +11,7 @@ exclude = [ "docs/_build" ]
 
 [project]
 name = "apologiesserver"
-requires-python = ">=3.10,<4"
+requires-python = ">=3.11,<4"
 description = "Websocket server to interactively play the Apologies game"
 authors = [ { name="Kenneth J. Pronovici", email="pronovic@ieee.org" } ]
 license = "Apache-2.0"

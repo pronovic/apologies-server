@@ -88,11 +88,11 @@ class TaskQueue:
         # seems possible that the messages for that second event could be intermingled with these.  I
         # guess it's unlikely?  But I'm leaving this note here in case I ever have to debug some strange
         # behavior with messages being received out-of-order.
-        tasks = [send(websocket, message) for message, websocket in self.messages]
+        tasks = [asyncio.create_task(send(websocket, message)) for message, websocket in self.messages]
         if tasks:
             for task in tasks:
                 await asyncio.wait([task])  # if we do them all at once, they can get sent out of order
-        tasks = [close(websocket) for websocket in self.disconnects]
+        tasks = [asyncio.create_task(close(websocket)) for websocket in self.disconnects]
         if tasks:
             await asyncio.wait(tasks)  # TODO: not entirely sure how we handle errors that happen here
 

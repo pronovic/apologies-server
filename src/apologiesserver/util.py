@@ -10,7 +10,6 @@ import logging
 import re
 import sys
 import time
-from asyncio import TimeoutError  # pylint: disable=redefined-builtin
 from logging import FileHandler, StreamHandler
 from pathlib import Path
 from typing import cast
