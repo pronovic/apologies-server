@@ -181,7 +181,6 @@ ignore = [
   "FURB101",    # for now, ignore Path optimizations
   "RUF015",     # for now, don't apply standards for single-element slices
   "SIM118",     # for now, don't apply dict-related standards
-  "PLW0603",    # for now, ignore global _CONFIG
 ]
 
 [tool.ruff.lint.per-file-ignores]
