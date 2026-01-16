@@ -8,7 +8,6 @@ from collections.abc import Callable, Coroutine
 from typing import Any
 
 from apologiesserver.config import config
-from apologiesserver.event import *
 from apologiesserver.event import EventHandler
 from apologiesserver.manager import manager
 from apologiesserver.periodic import Periodic
