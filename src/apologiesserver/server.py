@@ -122,7 +122,7 @@ async def _handle_exception(exception: Exception, websocket: ServerConnection) -
             context = RequestFailedContext(reason=reason, comment=comment, handle=handle)
         except ValueError as e:
             context = RequestFailedContext(FailureReason.INVALID_REQUEST, str(e))
-        except Exception:
+        except Exception:  # noqa: BLE001
             # Note: we don't want to expose internal implementation details in the case of an internal error
             context = RequestFailedContext(FailureReason.INTERNAL_ERROR, FailureReason.INTERNAL_ERROR.value)
         message = Message(MessageType.REQUEST_FAILED, context=context)
@@ -147,7 +147,7 @@ async def _handle_connection(websocket: ServerConnection) -> None:
         async for data in websocket:
             try:
                 await _handle_data(data, websocket)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 await _handle_exception(e, websocket)
     except ConnectionClosed:  # we get this if the connection closes for any reason
         pass
