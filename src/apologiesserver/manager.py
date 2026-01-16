@@ -610,7 +610,7 @@ class StateManager:
     def lookup_game(self, game_id: str | None = None, player: TrackedPlayer | None = None) -> TrackedGame | None:
         """Look up a game by id, returning None if the game is not found."""
         if game_id:
-            return self._game_map[game_id] if game_id in self._game_map else None
+            return self._game_map.get(game_id, None)
         if player:
             return self.lookup_game(game_id=player.game_id)
         return None
@@ -667,9 +667,9 @@ class StateManager:
     def lookup_player(self, player_id: str | None = None, handle: str | None = None) -> TrackedPlayer | None:
         """Look up a player by either player id or handle."""
         if player_id:
-            return self._player_map[player_id] if player_id in self._player_map else None
+            return self._player_map.get(player_id, None)
         if handle:
-            player_id = self._handle_map[handle] if handle in self._handle_map else None
+            player_id = self._handle_map.get(handle, None)
             return self.lookup_player(player_id=player_id)
         return None
 

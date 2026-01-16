@@ -184,7 +184,6 @@ ignore = [
   "BLE001",     # for now, don't enforce standards for blind exception
   "PLW0603",    # for now, ignore global _CONFIG
   "PT",         # for now, don't apply PT standards
-  "SIM",        # for now, don't apply SIM standards
 ]
 
 [tool.ruff.lint.per-file-ignores]
