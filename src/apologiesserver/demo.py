@@ -187,8 +187,8 @@ async def _websocket_client(uri: str) -> None:
     try:
         async with connect(uri=uri) as websocket:
             await _handle_connection(websocket)
-    except Exception as e:  # pylint: disable=broad-except
-        log.error("Error with connection: %s", str(e), exc_info=True)
+    except Exception:  # pylint: disable=broad-except
+        log.exception("Error with connection: %s")
 
 
 async def _terminate() -> None:

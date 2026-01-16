@@ -111,7 +111,7 @@ async def _handle_exception(exception: Exception, websocket: ServerConnection) -
     try:
         disconnect = False
         try:
-            log.error("Handling exception: %s", str(exception), exc_info=True)
+            log.error("Handling exception: %s", exception, exc_info=True)
             raise exception  # noqa: TRY301
         except ProcessingError as e:
             disconnect = e.reason == FailureReason.WEBSOCKET_LIMIT  # this is a special case that can't easily be handled elsewhere
