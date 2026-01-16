@@ -13,6 +13,7 @@ from tests.conftest import coroutine_mock, to_date
 
 
 @pytest.mark.filterwarnings("ignore:There is no current event loop")
+@pytest.mark.filterwarnings("ignore:coroutine 'AsyncMockMixin._execute_mock_call' was never awaited")
 class TestTaskQueue:
     """
     Test the TaskQueue class.
@@ -131,6 +132,7 @@ class TestTaskQueue:
 
 @pytest.mark.filterwarnings("ignore:coroutine 'send' was never awaited")
 @pytest.mark.filterwarnings("ignore:coroutine 'close' was never awaited")
+@pytest.mark.filterwarnings("ignore:coroutine 'AsyncMockMixin._execute_mock_call' was never awaited")
 class TestEventHandler:
     """
     Test the basic EventHandler functionality.
@@ -159,6 +161,7 @@ class TestEventHandler:
 
 @pytest.mark.filterwarnings("ignore:coroutine 'send' was never awaited")
 @pytest.mark.filterwarnings("ignore:coroutine 'close' was never awaited")
+@pytest.mark.filterwarnings("ignore:coroutine 'AsyncMockMixin._execute_mock_call' was never awaited")
 class TestTaskMethods:
     """
     Test the task-related methods on EventHandler.
@@ -315,6 +318,7 @@ class TestTaskMethods:
 # pylint: disable=too-many-public-methods
 @pytest.mark.filterwarnings("ignore:coroutine 'send' was never awaited")
 @pytest.mark.filterwarnings("ignore:coroutine 'close' was never awaited")
+@pytest.mark.filterwarnings("ignore:coroutine 'AsyncMockMixin._execute_mock_call' was never awaited")
 class TestRequestMethods:
     """
     Test the request-related methods on EventHandler.
@@ -808,6 +812,7 @@ class TestRequestMethods:
 # pylint: disable=assigning-non-slot:
 @pytest.mark.filterwarnings("ignore:coroutine 'send' was never awaited")
 @pytest.mark.filterwarnings("ignore:coroutine 'close' was never awaited")
+@pytest.mark.filterwarnings("ignore:coroutine 'AsyncMockMixin._execute_mock_call' was never awaited")
 class TestEventMethods:
     """
     Test the event-related methods on EventHandler.
