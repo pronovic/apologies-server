@@ -322,7 +322,7 @@ class TestCoroutines:
         data = b"test data"
         websocket = AsyncMock()
         websocket.__aiter__.return_value = [data]
-        await _handle_connection(websocket, "path")  # path is unused
+        await _handle_connection(websocket)
         handle_data.assert_called_once_with(data, websocket)
         handle_connect.assert_called_once_with(websocket)
         handle_disconnect.assert_called_once_with(websocket)
@@ -338,7 +338,7 @@ class TestCoroutines:
         websocket.__aiter__.return_value = [data]
         exception = ProcessingError(FailureReason.INTERNAL_ERROR)
         handle_data.side_effect = exception
-        await _handle_connection(websocket, "path")  # path is unused
+        await _handle_connection(websocket)
         handle_data.assert_called_once_with(data, websocket)
         handle_connect.assert_called_once_with(websocket)
         handle_disconnect.assert_called_once_with(websocket)
@@ -353,7 +353,7 @@ class TestCoroutines:
         exception = ConnectionClosed(None, None)
         websocket.__aiter__.side_effect = exception  # the wait on the websocket is what throws the connection closed
         handle_data.side_effect = exception
-        await _handle_connection(websocket, "path")  # path is unused
+        await _handle_connection(websocket)
         handle_data.assert_not_called()
         handle_connect.assert_called_once_with(websocket)
         handle_disconnect.assert_called_once_with(websocket)

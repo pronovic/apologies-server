@@ -30,7 +30,7 @@ classifiers = [
 ]
 dependencies = [
    "apologies (>=0.4.1,<0.5.0)",
-   "websockets (==10.3)", # TODO: upgrade when possible, check that it's maintained
+   "websockets (>=16.0,<17.0)",
    "ordered-set (>=4.1.0,<5.0.0)",
 ]
 

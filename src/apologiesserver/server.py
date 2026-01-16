@@ -8,8 +8,8 @@ from asyncio import AbstractEventLoop, Future  # pylint: disable=unused-import
 from collections.abc import Callable  # pylint: disable=unused-import
 from typing import Any
 
+from websockets.asyncio.server import ServerConnection, serve
 from websockets.exceptions import ConnectionClosed
-from websockets.legacy.server import WebSocketServerProtocol, serve
 
 from .config import config
 from .event import EventHandler, RequestContext
@@ -59,7 +59,7 @@ def _lookup_method(handler: EventHandler, message: MessageType) -> Callable[[Req
     raise ProcessingError(FailureReason.INTERNAL_ERROR, comment="Invalid request %s" % message.name)
 
 
-def _handle_message(handler: EventHandler, message: Message, websocket: WebSocketServerProtocol) -> None:
+def _handle_message(handler: EventHandler, message: Message, websocket: ServerConnection) -> None:
     """Handle a valid message received from a websocket client, assumed to be within the handler's lock."""
     if message.message == MessageType.REGISTER_PLAYER:
         handler.handle_register_player_request(message, websocket)
@@ -78,7 +78,7 @@ def _handle_message(handler: EventHandler, message: Message, websocket: WebSocke
             method(request)
 
 
-async def _handle_data(data: str | bytes, websocket: WebSocketServerProtocol) -> None:
+async def _handle_data(data: str | bytes, websocket: ServerConnection) -> None:
     """Handle data received from a websocket client."""
     log.debug("Received raw data for websocket %s:\n%s", id(websocket), mask(data))
     message = Message.for_json(str(data))
@@ -88,7 +88,7 @@ async def _handle_data(data: str | bytes, websocket: WebSocketServerProtocol) ->
         await handler.execute_tasks()
 
 
-async def _handle_connect(websocket: WebSocketServerProtocol) -> None:
+async def _handle_connect(websocket: ServerConnection) -> None:
     """Handle a newly-connected client."""
     with EventHandler(manager()) as handler:
         async with handler.manager.lock:
@@ -96,7 +96,7 @@ async def _handle_connect(websocket: WebSocketServerProtocol) -> None:
         await handler.execute_tasks()
 
 
-async def _handle_disconnect(websocket: WebSocketServerProtocol) -> None:
+async def _handle_disconnect(websocket: ServerConnection) -> None:
     """Handle a disconnected client."""
     with EventHandler(manager()) as handler:
         async with handler.manager.lock:
@@ -106,7 +106,7 @@ async def _handle_disconnect(websocket: WebSocketServerProtocol) -> None:
 
 # pylint: disable=broad-except
 # noinspection PyBroadException
-async def _handle_exception(exception: Exception, websocket: WebSocketServerProtocol) -> None:
+async def _handle_exception(exception: Exception, websocket: ServerConnection) -> None:
     """Handle an exception by sending a request failed event."""
     try:
         disconnect = False
@@ -140,7 +140,7 @@ async def _handle_exception(exception: Exception, websocket: WebSocketServerProt
 
 # pylint: disable=broad-except
 # noinspection PyBroadException
-async def _handle_connection(websocket: WebSocketServerProtocol, _path: str) -> None:
+async def _handle_connection(websocket: ServerConnection) -> None:
     """Handle a client connection, invoked once for each client that connects to the server."""
     await _handle_connect(websocket)
     try:
