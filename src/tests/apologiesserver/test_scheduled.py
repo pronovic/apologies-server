@@ -1,5 +1,4 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
-# pylint: disable=wildcard-import
 
 from unittest.mock import AsyncMock, MagicMock, patch
 

@@ -174,42 +174,9 @@ ignore = [
   "TRY003",     # allow long messages in exceptions; this is often a false-positive that has little benefit
 
   # Exclusions of rule categories and specific rules, customized for this repository
-  "T201",       # for now, we're using print() for server output
   "PTH",        # for now, don't apply PTH standards
   "UP031",      # for now, don't require format specifiers
   "PGH003",     # for now, don't require specific rule codes for type: ignore
-  "S311",       # for now, ignore warnings about pseudo-random generators
-  "FURB101",    # for now, ignore Path optimizations
-  "RUF015",     # for now, don't apply standards for single-element slices
-  "SIM118",     # for now, don't apply dict-related standards
-  "W291",       # for now, ignore trailing whitespace in text blocks
-  "ARG002",     # for now, don't enforce unused method arguments
-  "ARG005",     # for now, don't enforce unused lambda arguments
-  "BLE001",     # for now, don't enforce standards for blind exception
-  "RUF065",     # for now, ignore unnecessary str()
-  "TRY301",     # for now, ignore this
-  "TRY400",     # for now, ignore logging.exception suggestions
-  "G201",       # for now, ignore logging.exception suggestions
-  "LOG014",     # for now, ignore logging.exception suggestions
-  "PLW0603",    # for now, ignore global _CONFIG
-  "RUF036",     # for now, don't enforce this
-  "TC001",      # for now, don't enforce this
-  "TC002",      # for now, don't enforce this
-  "ANN001",     # for now, don't enforce this
-  "ERA001",     # for now, don't enforce this
-  "F403",       # for now, don't enforce this
-  "B904",       # for now, don't enforce this
-  "B024",       # for now, don't enforce this
-  "PYI034",     # for now, don't enforce this
-  "FBT001",     # for now, don't enforce standards for boolean positional arguments
-  "FBT002",     # for now, don't enforce standards for boolean positional arguments
-  "A004",       # for now, don't enforce standards for shadowing
-  "PT",         # for now, don't apply PT standards
-  "SIM",        # for now, don't apply SIM standards
-  "PLR",        # for now, don't apply PLR standards
-  "PERF",       # for now, don't apply PERF standards
-  "F405",       # TODO: this is real, remove it after characterizing
-  "TID252",     # TODO: this is real, remove it after characterizing
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -249,9 +216,6 @@ implicit_optional = false
 strict_optional = true
 warn_no_return = true
 warn_unreachable = true
-
-# TODO: fix this once I can figure out why it's needed
-disable_error_code = ["import-untyped"]
 
 # It's hard to make tests compliant using unittest.mock
 [[tool.mypy.overrides]]

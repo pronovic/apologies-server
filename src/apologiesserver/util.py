@@ -1,5 +1,4 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
-# pylint: disable=unsubscriptable-object
 
 """
 Shared utilities.
@@ -18,11 +17,11 @@ from typing import cast
 from websockets.asyncio.connection import Connection
 from websockets.typing import Data
 
-from .interface import Message, MessageType, ProcessingError
+from apologiesserver.interface import Message, MessageType, ProcessingError
 
 if typing.TYPE_CHECKING:
     # noinspection PyUnresolvedReferences
-    from .interface import RequestFailedContext
+    from apologiesserver.interface import RequestFailedContext
 
 log = logging.getLogger("apologies.util")
 
@@ -70,7 +69,7 @@ async def receive(websocket: Connection, timeout_sec: int | None = None) -> Mess
         return None
 
 
-def setup_logging(quiet: bool, verbose: bool, debug: bool, logfile_path: str | None = None) -> None:
+def setup_logging(*, quiet: bool, verbose: bool, debug: bool, logfile_path: str | None = None) -> None:
     """Set up Python logging."""
     logger = logging.getLogger("apologies")
     logger.setLevel(logging.DEBUG)

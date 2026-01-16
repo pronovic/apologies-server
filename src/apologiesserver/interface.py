@@ -1,5 +1,4 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
-# pylint: disable=unsubscriptable-object
 
 """
 Definition of the public interface for the server.
@@ -19,18 +18,20 @@ from __future__ import annotations  # see: https://stackoverflow.com/a/33533514/
 import json
 from abc import ABC
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import cattrs
 from apologies import Action, ActionType, CardType, GameMode, History, Move, Pawn, Player, PlayerColor, PlayerView, Position
 from arrow import Arrow
 from arrow import get as arrow_get
-from attr import Attribute
 from attr.validators import and_, in_
 from attrs import define, field, frozen
 from cattrs.errors import ClassValidationError
 
-from .validator import enum, length, notempty, regex, string, stringlist
+from apologiesserver.validator import enum, length, notempty, regex, string, stringlist
+
+if TYPE_CHECKING:
+    from attr import Attribute
 
 __all__ = [
     "ActivityState",
@@ -338,7 +339,6 @@ class GameAction:
             start = GameStatePawn.for_pawn(action.pawn)
             end = GameStatePawn.for_position(action.pawn, Position().move_to_start())
             return GameAction(start, end)
-        # action.actiontype == ActionType.MOVE_TO_POSITION
         if not action.position:
             raise ValueError("Action has no associated position")
         start = GameStatePawn.for_pawn(action.pawn)
@@ -365,7 +365,7 @@ class GameMove:
         return GameMove(move_id, card, actions, side_effects)
 
 
-class Context(ABC):
+class Context(ABC):  # noqa: B024
     """Abstract message context."""
 
 
@@ -757,7 +757,7 @@ class Message:
 
     def to_json(self) -> str:
         """Convert the request to JSON."""
-        d = _CONVERTER.unstructure(self)  # pylint: disable=invalid-name
+        d = _CONVERTER.unstructure(self)
         d["context"] = _CONVERTER.unstructure(self.context)
         if d["player_id"] is None:
             del d["player_id"]
@@ -766,9 +766,9 @@ class Message:
         return json.dumps(d, indent="  ")
 
     @staticmethod
-    def for_json(data: str) -> Message:  # pylint: disable=too-many-branches:
+    def for_json(data: str) -> Message:  # noqa: PLR0912
         """Create a request based on JSON data."""
-        d = json.loads(data)  # pylint: disable=invalid-name
+        d = json.loads(data)
         if "message" not in d or d["message"] is None:
             raise ValueError("Message type is required")
         try:
@@ -801,7 +801,7 @@ class Message:
                 value_errors = [c for c in e.exceptions if isinstance(c, ValueError)]
                 key_errors = [c for c in e.exceptions if isinstance(c, KeyError)]
                 if value_errors:
-                    raise value_errors[0]
+                    raise value_errors[0] from None
                 if key_errors:
                     raise ValueError("Invalid value %s" % str(key_errors[0])) from e
                 raise ValueError("Message type %s does not support this context" % message.name, e) from e

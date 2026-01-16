@@ -4,19 +4,19 @@ import asyncio
 import logging
 import signal
 import sys
-from asyncio import AbstractEventLoop, Future  # pylint: disable=unused-import
-from collections.abc import Callable  # pylint: disable=unused-import
+from asyncio import AbstractEventLoop, Future
+from collections.abc import Callable
 from typing import Any
 
 from websockets.asyncio.server import ServerConnection, serve
 from websockets.exceptions import ConnectionClosed
 
-from .config import config
-from .event import EventHandler, RequestContext
-from .interface import FailureReason, Message, MessageType, ProcessingError, RequestFailedContext
-from .manager import manager
-from .scheduled import scheduled_tasks
-from .util import close, mask, send
+from apologiesserver.config import config
+from apologiesserver.event import EventHandler, RequestContext
+from apologiesserver.interface import FailureReason, Message, MessageType, ProcessingError, RequestFailedContext
+from apologiesserver.manager import manager
+from apologiesserver.scheduled import scheduled_tasks
+from apologiesserver.util import close, mask, send
 
 log = logging.getLogger("apologies.server")
 
@@ -24,11 +24,13 @@ log = logging.getLogger("apologies.server")
 if sys.platform == "win32":
     SHUTDOWN_SIGNALS = (signal.SIGTERM, signal.SIGINT)
 else:
-    SHUTDOWN_SIGNALS = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)  # pylint: disable=no-member
+    SHUTDOWN_SIGNALS = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
 
 
-# pylint: disable=too-many-return-statements,too-many-branches
-def _lookup_method(handler: EventHandler, message: MessageType) -> Callable[[RequestContext], None]:
+def _lookup_method(  # noqa: PLR0911,PLR0912
+    handler: EventHandler,
+    message: MessageType,
+) -> Callable[[RequestContext], None]:
     """Lookup the handler method to invoke for a message type."""
     if message == MessageType.REREGISTER_PLAYER:
         return handler.handle_reregister_player_request
@@ -104,15 +106,14 @@ async def _handle_disconnect(websocket: ServerConnection) -> None:
         await handler.execute_tasks()
 
 
-# pylint: disable=broad-except
 # noinspection PyBroadException
 async def _handle_exception(exception: Exception, websocket: ServerConnection) -> None:
     """Handle an exception by sending a request failed event."""
     try:
         disconnect = False
         try:
-            log.error("Handling exception: %s", str(exception), exc_info=True)
-            raise exception
+            log.error("Handling exception: %s", exception, exc_info=True)  # noqa: LOG014
+            raise exception  # noqa: TRY301
         except ProcessingError as e:
             disconnect = e.reason == FailureReason.WEBSOCKET_LIMIT  # this is a special case that can't easily be handled elsewhere
             reason = e.reason
@@ -121,24 +122,23 @@ async def _handle_exception(exception: Exception, websocket: ServerConnection) -
             context = RequestFailedContext(reason=reason, comment=comment, handle=handle)
         except ValueError as e:
             context = RequestFailedContext(FailureReason.INVALID_REQUEST, str(e))
-        except Exception:
+        except Exception:  # noqa: BLE001
             # Note: we don't want to expose internal implementation details in the case of an internal error
             context = RequestFailedContext(FailureReason.INTERNAL_ERROR, FailureReason.INTERNAL_ERROR.value)
-        message = Message(MessageType.REQUEST_FAILED, context=context)  # pylint: disable=used-before-assignment:
+        message = Message(MessageType.REQUEST_FAILED, context=context)
         await send(websocket, message.to_json())
         if disconnect:
             await close(websocket)
-    except Exception as e:
+    except Exception:
         # We don't propogate errors like this to the caller.  We just ignore them and
         # hope that we can recover for future requests.  If the websocket is dead,
         # we presume (hope?) that it will eventually get disconnected by the library.
         # It's not entirely clear what would be a better approach.  The only other
         # obvious option is to drop the client because we failed to send them an error,
         # which doesn't seem quite right, either.
-        log.error("Failed to handle exception: %s", str(e))
+        log.exception("Failed to handle exception: %s")
 
 
-# pylint: disable=broad-except
 # noinspection PyBroadException
 async def _handle_connection(websocket: ServerConnection) -> None:
     """Handle a client connection, invoked once for each client that connects to the server."""
@@ -147,7 +147,7 @@ async def _handle_connection(websocket: ServerConnection) -> None:
         async for data in websocket:
             try:
                 await _handle_data(data, websocket)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 await _handle_exception(e, websocket)
     except ConnectionClosed:  # we get this if the connection closes for any reason
         pass
@@ -176,7 +176,7 @@ def _add_signal_handlers(loop: AbstractEventLoop) -> "Future[Any]":
     stop = loop.create_future()
     for sig in SHUTDOWN_SIGNALS:
         if sys.platform == "win32":
-            signal.signal(sig, lambda s, f: stop.set_result(None))
+            signal.signal(sig, lambda _s, _f: stop.set_result(None))
         else:
             loop.add_signal_handler(sig, stop.set_result, None)
     return stop

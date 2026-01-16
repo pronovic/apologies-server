@@ -1,12 +1,53 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
-# pylint: disable=wildcard-import,too-many-public-methods,too-many-lines
+# ruff: noqa: T201
 
 
 import pytest
 from apologies.game import Card, CardType, GameMode, History, Pawn, Player, PlayerColor, PlayerView, Position
 from apologies.rules import Action, ActionType, Move
 
-from apologiesserver.interface import *
+from apologiesserver.interface import (
+    ActivityState,
+    AdvertisedGame,
+    AdvertiseGameContext,
+    AvailableGamesContext,
+    CancelledReason,
+    ConnectionState,
+    ExecuteMoveContext,
+    FailureReason,
+    GameAdvertisedContext,
+    GameCancelledContext,
+    GameCompletedContext,
+    GameIdleContext,
+    GameInactiveContext,
+    GameInvitationContext,
+    GameJoinedContext,
+    GamePlayer,
+    GamePlayerChangeContext,
+    GamePlayerQuitContext,
+    GamePlayerTurnContext,
+    GameStartedContext,
+    GameStateChangeContext,
+    GameStateHistory,
+    GameStatePawn,
+    JoinGameContext,
+    Message,
+    MessageType,
+    PlayerIdleContext,
+    PlayerInactiveContext,
+    PlayerMessageReceivedContext,
+    PlayerRegisteredContext,
+    PlayerState,
+    PlayerType,
+    ProcessingError,
+    RegisteredPlayer,
+    RegisteredPlayersContext,
+    RegisterPlayerContext,
+    RequestFailedContext,
+    ReregisterPlayerContext,
+    SendMessageContext,
+    Visibility,
+)
 from tests.conftest import to_date
 
 
@@ -443,7 +484,7 @@ class TestRequest:
             "visibility": "PRIVATE",
             "invited_handles": [ "bender", "hermes" ]
           }
-        } 
+        }
         """
         message = Message.for_json(data)
         assert message.message == MessageType.ADVERTISE_GAME
@@ -465,7 +506,7 @@ class TestRequest:
             "visibility": "PUBLIC",
             "invited_handles": []
           }
-        } 
+        }
         """
         message = Message.for_json(data)
         assert message.message == MessageType.ADVERTISE_GAME
@@ -487,7 +528,7 @@ class TestRequest:
             "visibility": "PUBLIC",
             "invited_handles": [ "bender", "hermes" ]
           }
-        } 
+        }
         """
         with pytest.raises(ValueError, match=r"'name' must be a non-empty string"):
             Message.for_json(data)
@@ -504,7 +545,7 @@ class TestRequest:
             "visibility": "PUBLIC",
             "invited_handles": [ "bender", "hermes" ]
           }
-        } 
+        }
         """
         with pytest.raises(ValueError, match=r"'name' must be a non-empty string"):
             Message.for_json(data)
@@ -521,7 +562,7 @@ class TestRequest:
             "visibility": "PUBLIC",
             "invited_handles": [ "bender", "hermes" ]
           }
-        } 
+        }
         """
         with pytest.raises(ValueError, match=r"'name' must not exceed length 40"):
             Message.for_json(data)
@@ -538,7 +579,7 @@ class TestRequest:
             "visibility": "PUBLIC",
             "invited_handles": [ "bender", "hermes" ]
           }
-        } 
+        }
         """
         with pytest.raises(ValueError, match=r"'mode' must be one of \[ADULT, STANDARD\]"):
             Message.for_json(data)
@@ -555,7 +596,7 @@ class TestRequest:
             "visibility": "PUBLIC",
             "invited_handles": [ "bender", "hermes" ]
           }
-        } 
+        }
         """
         with pytest.raises(ValueError, match=r"'mode' must be one of \[ADULT, STANDARD\]"):
             Message.for_json(data)
@@ -572,7 +613,7 @@ class TestRequest:
             "visibility": "PUBLIC",
             "invited_handles": [ "bender", "hermes" ]
           }
-        } 
+        }
         """
         with pytest.raises(ValueError, match=r"Invalid value 'BOGUS'"):
             Message.for_json(data)
@@ -589,7 +630,7 @@ class TestRequest:
             "visibility": "PUBLIC",
             "invited_handles": [ "bender", "hermes" ]
           }
-        } 
+        }
         """
         with pytest.raises(ValueError, match=r"'players' must be in \[2, 3, 4\] \(got 1\)"):
             Message.for_json(data)
@@ -606,7 +647,7 @@ class TestRequest:
             "visibility": "PUBLIC",
             "invited_handles": [ "bender", "hermes" ]
           }
-        } 
+        }
         """
         with pytest.raises(ValueError, match=r"'players' must be in \[2, 3, 4\] \(got 5\)"):
             Message.for_json(data)
@@ -623,7 +664,7 @@ class TestRequest:
             "visibility": null,
             "invited_handles": [ "bender", "hermes" ]
           }
-        } 
+        }
         """
         with pytest.raises(ValueError, match=r"'visibility' must be one of \[PRIVATE, PUBLIC\]"):
             Message.for_json(data)
@@ -640,7 +681,7 @@ class TestRequest:
             "visibility": "",
             "invited_handles": [ "bender", "hermes" ]
           }
-        } 
+        }
         """
         with pytest.raises(ValueError, match=r"'visibility' must be one of \[PRIVATE, PUBLIC\]"):
             Message.for_json(data)
@@ -657,7 +698,7 @@ class TestRequest:
             "visibility": "BOGUS",
             "invited_handles": [ "bender", "hermes" ]
           }
-        } 
+        }
         """
         with pytest.raises(ValueError, match=r"Invalid value 'BOGUS'"):
             Message.for_json(data)
@@ -674,7 +715,7 @@ class TestRequest:
             "visibility": "PUBLIC",
             "invited_handles": null
           }
-        } 
+        }
         """
         with pytest.raises(ValueError, match=r"Message type ADVERTISE_GAME does not support this context"):
             Message.for_json(data)
@@ -691,7 +732,7 @@ class TestRequest:
             "visibility": "PUBLIC",
             "invited_handles": [ "bender", null ]
           }
-        } 
+        }
         """
         with pytest.raises(ValueError, match=r"'invited_handles' elements must be non-empty strings"):
             Message.for_json(data)
@@ -708,7 +749,7 @@ class TestRequest:
             "visibility": "PUBLIC",
             "invited_handles": [ "bender", "" ]
           }
-        } 
+        }
         """
         with pytest.raises(ValueError, match=r"'invited_handles' elements must be non-empty strings"):
             Message.for_json(data)
@@ -761,7 +802,7 @@ class TestRequest:
           "context": {
             "move_id": "4"
           }
-        }  
+        }
         """
         message = Message.for_json(data)
         assert message.message == MessageType.EXECUTE_MOVE
@@ -775,7 +816,7 @@ class TestRequest:
           "context": {
             "move_id": null
           }
-        }  
+        }
         """
         with pytest.raises(ValueError, match=r"'move_id' must be a non-empty string"):
             Message.for_json(data)
@@ -788,7 +829,7 @@ class TestRequest:
           "context": {
             "move_id": ""
           }
-        }  
+        }
         """
         with pytest.raises(ValueError, match=r"'move_id' must be a non-empty string"):
             Message.for_json(data)
@@ -798,7 +839,7 @@ class TestRequest:
         {
           "message": "OPTIMAL_MOVE",
           "player_id": "id"
-        }  
+        }
         """
         message = Message.for_json(data)
         assert message.message == MessageType.OPTIMAL_MOVE
@@ -812,7 +853,7 @@ class TestRequest:
             "message": "Hello!",
             "recipient_handles": [ "hermes", "nibbler" ]
           }
-        }  
+        }
         """
         message = Message.for_json(data)
         assert message.message == MessageType.SEND_MESSAGE
@@ -828,7 +869,7 @@ class TestRequest:
             "message": null,
             "recipient_handles": [ "hermes", "nibbler" ]
           }
-        }  
+        }
         """
         with pytest.raises(ValueError, match=r"'message' must be a non-empty string"):
             Message.for_json(data)
@@ -842,7 +883,7 @@ class TestRequest:
             "message": "",
             "recipient_handles": [ "hermes", "nibbler" ]
           }
-        }  
+        }
         """
         with pytest.raises(ValueError, match=r"'message' must be a non-empty string"):
             Message.for_json(data)
@@ -856,7 +897,7 @@ class TestRequest:
             "message": "Hello!",
             "recipient_handles": null
           }
-        }  
+        }
         """
         with pytest.raises(ValueError, match=r"Message type SEND_MESSAGE does not support this context"):
             Message.for_json(data)
@@ -870,7 +911,7 @@ class TestRequest:
             "message": "Hello!",
             "recipient_handles": []
           }
-        }  
+        }
         """
         with pytest.raises(ValueError, match=r"'recipient_handles' may not be empty"):
             Message.for_json(data)
@@ -884,7 +925,7 @@ class TestRequest:
             "message": "Hello!",
             "recipient_handles": [ "hermes", null ]
           }
-        }  
+        }
         """
         with pytest.raises(ValueError, match=r"'recipient_handles' elements must be non-empty strings"):
             Message.for_json(data)
@@ -898,7 +939,7 @@ class TestRequest:
             "message": "Hello!",
             "recipient_handles": [ "hermes", "" ]
           }
-        }  
+        }
         """
         with pytest.raises(ValueError, match=r"'recipient_handles' elements must be non-empty strings"):
             Message.for_json(data)

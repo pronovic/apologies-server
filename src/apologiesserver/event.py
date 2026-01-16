@@ -1,5 +1,4 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
-# pylint: disable=wildcard-import
 
 """
 Event handlers.
@@ -18,23 +17,64 @@ from __future__ import annotations  # see: https://stackoverflow.com/a/33533514/
 import asyncio
 import logging
 import typing
-from typing import cast
+from typing import Self, cast
 
 from apologies import Move, RewardV1InputSource, Rules
 from arrow import Arrow
 from arrow import utcnow as arrow_utcnow
 from attrs import define, field, frozen
 from ordered_set import OrderedSet  # this makes expected results easier to articulate in test code
-from websockets.asyncio.server import ServerConnection
 
-from .config import config
-from .interface import *
-from .manager import StateManager, TrackedGame, TrackedPlayer, TrackedWebsocket
-from .util import close, send
+from apologiesserver.config import config
+from apologiesserver.interface import (
+    ActivityState,
+    AdvertiseGameContext,
+    AvailableGamesContext,
+    CancelledReason,
+    ConnectionState,
+    FailureReason,
+    GameAdvertisedContext,
+    GameCancelledContext,
+    GameCompletedContext,
+    GameIdleContext,
+    GameInactiveContext,
+    GameInvitationContext,
+    GameJoinedContext,
+    GamePlayerChangeContext,
+    GamePlayerQuitContext,
+    GamePlayerTurnContext,
+    GameStartedContext,
+    GameStateChangeContext,
+    Message,
+    MessageType,
+    PlayerIdleContext,
+    PlayerInactiveContext,
+    PlayerMessageReceivedContext,
+    PlayerRegisteredContext,
+    PlayerState,
+    PlayerType,
+    PlayerUnregisteredContext,
+    ProcessingError,
+    RegisteredPlayersContext,
+)
+from apologiesserver.util import close, send
 
 if typing.TYPE_CHECKING:
     # noinspection PyUnresolvedReferences
     import datetime
+    from types import TracebackType
+
+    from websockets.asyncio.server import ServerConnection
+
+    # noinspection PyUnresolvedReferences
+    from apologiesserver.interface import (
+        ExecuteMoveContext,
+        # GameJoinedContext,
+        JoinGameContext,
+        RegisterPlayerContext,
+        SendMessageContext,
+    )
+    from apologiesserver.manager import StateManager, TrackedGame, TrackedPlayer, TrackedWebsocket
 
 log = logging.getLogger("apologies.event")
 
@@ -61,7 +101,7 @@ class TaskQueue:
         return len(self.messages) == 0 and len(self.disconnects) == 0
 
     def clear(self) -> None:
-        del self.messages[:]  # pylint: disable=unsupported-delete-operation:
+        del self.messages[:]
         self.disconnects.clear()
 
     def message(
@@ -97,17 +137,21 @@ class TaskQueue:
             await asyncio.wait(tasks)  # TODO: not entirely sure how we handle errors that happen here
 
 
-# pylint: disable=too-many-public-methods,too-many-instance-attributes:
-@define(slots=False)
+@define(slots=False)  # noqa: PLR0904
 class EventHandler:
     manager: StateManager
     queue: TaskQueue = field(factory=TaskQueue)
 
-    def __enter__(self) -> EventHandler:
+    def __enter__(self) -> Self:
         self.queue.clear()
         return self
 
-    def __exit__(self, _type, _value, _tb) -> None:  # type: ignore
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         self.queue.clear()
 
     async def execute_tasks(self) -> None:
@@ -521,7 +565,12 @@ class EventHandler:
         self.handle_game_next_turn_event(game)
 
     def handle_game_cancelled_event(
-        self, game: TrackedGame, reason: CancelledReason, comment: str | None = None, notify: bool = True
+        self,
+        game: TrackedGame,
+        reason: CancelledReason,
+        comment: str | None = None,
+        *,
+        notify: bool = True,
     ) -> None:
         """Handle the Game Cancelled event."""
         log.info("Event - GAME CANCELLED - %s for %s (%s)", game.game_id, reason, "'%s'" % comment if comment else None)
@@ -644,19 +693,18 @@ class EventHandler:
         message = Message(MessageType.GAME_PLAYER_CHANGE, context=context)
         self.queue.message(message, players=players)
 
-    # pylint: disable=redefined-argument-from-local
     def handle_game_state_change_event(self, game: TrackedGame, player: TrackedPlayer | None = None) -> None:
         """Handle the Game State Change event."""
         log.info("Event - GAME STATE CHANGE - %s for %s", game.game_id, player.handle if player else None)
         game.mark_active()
         if game.is_playing():
             players = [player] if player else self.manager.lookup_game_players(game)
-            for player in players:
-                view = game.get_player_view(player.handle)
+            for p in players:
+                view = game.get_player_view(p.handle)
                 history = game.get_recent_history(10)  # the last 10 entries in history
                 context = GameStateChangeContext.for_context(game_id=game.game_id, view=view, history=history)
                 message = Message(MessageType.GAME_STATE_CHANGE, context=context)
-                self.queue.message(message, players=[player])
+                self.queue.message(message, players=[p])
 
     def handle_game_player_turn_event(self, player: TrackedPlayer, moves: list[Move]) -> None:
         """Handle the Game Player Turn event."""

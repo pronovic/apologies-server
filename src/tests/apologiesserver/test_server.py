@@ -1,5 +1,4 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
-# pylint: disable=redefined-outer-name
 
 import asyncio
 import os
@@ -40,8 +39,7 @@ def data():
     for f in os.listdir(FIXTURE_DIR):
         p = os.path.join(FIXTURE_DIR, f)
         if pathlib.Path(p).is_file():
-            with pathlib.Path(p).open(encoding="utf-8") as r:
-                data[f] = r.read()
+            data[f] = pathlib.Path(p).read_text(encoding="utf-8")
     return data
 
 
@@ -66,7 +64,7 @@ class TestFunctions:
             stop.set_result.assert_called_once_with(None)  # confirm that the handler sets the stop future result properly
         else:
             loop.add_signal_handler.assert_has_calls([
-                call(signal.SIGHUP, set_result, None),  # pylint: disable=no-member
+                call(signal.SIGHUP, set_result, None),
                 call(signal.SIGTERM, set_result, None),
                 call(signal.SIGINT, set_result, None),
             ])
@@ -170,7 +168,6 @@ class TestFunctions:
         with pytest.raises(ProcessingError, match=r"Invalid request SERVER_SHUTDOWN"):
             _lookup_method(MagicMock(), MessageType.SERVER_SHUTDOWN)  # this isn't a request
 
-    # pylint: disable=comparison-with-callable
     def test_lookup_method_valid(self):
         handler = EventHandler(MagicMock())
         assert _lookup_method(handler, MessageType.REREGISTER_PLAYER) == handler.handle_reregister_player_request

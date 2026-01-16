@@ -19,7 +19,7 @@ def coroutine_mock() -> AsyncMock:
 
 def random_string(length: int = 10) -> str:
     chars = string.ascii_uppercase + string.ascii_lowercase + string.digits
-    return "".join([random.choice(chars) for _ in range(length)])
+    return "".join([random.choice(chars) for _ in range(length)])  # noqa: S311
 
 
 def to_date(date: str) -> Arrow:

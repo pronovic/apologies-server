@@ -1,5 +1,4 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
-# pylint: disable=wildcard-import
 
 """Coroutines to handle scheduled tasks, executed on a periodic basis."""
 
@@ -7,11 +6,10 @@ import logging
 from collections.abc import Callable, Coroutine
 from typing import Any
 
-from .config import config
-from .event import *
-from .event import EventHandler
-from .manager import manager
-from .periodic import Periodic
+from apologiesserver.config import config
+from apologiesserver.event import EventHandler
+from apologiesserver.manager import manager
+from apologiesserver.periodic import Periodic
 
 log = logging.getLogger("apologies.scheduled")
 

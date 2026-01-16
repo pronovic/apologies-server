@@ -1,4 +1,5 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
+# ruff: noqa: PLW0603
 
 """
 System configuration.
@@ -14,7 +15,7 @@ from typing import Any
 import cattrs
 from attrs import frozen
 
-from .util import homedir
+from apologiesserver.util import homedir
 
 # Configuration defaults
 DEFAULT_CONFIG_PATH = os.path.join(homedir(), ".apologiesrc")
@@ -69,7 +70,6 @@ DEFAULTS = {
 }
 
 
-# pylint: disable=too-many-instance-attributes
 @frozen
 class SystemConfig:
     """
@@ -133,15 +133,18 @@ class SystemConfig:
 _CONFIG: SystemConfig | None = None
 
 
-def _get(parser: ConfigParser | None | SectionProxy, key: str, overrides: dict[str, Any] | None, defaults: dict[str, Any]) -> Any:
+def _get(parser: ConfigParser | SectionProxy | None, key: str, overrides: dict[str, Any] | None, defaults: dict[str, Any]) -> Any:
     """Get a value from a parser, overriding or setting a default as necessary."""
     override = overrides[key] if overrides and key in overrides else None
     default = defaults[key] if defaults and key in defaults else None
     return override or (parser.get(key, default) if parser else default)  # type: ignore
 
 
-# pylint: disable=too-many-locals
-def _parse(parser: ConfigParser | None | SectionProxy, overrides: dict[str, Any] | None, defaults: dict[str, Any]) -> SystemConfig:
+def _parse(  # noqa: PLR0914
+    parser: ConfigParser | SectionProxy | None,
+    overrides: dict[str, Any] | None,
+    defaults: dict[str, Any],
+) -> SystemConfig:
     """Create an SystemConfig based on configuration, applying defaults to values that are not available."""
     logfile_path = _get(parser, "logfile_path", overrides, defaults)
     server_host = _get(parser, "server_host", overrides, defaults)
@@ -204,7 +207,7 @@ def _load(config_path: str, overrides: dict[str, Any] | None, defaults: dict[str
 
 def load_config(config_path: str | None = None, overrides: dict[str, Any] | None = None) -> None:
     """Load global configuration for later use, applying defaults for any value that is not found."""
-    global _CONFIG  # pylint: disable=global-statement
+    global _CONFIG
     if config_path:
         # if they override the config path, the file must exist
         if not pathlib.Path(config_path).exists():

@@ -1,5 +1,4 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
-# pylint: disable=wildcard-import,too-many-lines
 
 """
 State manager.
@@ -34,6 +33,7 @@ from __future__ import annotations  # see: https://stackoverflow.com/a/33533514/
 import asyncio
 import logging
 import random
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from apologies import Character, Engine, GameMode, History, Move, NoOpInputSource, PlayerColor, PlayerView
@@ -41,9 +41,25 @@ from arrow import Arrow
 from arrow import utcnow as arrow_utcnow
 from attrs import define, evolve, field, frozen
 from ordered_set import OrderedSet  # this makes expected results easier to articulate in test code
-from websockets.asyncio.server import ServerConnection
 
-from .interface import *
+from apologiesserver.interface import (
+    ActivityState,
+    AdvertisedGame,
+    AdvertiseGameContext,
+    CancelledReason,
+    ConnectionState,
+    FailureReason,
+    GamePlayer,
+    GameState,
+    PlayerState,
+    PlayerType,
+    ProcessingError,
+    RegisteredPlayer,
+    Visibility,
+)
+
+if TYPE_CHECKING:
+    from websockets.asyncio.server import ServerConnection
 
 log = logging.getLogger("apologies.manager")
 
@@ -89,12 +105,12 @@ class TrackedWebsocket:
 
     # noinspection PyUnresolvedReferences
     @registration_date.default
-    def _default_registration_date(self) -> Arrow:
+    def _default_registration_date(self) -> Arrow:  # noqa: PLR6301
         return arrow_utcnow()  # not using field(factory=arrow_utcnow) to support mocking in unit tests
 
     # noinspection PyUnresolvedReferences
     @last_active_date.default
-    def _default_last_active_date(self) -> Arrow:
+    def _default_last_active_date(self) -> Arrow:  # noqa: PLR6301
         return arrow_utcnow()  # not using field(factory=arrow_utcnow) to support mocking in unit tests
 
     def mark_active(self) -> None:
@@ -111,7 +127,6 @@ class TrackedWebsocket:
         self.activity_state = ActivityState.INACTIVE
 
 
-# pylint: disable=too-many-instance-attributes
 @define
 class TrackedPlayer:
     """The state that is tracked for a player within the state manager."""
@@ -128,12 +143,12 @@ class TrackedPlayer:
 
     # noinspection PyUnresolvedReferences
     @registration_date.default
-    def _default_registration_date(self) -> Arrow:
+    def _default_registration_date(self) -> Arrow:  # noqa: PLR6301
         return arrow_utcnow()  # not using field(factory=arrow_utcnow) to support mocking in unit tests
 
     # noinspection PyUnresolvedReferences
     @last_active_date.default
-    def _default_last_active_date(self) -> Arrow:
+    def _default_last_active_date(self) -> Arrow:  # noqa: PLR6301
         return arrow_utcnow()  # not using field(factory=arrow_utcnow) to support mocking in unit tests
 
     @staticmethod
@@ -298,8 +313,7 @@ class TrackedEngine:
 
 
 # noinspection PyDataclass
-# pylint: disable=too-many-instance-attributes,too-many-public-methods
-@define(slots=False)
+@define(slots=False)  # noqa: PLR0904
 class TrackedGame:
     """The state that is tracked for a game within the state manager."""
 
@@ -323,12 +337,12 @@ class TrackedGame:
 
     # noinspection PyUnresolvedReferences
     @advertised_date.default
-    def _default_registration_date(self) -> Arrow:
+    def _default_registration_date(self) -> Arrow:  # noqa: PLR6301
         return arrow_utcnow()  # not using field(factory=arrow_utcnow) to support mocking in unit tests
 
     # noinspection PyUnresolvedReferences
     @last_active_date.default
-    def _default_last_active_date(self) -> Arrow:
+    def _default_last_active_date(self) -> Arrow:  # noqa: PLR6301
         return arrow_utcnow()  # not using field(factory=arrow_utcnow) to support mocking in unit tests
 
     @staticmethod
@@ -369,7 +383,13 @@ class TrackedGame:
     def get_available_players(self) -> list[GamePlayer]:
         """Get the players that are still available to play the game."""
         return [
-            player for player in self.get_game_players() if player.player_state not in (PlayerState.QUIT, PlayerState.DISCONNECTED)
+            player
+            for player in self.get_game_players()
+            if player.player_state
+            not in {
+                PlayerState.QUIT,
+                PlayerState.DISCONNECTED,
+            }
         ]
 
     def get_available_player_count(self) -> int:
@@ -479,7 +499,7 @@ class TrackedGame:
 
     def mark_cancelled(self, reason: CancelledReason, comment: str | None = None) -> None:
         """Mark the game as cancelled."""
-        if self.game_state not in [GameState.ADVERTISED, GameState.PLAYING]:
+        if self.game_state not in {GameState.ADVERTISED, GameState.PLAYING}:
             raise ProcessingError(FailureReason.INTERNAL_ERROR, "Illegal state for operation")
         self.completed_date = arrow_utcnow()
         self.game_state = GameState.CANCELLED
@@ -494,7 +514,7 @@ class TrackedGame:
         # We assume that if the player is in the middle of their turn, that the caller handles that cleanup
         if self.game_state == GameState.ADVERTISED:
             # if the game hasn't started, just remove them
-            del self.game_players[handle]  # pylint: disable=unsupported-delete-operation:
+            del self.game_players[handle]
         elif self.game_state == GameState.PLAYING:
             self.game_players[handle] = evolve(self.game_players[handle], player_state=PlayerState.QUIT)
         else:
@@ -517,11 +537,11 @@ class TrackedGame:
         all_handles = set(_NAMES)
         used_handles = {player.handle for player in self.game_players.values()}
         available_handles = all_handles - used_handles
-        return random.choice(list(available_handles))
+        return random.choice(list(available_handles))  # noqa: S311
 
 
 # noinspection PyMethodMayBeStatic
-@define(slots=False)
+@define(slots=False)  # noqa: PLR0904
 class StateManager:
     """Manages system state."""
 
@@ -551,7 +571,7 @@ class StateManager:
     def delete_websocket(self, websocket: ServerConnection) -> None:
         """Delete a websocket, so it is no longer tracked."""
         if websocket in self._websocket_map:
-            del self._websocket_map[websocket]  # pylint: disable=unsupported-delete-operation:
+            del self._websocket_map[websocket]
 
     def get_websocket_count(self) -> int:
         """Return the number of connected websockets in the system."""
@@ -577,7 +597,7 @@ class StateManager:
     def delete_game(self, game: TrackedGame) -> None:
         """Delete a tracked game, so it is no longer tracked."""
         if game.game_id in self._game_map:
-            del self._game_map[game.game_id]  # pylint: disable=unsupported-delete-operation:
+            del self._game_map[game.game_id]
 
     def get_total_game_count(self) -> int:
         """Return the total number of games in the system."""
@@ -590,7 +610,7 @@ class StateManager:
     def lookup_game(self, game_id: str | None = None, player: TrackedPlayer | None = None) -> TrackedGame | None:
         """Look up a game by id, returning None if the game is not found."""
         if game_id:
-            return self._game_map[game_id] if game_id in self._game_map else None
+            return self._game_map.get(game_id, None)
         if player:
             return self.lookup_game(game_id=player.game_id)
         return None
@@ -636,9 +656,9 @@ class StateManager:
         if player.websocket and player.websocket in self._websocket_map:
             self._websocket_map[player.websocket].player_ids.discard(player.player_id)
         if player.handle in self._handle_map:
-            del self._handle_map[player.handle]  # pylint: disable=unsupported-delete-operation:
+            del self._handle_map[player.handle]
         if player.player_id in self._player_map:
-            del self._player_map[player.player_id]  # pylint: disable=unsupported-delete-operation:
+            del self._player_map[player.player_id]
 
     def get_registered_player_count(self) -> int:
         """Return the number of registered players in the system."""
@@ -647,9 +667,9 @@ class StateManager:
     def lookup_player(self, player_id: str | None = None, handle: str | None = None) -> TrackedPlayer | None:
         """Look up a player by either player id or handle."""
         if player_id:
-            return self._player_map[player_id] if player_id in self._player_map else None
+            return self._player_map.get(player_id, None)
         if handle:
-            player_id = self._handle_map[handle] if handle in self._handle_map else None
+            player_id = self._handle_map.get(handle, None)
             return self.lookup_player(player_id=player_id)
         return None
 
@@ -661,14 +681,14 @@ class StateManager:
         """Look up the last active date and number of registered players for all websockets."""
         result: list[tuple[TrackedWebsocket, Arrow, int]] = []
         for websocket in self._websocket_map.values():
-            result.append((websocket, websocket.last_active_date, len(websocket.player_ids)))
+            result.append((websocket, websocket.last_active_date, len(websocket.player_ids)))  # noqa: PERF401
         return result
 
     def lookup_player_activity(self) -> list[tuple[TrackedPlayer, Arrow, ConnectionState]]:
         """Look up the last active date and connection state for all players."""
         result: list[tuple[TrackedPlayer, Arrow, ConnectionState]] = []
         for player in self._player_map.values():
-            result.append((player, player.last_active_date, player.connection_state))
+            result.append((player, player.last_active_date, player.connection_state))  # noqa: PERF401
         return result
 
     def lookup_game_activity(self) -> list[tuple[TrackedGame, Arrow]]:
@@ -676,7 +696,7 @@ class StateManager:
         result: list[tuple[TrackedGame, Arrow]] = []
         for game in self._game_map.values():
             if not game.completed:
-                result.append((game, game.last_active_date))
+                result.append((game, game.last_active_date))  # noqa: PERF401
         return result
 
     def lookup_game_completion(self) -> list[tuple[TrackedGame, Arrow | None]]:
@@ -684,7 +704,7 @@ class StateManager:
         result: list[tuple[TrackedGame, Arrow | None]] = []
         for game in self._game_map.values():
             if game.completed:
-                result.append((game, game.completed_date))
+                result.append((game, game.completed_date))  # noqa: PERF401
         return result
 
 

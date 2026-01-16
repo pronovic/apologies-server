@@ -1,5 +1,5 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
-# pylint: disable=redefined-outer-name,wildcard-import,protected-access,too-many-lines
+# ruff: noqa: T201
 
 import random
 from unittest.mock import MagicMock, patch
@@ -11,7 +11,19 @@ from apologies.source import NoOpInputSource, RewardV1InputSource
 from arrow import utcnow as arrow_utcnow
 from ordered_set import OrderedSet
 
-from apologiesserver.interface import *
+from apologiesserver.interface import (
+    ActivityState,
+    AdvertiseGameContext,
+    CancelledReason,
+    ConnectionState,
+    GamePlayer,
+    GamePlayerTurnContext,
+    GameState,
+    PlayerState,
+    PlayerType,
+    ProcessingError,
+    Visibility,
+)
 from apologiesserver.manager import (
     _MANAGER,
     _NAMES,
@@ -417,7 +429,6 @@ class TestTrackedEngine:
         engine._engine.execute_move.assert_called_once_with(PlayerColor.RED, move)
 
 
-# pylint: disable=too-many-public-methods
 class TestTrackedGame:
     """
     Test the TrackedGame class.
@@ -632,10 +643,10 @@ class TestTrackedGame:
     def test_mark_joined_illegal_state(self):
         game = create_test_game()
         for game_state in [game_state for game_state in GameState if game_state != GameState.ADVERTISED]:
+            game.game_state = game_state
             with pytest.raises(ProcessingError, match=r"Illegal state for operation"):
-                game.game_state = game_state
                 game.mark_joined("handle")
-                assert "leela" not in game.game_players
+            assert "leela" not in game.game_players
 
     def test_mark_joined(self):
         game = create_test_game()
@@ -653,8 +664,8 @@ class TestTrackedGame:
         game.mark_joined("leela")
         game.mark_joined("bender")
         for game_state in [game_state for game_state in GameState if game_state != GameState.ADVERTISED]:
+            game.game_state = game_state
             with pytest.raises(ProcessingError, match=r"Illegal state for operation"):
-                game.game_state = game_state
                 game.mark_started()
             assert game.game_state == game_state  # should not change
 
@@ -681,7 +692,7 @@ class TestTrackedGame:
             }
             return colors
 
-        game._engine.start_game = stubbed_start_game  # pylint: disable=assigning-non-slot:
+        game._engine.start_game = stubbed_start_game
 
         game.game_state = GameState.ADVERTISED  # otherwise it's an illegal state
         game.last_active_date = None
@@ -692,7 +703,7 @@ class TestTrackedGame:
         assert game.started_date >= now
         assert len(game.game_players) == 4  # the two we added and two programmatic ones
 
-        programmatic = [handle for handle in game.game_players.keys() if handle not in ("leela", "bender")]
+        programmatic = [handle for handle in game.game_players if handle not in ("leela", "bender")]
         assert len(programmatic) == 2
         for handle in programmatic:
             assert handle in _NAMES  # the name gets randomly assigned
@@ -701,7 +712,7 @@ class TestTrackedGame:
             assert game.game_players[handle].player_type == PlayerType.PROGRAMMATIC
             assert game.game_players[handle].player_state == PlayerState.PLAYING
 
-        human = [handle for handle in game.game_players.keys() if handle in ("leela", "bender")]
+        human = [handle for handle in game.game_players if handle in ("leela", "bender")]
         assert len(human) == 2
         for handle in ["leela", "bender"]:
             assert game.game_players[handle].handle == handle
@@ -712,8 +723,8 @@ class TestTrackedGame:
     def test_mark_completed_illegal_state(self):
         game = create_test_game()
         for game_state in [game_state for game_state in GameState if game_state != GameState.PLAYING]:
+            game.game_state = game_state
             with pytest.raises(ProcessingError, match=r"Illegal state for operation"):
-                game.game_state = game_state
                 game.mark_completed("comment")
             assert game.game_state == game_state  # should not change
             game._engine.stop_game.assert_not_called()
@@ -740,8 +751,8 @@ class TestTrackedGame:
     def test_mark_cancelled_illegal_state(self):
         game = create_test_game()
         for game_state in [game_state for game_state in GameState if game_state not in (GameState.PLAYING, GameState.ADVERTISED)]:
+            game.game_state = game_state
             with pytest.raises(ProcessingError, match=r"Illegal state for operation"):
-                game.game_state = game_state
                 game.mark_cancelled(CancelledReason.CANCELLED, "comment")
             assert game.game_state == game_state  # should not change
             game._engine.stop_game.assert_not_called()
@@ -805,7 +816,7 @@ class TestTrackedGame:
         game.game_players = {}
         game._mark_joined_programmatic()
         assert len(game.game_players) == 1
-        gp1 = list(game.game_players.values())[0]
+        gp1 = next(iter(game.game_players.values()))
         assert gp1.handle in _NAMES
         assert gp1.player_color is None  # will be assigned later
         assert gp1.player_type == PlayerType.PROGRAMMATIC
@@ -1165,8 +1176,6 @@ class TestGame:
     def test_complete_game_adult(self):
         TestGame.play_game(mode=GameMode.ADULT, player_count=3, handles=["leela"])
 
-    # pylint: disable=too-many-locals
-
     @staticmethod
     def play_game(mode: GameMode, player_count: int, handles: list[str]) -> None:
         assert len(handles) >= 1
@@ -1216,7 +1225,7 @@ class TestGame:
             else:
                 moves = game.get_legal_moves(handle)
                 context = GamePlayerTurnContext.for_moves(handle=handle, game_id=game.game_id, moves=moves)
-                move_id = random.choice(list(context.moves.keys()))  # simulates input from the websocket client
+                move_id = random.choice(list(context.moves.keys()))  # noqa: S311 # simulates input from client
                 (completed, _winner, comment) = game.execute_move(handle, move_id)
             history = game.get_recent_history(1)
             if history:

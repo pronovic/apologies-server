@@ -1,5 +1,4 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
-# pylint: disable=wildcard-import
 
 """
 Implements a quick'n'dirty game-playing client as a demo.
@@ -21,15 +20,36 @@ import platform
 import random
 import signal
 import sys
+import typing
 from asyncio import AbstractEventLoop, CancelledError
 from typing import cast
 
 from apologies import GameMode
 from websockets.asyncio.client import ClientConnection, connect
 
-from .interface import *
-from .server import SHUTDOWN_SIGNALS
-from .util import receive, send
+from apologiesserver.interface import (
+    AdvertiseGameContext,
+    ExecuteMoveContext,
+    GameMove,
+    Message,
+    MessageType,
+    RegisterPlayerContext,
+    Visibility,
+)
+from apologiesserver.server import SHUTDOWN_SIGNALS
+from apologiesserver.util import receive, send
+
+if typing.TYPE_CHECKING:
+    # noinspection PyUnresolvedReferences
+    from apologiesserver.interface import (
+        GameAdvertisedContext,
+        GameCompletedContext,
+        GameJoinedContext,
+        GamePlayerChangeContext,
+        GamePlayerTurnContext,
+        GameStartedContext,
+        GameStateChangeContext,
+    )
 
 log = logging.getLogger("apologies.demo")
 
@@ -115,7 +135,7 @@ def _handle_game_player_change(_player_id: str, message: Message) -> None:
 def _handle_game_player_turn(player_id: str, message: Message) -> Message | None:
     """Handle the game player turn event."""
     context = cast("GamePlayerTurnContext", message.context)
-    move: GameMove = random.choice(list(context.moves.values()))
+    move: GameMove = random.choice(list(context.moves.values()))  # noqa: S311
     log.info("Demo player turn, %d move(s), chose %s for card %s", len(context.moves), move.move_id, move.card.name)
     return Message(MessageType.EXECUTE_MOVE, player_id=player_id, context=ExecuteMoveContext(move_id=move.move_id))
 
@@ -166,8 +186,8 @@ async def _websocket_client(uri: str) -> None:
     try:
         async with connect(uri=uri) as websocket:
             await _handle_connection(websocket)
-    except Exception as e:  # pylint: disable=broad-except
-        log.error("Error with connection: %s", str(e), exc_info=True)
+    except Exception:
+        log.exception("Error with connection: %s")
 
 
 async def _terminate() -> None:
@@ -183,7 +203,7 @@ def _add_signal_handlers(loop: AbstractEventLoop) -> None:
     log.info("Adding signal handlers...")
     for sig in SHUTDOWN_SIGNALS:
         if platform.system() == "Windows" or sys.platform == "win32":  # stupid MyPy
-            signal.signal(sig, lambda s, f: asyncio.create_task(_terminate()))
+            signal.signal(sig, lambda _s, _f: asyncio.create_task(_terminate()))
         else:
             loop.add_signal_handler(sig, lambda: asyncio.create_task(_terminate()))
 
