@@ -19,6 +19,7 @@ from apologiesserver.scheduled import (
 from tests.conftest import coroutine_mock, mock_handler
 
 
+@pytest.mark.filterwarnings("ignore:coroutine 'AsyncMockMixin._execute_mock_call' was never awaited")
 class TestFunctions:
     """
     Test Python functions.
@@ -39,6 +40,7 @@ class TestFunctions:
         ]
 
 
+@pytest.mark.filterwarnings("ignore:coroutine 'AsyncMockMixin._execute_mock_call' was never awaited")
 class TestCoroutines:
     """
     Test Python coroutines.
