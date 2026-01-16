@@ -949,6 +949,8 @@ class TestEventMethods:
         handler.manager.retrack_player.assert_called_once_with(player, websocket)
         handler.queue.message.assert_called_once_with(message, players=[player])
 
+    @pytest.mark.filterwarnings("ignore:coroutine 'send' was never awaited")
+    @pytest.mark.filterwarnings("ignore:coroutine 'close' was never awaited")
     def test_handle_player_unregistered_event_no_game(self):
         player = MagicMock(player_id="player_id", handle="leela")
         context = PlayerUnregisteredContext(handle="leela")
