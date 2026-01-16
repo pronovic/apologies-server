@@ -25,7 +25,7 @@ from asyncio import AbstractEventLoop, CancelledError
 from typing import cast
 
 from apologies import GameMode
-from websockets.legacy.client import WebSocketClientProtocol, connect
+from websockets.asyncio.client import ClientConnection, connect
 
 from .interface import *
 from .server import SHUTDOWN_SIGNALS
@@ -34,7 +34,7 @@ from .util import receive, send
 log = logging.getLogger("apologies.demo")
 
 
-async def _register_player(websocket: WebSocketClientProtocol) -> str:
+async def _register_player(websocket: ClientConnection) -> str:
     """Register a player."""
     context = RegisterPlayerContext(handle="Demo")
     request = Message(MessageType.REGISTER_PLAYER, context=context)
@@ -44,14 +44,14 @@ async def _register_player(websocket: WebSocketClientProtocol) -> str:
     return response.player_id  # type: ignore
 
 
-async def _unregister_player(websocket: WebSocketClientProtocol, player_id: str) -> None:
+async def _unregister_player(websocket: ClientConnection, player_id: str) -> None:
     """Register a player."""
     request = Message(MessageType.UNREGISTER_PLAYER, player_id=player_id)
     await send(websocket, request)
     log.info("Completed unregistering handle=leela")
 
 
-async def _advertise_game(websocket: WebSocketClientProtocol, player_id: str) -> None:
+async def _advertise_game(websocket: ClientConnection, player_id: str) -> None:
     """Advertise a game."""
     name = "Demo Game"
     mode = GameMode.STANDARD
@@ -63,7 +63,7 @@ async def _advertise_game(websocket: WebSocketClientProtocol, player_id: str) ->
     await send(websocket, request)
 
 
-async def _start_game(websocket: WebSocketClientProtocol, player_id: str) -> None:
+async def _start_game(websocket: ClientConnection, player_id: str) -> None:
     """Start the player's advertised game."""
     request = Message(MessageType.START_GAME, player_id=player_id)
     await send(websocket, request)
@@ -144,7 +144,7 @@ def _handle_message(player_id: str, message: Message) -> tuple[bool, Message | N
     return completed, response
 
 
-async def _handle_connection(websocket: WebSocketClientProtocol) -> None:
+async def _handle_connection(websocket: ClientConnection) -> None:
     """Handle a websocket connection, sending and receiving messages."""
     player_id = await _register_player(websocket)
     await _advertise_game(websocket, player_id)

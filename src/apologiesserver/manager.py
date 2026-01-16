@@ -41,7 +41,7 @@ from arrow import Arrow
 from arrow import utcnow as arrow_utcnow
 from attrs import define, evolve, field, frozen
 from ordered_set import OrderedSet  # this makes expected results easier to articulate in test code
-from websockets.legacy.server import WebSocketServerProtocol
+from websockets.asyncio.server import ServerConnection
 
 from .interface import *
 
@@ -81,7 +81,7 @@ _NAMES = [
 class TrackedWebsocket:
     """The state that is tracked for a websocket within the state manager."""
 
-    websocket: WebSocketServerProtocol
+    websocket: ServerConnection
     registration_date: Arrow = field()
     last_active_date: Arrow = field()
     activity_state: ActivityState = ActivityState.ACTIVE
@@ -118,7 +118,7 @@ class TrackedPlayer:
 
     player_id: str = field(repr=False)  # treat as read-only; this is a secret, so we don't want it printed or logged
     handle: str  # treat as read-only
-    websocket: WebSocketServerProtocol | None
+    websocket: ServerConnection | None
     registration_date: Arrow = field()
     last_active_date: Arrow = field()
     activity_state: ActivityState = ActivityState.ACTIVE
@@ -137,7 +137,7 @@ class TrackedPlayer:
         return arrow_utcnow()  # not using field(factory=arrow_utcnow) to support mocking in unit tests
 
     @staticmethod
-    def for_context(player_id: str, websocket: WebSocketServerProtocol, handle: str) -> TrackedPlayer:
+    def for_context(player_id: str, websocket: ServerConnection, handle: str) -> TrackedPlayer:
         """Create a tracked player based on provided context."""
         return TrackedPlayer(player_id=player_id, websocket=websocket, handle=handle)
 
@@ -526,7 +526,7 @@ class StateManager:
     """Manages system state."""
 
     lock: asyncio.Lock = field(factory=asyncio.Lock)
-    _websocket_map: dict[WebSocketServerProtocol, TrackedWebsocket] = field(factory=dict)
+    _websocket_map: dict[ServerConnection, TrackedWebsocket] = field(factory=dict)
     _game_map: dict[str, TrackedGame] = field(factory=dict)
     _player_map: dict[str, TrackedPlayer] = field(factory=dict)
     _handle_map: dict[str, str] = field(factory=dict)
@@ -542,13 +542,13 @@ class StateManager:
             websocket.mark_active()
         player.mark_active()
 
-    def track_websocket(self, websocket: WebSocketServerProtocol) -> None:
+    def track_websocket(self, websocket: ServerConnection) -> None:
         """Track a connected websocket."""
         if websocket in self._websocket_map:
             raise ProcessingError(FailureReason.INTERNAL_ERROR, comment="Duplicate websocket encountered")
         self._websocket_map[websocket] = TrackedWebsocket(websocket=websocket)
 
-    def delete_websocket(self, websocket: WebSocketServerProtocol) -> None:
+    def delete_websocket(self, websocket: ServerConnection) -> None:
         """Delete a websocket, so it is no longer tracked."""
         if websocket in self._websocket_map:
             del self._websocket_map[websocket]  # pylint: disable=unsupported-delete-operation:
@@ -557,11 +557,11 @@ class StateManager:
         """Return the number of connected websockets in the system."""
         return len(self._websocket_map)
 
-    def lookup_all_websockets(self) -> list[WebSocketServerProtocol]:
+    def lookup_all_websockets(self) -> list[ServerConnection]:
         """Return a list of websockets for all tracked players."""
         return list(self._websocket_map.keys())
 
-    def lookup_players_for_websocket(self, websocket: WebSocketServerProtocol) -> list[TrackedPlayer]:
+    def lookup_players_for_websocket(self, websocket: ServerConnection) -> list[TrackedPlayer]:
         """Look up the players associated with a websocket, if any."""
         players = []
         if websocket in self._websocket_map:
@@ -614,7 +614,7 @@ class StateManager:
         games = self.lookup_all_games()
         return [game for game in games if game.is_available(player.handle)]
 
-    def track_player(self, websocket: WebSocketServerProtocol, handle: str) -> TrackedPlayer:
+    def track_player(self, websocket: ServerConnection, handle: str) -> TrackedPlayer:
         """Track a newly-registered player."""
         if handle in self._handle_map:
             raise ProcessingError(FailureReason.DUPLICATE_USER, handle=handle)
@@ -625,7 +625,7 @@ class StateManager:
         self._handle_map[handle] = player_id
         return self._player_map[player_id]
 
-    def retrack_player(self, player: TrackedPlayer, websocket: WebSocketServerProtocol) -> None:
+    def retrack_player(self, player: TrackedPlayer, websocket: ServerConnection) -> None:
         """Re-track and existing player, associating it with a different websocket."""
         player.websocket = websocket
         self._websocket_map[websocket].mark_active()  # we never want a websocket to time out before an associated player

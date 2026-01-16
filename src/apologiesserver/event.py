@@ -25,7 +25,7 @@ from arrow import Arrow
 from arrow import utcnow as arrow_utcnow
 from attrs import define, field, frozen
 from ordered_set import OrderedSet  # this makes expected results easier to articulate in test code
-from websockets.legacy.server import WebSocketServerProtocol
+from websockets.asyncio.server import ServerConnection
 
 from .config import config
 from .interface import *
@@ -44,7 +44,7 @@ class RequestContext:
     """Context provided to a request handler method."""
 
     message: Message
-    websocket: WebSocketServerProtocol
+    websocket: ServerConnection
     player: TrackedPlayer
     game: TrackedGame | None = None
 
@@ -54,8 +54,8 @@ class RequestContext:
 class TaskQueue:
     """A queue of asynchronous tasks to be executed."""
 
-    messages: list[tuple[str, WebSocketServerProtocol]] = field(factory=list)
-    disconnects: set[WebSocketServerProtocol] = field(factory=OrderedSet)
+    messages: list[tuple[str, ServerConnection]] = field(factory=list)
+    disconnects: set[ServerConnection] = field(factory=OrderedSet)
 
     def is_empty(self) -> bool:
         return len(self.messages) == 0 and len(self.disconnects) == 0
@@ -67,7 +67,7 @@ class TaskQueue:
     def message(
         self,
         message: Message,
-        websockets: list[WebSocketServerProtocol] | None = None,
+        websockets: list[ServerConnection] | None = None,
         players: list[TrackedPlayer] | None = None,
     ) -> None:
         """Enqueue a task to send a message to one or more destination websockets."""
@@ -75,7 +75,7 @@ class TaskQueue:
         destinations.update([player.websocket for player in players if player.websocket] if players else [])
         self.messages.extend([(message.to_json(), destination) for destination in destinations])
 
-    def disconnect(self, websocket: WebSocketServerProtocol | None) -> None:
+    def disconnect(self, websocket: ServerConnection | None) -> None:
         """Enqueue a task to disconnect a websocket."""
         if websocket:
             self.disconnects.add(websocket)
@@ -197,7 +197,7 @@ class EventHandler:
         log.debug("Obsolete game check completed, found %d obsolete games", obsolete)
         return obsolete
 
-    def handle_register_player_request(self, message: Message, websocket: WebSocketServerProtocol) -> None:
+    def handle_register_player_request(self, message: Message, websocket: ServerConnection) -> None:
         """Handle the Register Player request."""
         context = cast("RegisterPlayerContext", message.context)
         log.info("Request - REGISTER PLAYER - %s on %s", context.handle, id(websocket))
@@ -333,14 +333,14 @@ class EventHandler:
         for game in self.manager.lookup_in_progress_games():
             self.handle_game_cancelled_event(game, CancelledReason.SHUTDOWN, notify=False)
 
-    def handle_websocket_connected_event(self, websocket: WebSocketServerProtocol) -> None:
+    def handle_websocket_connected_event(self, websocket: ServerConnection) -> None:
         """Handle the Websocket Connected event."""
         log.info("Event - WEBSOCKET CONNECTED - %s", id(websocket))
         if self.manager.get_websocket_count() >= config().websocket_limit:
             raise ProcessingError(FailureReason.WEBSOCKET_LIMIT)
         self.manager.track_websocket(websocket)
 
-    def handle_websocket_disconnected_event(self, websocket: WebSocketServerProtocol) -> None:
+    def handle_websocket_disconnected_event(self, websocket: ServerConnection) -> None:
         """Handle the Websocket Disconnected event."""
         log.info("Event - WEBSOCKET DISCONNECTED - %s", id(websocket))
         players = self.manager.lookup_players_for_websocket(websocket)
@@ -381,7 +381,7 @@ class EventHandler:
         message = Message(MessageType.AVAILABLE_GAMES, context=context)
         self.queue.message(message, players=[player])
 
-    def handle_player_registered_event(self, websocket: WebSocketServerProtocol, handle: str) -> None:
+    def handle_player_registered_event(self, websocket: ServerConnection, handle: str) -> None:
         """Handle the Player Registered event."""
         log.info("Event - PLAYER REGISTERED - %s on %s", handle, id(websocket))
         player = self.manager.track_player(websocket, handle)
@@ -389,7 +389,7 @@ class EventHandler:
         message = Message(MessageType.PLAYER_REGISTERED, player_id=player.player_id, context=context)
         self.queue.message(message, websockets=[websocket])
 
-    def handle_player_reregistered_event(self, player: TrackedPlayer, websocket: WebSocketServerProtocol) -> None:
+    def handle_player_reregistered_event(self, player: TrackedPlayer, websocket: ServerConnection) -> None:
         """Handle the Player Registered event."""
         log.info("Event - PLAYER REREGISTERED - %s on %s", player.handle, id(websocket))
         self.manager.retrack_player(player, websocket)

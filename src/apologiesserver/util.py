@@ -10,14 +10,19 @@ import logging
 import re
 import sys
 import time
+import typing
 from logging import FileHandler, StreamHandler
 from pathlib import Path
 from typing import cast
 
-from websockets.legacy.protocol import WebSocketCommonProtocol
+from websockets.asyncio.connection import Connection
 from websockets.typing import Data
 
-from .interface import Message, MessageType, ProcessingError, RequestFailedContext
+from .interface import Message, MessageType, ProcessingError
+
+if typing.TYPE_CHECKING:
+    # noinspection PyUnresolvedReferences
+    from .interface import RequestFailedContext
 
 log = logging.getLogger("apologies.util")
 
@@ -41,13 +46,13 @@ def extract(data: str | Message | Data) -> Message:
     return message
 
 
-async def close(websocket: WebSocketCommonProtocol) -> None:
+async def close(websocket: Connection) -> None:
     """Close a websocket."""
     log.debug("Closing websocket: %s", id(websocket))
     await websocket.close()
 
 
-async def send(websocket: WebSocketCommonProtocol, message: str | Message) -> None:
+async def send(websocket: Connection, message: str | Message) -> None:
     """Send a response to a websocket."""
     if message:
         data = message.to_json() if isinstance(message, Message) else message
@@ -55,7 +60,7 @@ async def send(websocket: WebSocketCommonProtocol, message: str | Message) -> No
         await websocket.send(data)
 
 
-async def receive(websocket: WebSocketCommonProtocol, timeout_sec: int | None = None) -> Message | None:
+async def receive(websocket: Connection, timeout_sec: int | None = None) -> Message | None:
     try:
         data = await websocket.recv() if not timeout_sec else await asyncio.wait_for(websocket.recv(), timeout=timeout_sec)
         log.debug("Received raw data for websocket %s:\n%s", id(websocket), mask(data))
