@@ -90,8 +90,7 @@ class TestFunctions:
         # I can't find a good way to prove that _websocket_server(stop) was passed to run_until_complete
         # But, the function is so short that I can eyeball it, and it will either work or it won't when run by hand
         config.return_value = MagicMock(server_host="host", server_port=1234, close_timeout_sec=8)
-        stop = asyncio.Future()
-        stop.set_result(None)
+        stop = MagicMock(result=None)
         loop = AsyncMock()
         _run_server(loop, stop)
         loop.run_until_complete.assert_called_once()

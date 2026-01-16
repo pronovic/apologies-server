@@ -1111,6 +1111,7 @@ class TestEventMethods:
         handler.manager.lookup_player.assert_has_calls([call(handle="fry"), call(handle="bender")])
         handler.queue.message.assert_called_once_with(message, players=[fry, bender])
 
+    @pytest.mark.filterwarnings("ignore:Exception ignored while finalizing coroutine")
     def test_handle_game_joined_event_bad_call(self):
         player = MagicMock()
         handler = EventHandler(MagicMock())
