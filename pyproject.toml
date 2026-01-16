@@ -208,7 +208,6 @@ ignore = [
   "SIM",        # for now, don't apply SIM standards
   "PLR",        # for now, don't apply PLR standards
   "PERF",       # for now, don't apply PERF standards
-  "F405",       # TODO: this is real, remove it after characterizing
 ]
 
 [tool.ruff.lint.per-file-ignores]

@@ -11,7 +11,19 @@ from apologies.source import NoOpInputSource, RewardV1InputSource
 from arrow import utcnow as arrow_utcnow
 from ordered_set import OrderedSet
 
-from apologiesserver.interface import *
+from apologiesserver.interface import (
+    ActivityState,
+    AdvertiseGameContext,
+    CancelledReason,
+    ConnectionState,
+    GamePlayer,
+    GamePlayerTurnContext,
+    GameState,
+    PlayerState,
+    PlayerType,
+    ProcessingError,
+    Visibility,
+)
 from apologiesserver.manager import (
     _MANAGER,
     _NAMES,

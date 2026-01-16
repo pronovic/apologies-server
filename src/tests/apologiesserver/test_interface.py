@@ -6,7 +6,48 @@ import pytest
 from apologies.game import Card, CardType, GameMode, History, Pawn, Player, PlayerColor, PlayerView, Position
 from apologies.rules import Action, ActionType, Move
 
-from apologiesserver.interface import *
+from apologiesserver.interface import (
+    ActivityState,
+    AdvertisedGame,
+    AdvertiseGameContext,
+    AvailableGamesContext,
+    CancelledReason,
+    ConnectionState,
+    ExecuteMoveContext,
+    FailureReason,
+    GameAdvertisedContext,
+    GameCancelledContext,
+    GameCompletedContext,
+    GameIdleContext,
+    GameInactiveContext,
+    GameInvitationContext,
+    GameJoinedContext,
+    GamePlayer,
+    GamePlayerChangeContext,
+    GamePlayerQuitContext,
+    GamePlayerTurnContext,
+    GameStartedContext,
+    GameStateChangeContext,
+    GameStateHistory,
+    GameStatePawn,
+    JoinGameContext,
+    Message,
+    MessageType,
+    PlayerIdleContext,
+    PlayerInactiveContext,
+    PlayerMessageReceivedContext,
+    PlayerRegisteredContext,
+    PlayerState,
+    PlayerType,
+    ProcessingError,
+    RegisteredPlayer,
+    RegisteredPlayersContext,
+    RegisterPlayerContext,
+    RequestFailedContext,
+    ReregisterPlayerContext,
+    SendMessageContext,
+    Visibility,
+)
 from tests.conftest import to_date
 
 

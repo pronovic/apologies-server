@@ -21,15 +21,36 @@ import platform
 import random
 import signal
 import sys
+import typing
 from asyncio import AbstractEventLoop, CancelledError
 from typing import cast
 
 from apologies import GameMode
 from websockets.asyncio.client import ClientConnection, connect
 
-from apologiesserver.interface import *
+from apologiesserver.interface import (
+    AdvertiseGameContext,
+    ExecuteMoveContext,
+    GameMove,
+    Message,
+    MessageType,
+    RegisterPlayerContext,
+    Visibility,
+)
 from apologiesserver.server import SHUTDOWN_SIGNALS
 from apologiesserver.util import receive, send
+
+if typing.TYPE_CHECKING:
+    # noinspection PyUnresolvedReferences
+    from apologiesserver.interface import (
+        GameAdvertisedContext,
+        GameCompletedContext,
+        GameJoinedContext,
+        GamePlayerChangeContext,
+        GamePlayerTurnContext,
+        GameStartedContext,
+        GameStateChangeContext,
+    )
 
 log = logging.getLogger("apologies.demo")
 

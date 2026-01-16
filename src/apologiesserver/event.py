@@ -28,13 +28,52 @@ from ordered_set import OrderedSet  # this makes expected results easier to arti
 from websockets.asyncio.server import ServerConnection
 
 from apologiesserver.config import config
-from apologiesserver.interface import *
+from apologiesserver.interface import (
+    ActivityState,
+    AdvertiseGameContext,
+    AvailableGamesContext,
+    CancelledReason,
+    ConnectionState,
+    FailureReason,
+    GameAdvertisedContext,
+    GameCancelledContext,
+    GameCompletedContext,
+    GameIdleContext,
+    GameInactiveContext,
+    GameInvitationContext,
+    GameJoinedContext,
+    GamePlayerChangeContext,
+    GamePlayerQuitContext,
+    GamePlayerTurnContext,
+    GameStartedContext,
+    GameStateChangeContext,
+    Message,
+    MessageType,
+    PlayerIdleContext,
+    PlayerInactiveContext,
+    PlayerMessageReceivedContext,
+    PlayerRegisteredContext,
+    PlayerState,
+    PlayerType,
+    PlayerUnregisteredContext,
+    ProcessingError,
+    RegisteredPlayersContext,
+)
 from apologiesserver.manager import StateManager, TrackedGame, TrackedPlayer, TrackedWebsocket
 from apologiesserver.util import close, send
 
 if typing.TYPE_CHECKING:
     # noinspection PyUnresolvedReferences
     import datetime
+
+    # noinspection PyUnresolvedReferences
+    from apologiesserver.interface import (
+        ExecuteMoveContext,
+        # GameJoinedContext,
+        JoinGameContext,
+        RegisterPlayerContext,
+        SendMessageContext,
+    )
 
 log = logging.getLogger("apologies.event")
 

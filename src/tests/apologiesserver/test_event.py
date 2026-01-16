@@ -8,7 +8,42 @@ from apologies.game import GameMode
 from apologies.rules import Rules
 
 from apologiesserver.event import EventHandler, RequestContext, TaskQueue
-from apologiesserver.interface import *
+from apologiesserver.interface import (
+    ActivityState,
+    AdvertiseGameContext,
+    AvailableGamesContext,
+    CancelledReason,
+    ConnectionState,
+    ExecuteMoveContext,
+    GameAdvertisedContext,
+    GameCancelledContext,
+    GameCompletedContext,
+    GameIdleContext,
+    GameInactiveContext,
+    GameInvitationContext,
+    GameJoinedContext,
+    GamePlayerChangeContext,
+    GamePlayerQuitContext,
+    GamePlayerTurnContext,
+    GameStartedContext,
+    GameStateChangeContext,
+    JoinGameContext,
+    Message,
+    MessageType,
+    PlayerIdleContext,
+    PlayerInactiveContext,
+    PlayerMessageReceivedContext,
+    PlayerRegisteredContext,
+    PlayerState,
+    PlayerType,
+    PlayerUnregisteredContext,
+    ProcessingError,
+    RegisteredPlayersContext,
+    RegisterPlayerContext,
+    ReregisterPlayerContext,
+    SendMessageContext,
+    Visibility,
+)
 from tests.conftest import coroutine_mock, to_date
 
 
