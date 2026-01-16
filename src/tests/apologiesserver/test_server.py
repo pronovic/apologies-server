@@ -6,6 +6,7 @@ import os
 import pathlib
 import signal
 import sys
+import warnings
 from types import CoroutineType
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
@@ -52,34 +53,38 @@ class TestFunctions:
 
     @patch("apologiesserver.server.signal.signal")
     def test_add_signal_handlers(self, signaler):
-        stop = AsyncMock()
-        set_result = AsyncMock()
-        stop.set_result = set_result
-        loop = AsyncMock(create_future=MagicMock(return_value=stop))
-        assert _add_signal_handlers(loop) is stop
-        if sys.platform == "win32":
-            assert [c.args[0] for c in signaler.call_args_list] == [
-                signal.SIGTERM,
-                signal.SIGINT,
-            ]  # confirm all signals are handled
-            signaler.call_args_list[0].args[1]("x", "y")  # execute the handler with dummy arguments (which are ignored)
-            stop.set_result.assert_called_once_with(None)  # confirm that the handler sets the stop future result properly
-        else:
-            loop.add_signal_handler.assert_has_calls([
-                call(signal.SIGHUP, set_result, None),  # pylint: disable=no-member
-                call(signal.SIGTERM, set_result, None),
-                call(signal.SIGINT, set_result, None),
-            ])
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")  # ignore warnings about coroutines
+            stop = AsyncMock()
+            set_result = AsyncMock()
+            stop.set_result = set_result
+            loop = AsyncMock(create_future=MagicMock(return_value=stop))
+            assert _add_signal_handlers(loop) is stop
+            if sys.platform == "win32":
+                assert [c.args[0] for c in signaler.call_args_list] == [
+                    signal.SIGTERM,
+                    signal.SIGINT,
+                ]  # confirm all signals are handled
+                signaler.call_args_list[0].args[1]("x", "y")  # execute the handler with dummy arguments (which are ignored)
+                stop.set_result.assert_called_once_with(None)  # confirm that the handler sets the stop future result properly
+            else:
+                loop.add_signal_handler.assert_has_calls([
+                    call(signal.SIGHUP, set_result, None),  # pylint: disable=no-member
+                    call(signal.SIGTERM, set_result, None),
+                    call(signal.SIGINT, set_result, None),
+                ])
 
     # noinspection PyCallingNonCallable
     @patch("apologiesserver.server.scheduled_tasks")
     def test_schedule_tasks(self, scheduled_tasks):
-        expected = AsyncMock(spec=CoroutineType)
-        task = MagicMock(return_value=expected)
-        scheduled_tasks.return_value = [task]
-        loop = AsyncMock()
-        _schedule_tasks(loop)
-        loop.create_task.assert_called_with(expected)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")  # ignore warnings about coroutines
+            expected = AsyncMock(spec=CoroutineType)
+            task = MagicMock(return_value=expected)
+            scheduled_tasks.return_value = [task]
+            loop = AsyncMock()
+            _schedule_tasks(loop)
+            loop.create_task.assert_called_with(expected)
 
     @patch("apologiesserver.server.config")
     @patch("apologiesserver.server._websocket_server")
@@ -87,15 +92,17 @@ class TestFunctions:
         # I'm not entirely sure I'm testing this properly.
         # I can't find a good way to prove that _websocket_server(stop) was passed to run_until_complete
         # But, the function is so short that I can eyeball it, and it will either work or it won't when run by hand
-        config.return_value = MagicMock(server_host="host", server_port=1234, close_timeout_sec=8)
-        stop = asyncio.Future()
-        stop.set_result(None)
-        loop = AsyncMock()
-        _run_server(loop, stop)
-        loop.run_until_complete.assert_called_once()
-        websocket_server.assert_called_once_with(stop=stop, host="host", port=1234, close_timeout_sec=2)
-        loop.stop.assert_called_once()
-        loop.close.assert_called_once()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")  # ignore warnings about coroutines
+            config.return_value = MagicMock(server_host="host", server_port=1234, close_timeout_sec=8)
+            stop = asyncio.Future()
+            stop.set_result(None)
+            loop = AsyncMock()
+            _run_server(loop, stop)
+            loop.run_until_complete.assert_called_once()
+            websocket_server.assert_called_once_with(stop=stop, host="host", port=1234, close_timeout_sec=2)
+            loop.stop.assert_called_once()
+            loop.close.assert_called_once()
 
     @patch("apologiesserver.server._run_server")
     @patch("apologiesserver.server._schedule_tasks")
@@ -124,22 +131,24 @@ class TestFunctions:
 
     @patch("apologiesserver.server._lookup_method")
     def test_handle_message(self, lookup_method):
-        method = MagicMock()
-        lookup_method.return_value = method
-        handler = MagicMock()
-        message = MagicMock(message=MessageType.LIST_PLAYERS, player_id="player_id")  # anything other than REGISTER_PLAYER
-        websocket = MagicMock()
-        player = MagicMock(game_id="game_id")
-        game = MagicMock()
-        request = RequestContext(message, websocket, player, game)
-        handler.manager.lookup_player.return_value = player
-        handler.manager.lookup_game.return_value = game
-        _handle_message(handler, message, websocket)
-        handler.manager.lookup_player.assert_called_once_with(player_id="player_id")
-        handler.manager.mark_active.assert_called_once_with(player)
-        handler.manager.lookup_game.assert_called_once_with(game_id="game_id")
-        lookup_method.assert_called_once_with(handler, MessageType.LIST_PLAYERS)
-        method.assert_called_once_with(request)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")  # ignore warnings about coroutines
+            method = MagicMock()
+            lookup_method.return_value = method
+            handler = MagicMock()
+            message = MagicMock(message=MessageType.LIST_PLAYERS, player_id="player_id")  # anything other than REGISTER_PLAYER
+            websocket = MagicMock()
+            player = MagicMock(game_id="game_id")
+            game = MagicMock()
+            request = RequestContext(message, websocket, player, game)
+            handler.manager.lookup_player.return_value = player
+            handler.manager.lookup_game.return_value = game
+            _handle_message(handler, message, websocket)
+            handler.manager.lookup_player.assert_called_once_with(player_id="player_id")
+            handler.manager.mark_active.assert_called_once_with(player)
+            handler.manager.lookup_game.assert_called_once_with(game_id="game_id")
+            lookup_method.assert_called_once_with(handler, MessageType.LIST_PLAYERS)
+            method.assert_called_once_with(request)
 
     @patch("apologiesserver.server._lookup_method")
     def test_handle_message_no_player(self, lookup_method):
@@ -289,15 +298,17 @@ class TestCoroutines:
     @patch("apologiesserver.server.EventHandler")
     @patch("apologiesserver.server.manager")
     async def test_handle_connect(self, manager, event_handler):
-        handler = mock_handler()
-        manager.return_value = handler.manager
-        event_handler.return_value = handler
-        websocket = AsyncMock()
-        await _handle_connect(websocket)
-        event_handler.assert_called_once_with(manager.return_value)
-        handler.manager.lock.assert_awaited()
-        handler.handle_websocket_connected_event.assert_called_once_with(websocket)
-        handler.execute_tasks.assert_awaited_once()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")  # ignore warnings about coroutines
+            handler = mock_handler()
+            manager.return_value = handler.manager
+            event_handler.return_value = handler
+            websocket = AsyncMock()
+            await _handle_connect(websocket)
+            event_handler.assert_called_once_with(manager.return_value)
+            handler.manager.lock.assert_awaited()
+            handler.handle_websocket_connected_event.assert_called_once_with(websocket)
+            handler.execute_tasks.assert_awaited_once()
 
     @patch("apologiesserver.server.EventHandler")
     @patch("apologiesserver.server.manager")

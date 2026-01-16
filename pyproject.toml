@@ -91,8 +91,7 @@ precision = 1
 [tool.pytest.ini_options]
 asyncio_mode = "strict"
 filterwarnings = [
-    # TODO: put this back after fixing deprecation warnings
-    #'error',  # turn all Python warnings into test failures, so they're hard to miss
+    'error',  # turn all Python warnings into test failures, so they're hard to miss
 ]
 
 [tool.ruff]
