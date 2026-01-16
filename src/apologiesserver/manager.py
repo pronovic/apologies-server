@@ -531,7 +531,7 @@ class TrackedGame:
         all_handles = set(_NAMES)
         used_handles = {player.handle for player in self.game_players.values()}
         available_handles = all_handles - used_handles
-        return random.choice(list(available_handles))
+        return random.choice(list(available_handles))  # noqa: S311
 
 
 # noinspection PyMethodMayBeStatic

@@ -178,7 +178,6 @@ ignore = [
   "PTH",        # for now, don't apply PTH standards
   "UP031",      # for now, don't require format specifiers
   "PGH003",     # for now, don't require specific rule codes for type: ignore
-  "S311",       # for now, ignore warnings about pseudo-random generators
   "FURB101",    # for now, ignore Path optimizations
   "RUF015",     # for now, don't apply standards for single-element slices
   "SIM118",     # for now, don't apply dict-related standards

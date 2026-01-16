@@ -136,7 +136,7 @@ def _handle_game_player_change(_player_id: str, message: Message) -> None:
 def _handle_game_player_turn(player_id: str, message: Message) -> Message | None:
     """Handle the game player turn event."""
     context = cast("GamePlayerTurnContext", message.context)
-    move: GameMove = random.choice(list(context.moves.values()))
+    move: GameMove = random.choice(list(context.moves.values()))  # noqa: S311
     log.info("Demo player turn, %d move(s), chose %s for card %s", len(context.moves), move.move_id, move.card.name)
     return Message(MessageType.EXECUTE_MOVE, player_id=player_id, context=ExecuteMoveContext(move_id=move.move_id))
 

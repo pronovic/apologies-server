@@ -1228,7 +1228,7 @@ class TestGame:
             else:
                 moves = game.get_legal_moves(handle)
                 context = GamePlayerTurnContext.for_moves(handle=handle, game_id=game.game_id, moves=moves)
-                move_id = random.choice(list(context.moves.keys()))  # simulates input from the websocket client
+                move_id = random.choice(list(context.moves.keys()))  # noqa: S311 # simulates input from client
                 (completed, _winner, comment) = game.execute_move(handle, move_id)
             history = game.get_recent_history(1)
             if history:
