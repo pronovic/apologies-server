@@ -10,8 +10,6 @@ from apologiesserver.util import close, homedir, mask, receive, send, setup_logg
 from tests.conftest import coroutine_mock
 
 
-@pytest.mark.filterwarnings("ignore:There is no current event loop")
-@pytest.mark.filterwarnings("ignore:coroutine 'AsyncMockMixin._execute_mock_call' was never awaited")
 class TestUtil:
     """
     Unit tests for utilities.
