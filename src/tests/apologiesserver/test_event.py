@@ -1,17 +1,15 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
 # pylint: disable=redefined-outer-name,wildcard-import,too-many-lines,use-implicit-booleaness-not-comparison
 
-from unittest.mock import MagicMock, call
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
 from apologies.game import GameMode
 from apologies.rules import Rules
-from asynctest import CoroutineMock, patch
-from asynctest import MagicMock as AsyncMock
 
 from apologiesserver.event import EventHandler, RequestContext, TaskQueue
 from apologiesserver.interface import *
-from tests.conftest import to_date
+from tests.conftest import coroutine_mock, to_date
 
 
 class TestTaskQueue:
@@ -100,7 +98,7 @@ class TestTaskQueue:
     @pytest.mark.asyncio
     @patch("apologiesserver.event.asyncio")
     async def test_execute_empty(self, stub):
-        stub.wait = CoroutineMock()
+        stub.wait = coroutine_mock()
         queue = TaskQueue()
         await queue.execute()
         stub.wait.assert_not_awaited()  # wait() doesn't accept an empty list, so we just don't call it
@@ -108,7 +106,7 @@ class TestTaskQueue:
     @pytest.mark.asyncio
     @patch("apologiesserver.event.asyncio")
     async def test_execute(self, stub):
-        stub.wait = CoroutineMock()
+        stub.wait = coroutine_mock()
 
         socket1 = MagicMock()
         socket2 = MagicMock()
@@ -152,7 +150,7 @@ class TestEventHandler:
     async def test_execute(self):
         manager = MagicMock()
         queue = AsyncMock()
-        queue.execute = CoroutineMock()
+        queue.execute = coroutine_mock()
         handler = EventHandler(manager, queue)
         await handler.execute_tasks()
         queue.execute.assert_awaited_once()

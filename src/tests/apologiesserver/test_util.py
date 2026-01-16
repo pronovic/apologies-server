@@ -1,13 +1,13 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
 
 import os
+from unittest.mock import AsyncMock
 
 import pytest
-from asynctest import CoroutineMock
-from asynctest import MagicMock as AsyncMock
 
 from apologiesserver.interface import Message, MessageType
 from apologiesserver.util import close, homedir, mask, receive, send, setup_logging
+from tests.conftest import coroutine_mock
 
 
 class TestUtil:
@@ -21,7 +21,7 @@ class TestUtil:
     @pytest.mark.asyncio
     async def test_close(self):
         websocket = AsyncMock()
-        websocket.close = CoroutineMock()
+        websocket.close = coroutine_mock()
         await close(websocket)
         websocket.close.assert_awaited_once()
 
@@ -29,7 +29,7 @@ class TestUtil:
     async def test_send_empty(self):
         message = ""
         websocket = AsyncMock()
-        websocket.send = CoroutineMock()
+        websocket.send = coroutine_mock()
         await send(websocket, message)
         websocket.send.assert_not_awaited()
 
@@ -37,7 +37,7 @@ class TestUtil:
     async def test_send_string(self):
         message = "json"
         websocket = AsyncMock()
-        websocket.send = CoroutineMock()
+        websocket.send = coroutine_mock()
         await send(websocket, message)
         websocket.send.assert_awaited_once_with(message)
 
@@ -45,7 +45,7 @@ class TestUtil:
     async def test_send_message(self):
         message = Message(MessageType.WEBSOCKET_IDLE)
         websocket = AsyncMock()
-        websocket.send = CoroutineMock()
+        websocket.send = coroutine_mock()
         await send(websocket, message)
         websocket.send.assert_awaited_once_with(message.to_json())
 
@@ -54,7 +54,7 @@ class TestUtil:
         message = Message(MessageType.WEBSOCKET_INACTIVE)
         data = message.to_json()
         websocket = AsyncMock()
-        websocket.recv = CoroutineMock()
+        websocket.recv = coroutine_mock()
         websocket.recv.return_value = data
         assert await receive(websocket, timeout_sec=None) == message
 
@@ -63,7 +63,7 @@ class TestUtil:
         message = Message(MessageType.WEBSOCKET_INACTIVE)
         data = message.to_json()
         websocket = AsyncMock()
-        websocket.recv = CoroutineMock()
+        websocket.recv = coroutine_mock()
         websocket.recv.return_value = data
         assert await receive(websocket, timeout_sec=3) == message
 

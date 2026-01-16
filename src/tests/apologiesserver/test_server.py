@@ -6,11 +6,10 @@ import os
 import pathlib
 import signal
 import sys
-from unittest.mock import MagicMock, call
+from types import CoroutineType
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
-from asynctest import MagicMock as AsyncMock
-from asynctest import patch
 from websockets.exceptions import ConnectionClosed
 
 from apologiesserver.event import EventHandler, RequestContext
@@ -56,8 +55,7 @@ class TestFunctions:
         stop = AsyncMock()
         set_result = AsyncMock()
         stop.set_result = set_result
-        loop = AsyncMock()
-        loop.create_future.return_value = stop
+        loop = AsyncMock(create_future=MagicMock(return_value=stop))
         assert _add_signal_handlers(loop) is stop
         if sys.platform == "win32":
             assert [c.args[0] for c in signaler.call_args_list] == [
@@ -76,11 +74,12 @@ class TestFunctions:
     # noinspection PyCallingNonCallable
     @patch("apologiesserver.server.scheduled_tasks")
     def test_schedule_tasks(self, scheduled_tasks):
-        task = AsyncMock()
+        expected = AsyncMock(spec=CoroutineType)
+        task = MagicMock(return_value=expected)
         scheduled_tasks.return_value = [task]
         loop = AsyncMock()
         _schedule_tasks(loop)
-        loop.create_task.assert_called_with(task())
+        loop.create_task.assert_called_with(expected)
 
     @patch("apologiesserver.server.config")
     @patch("apologiesserver.server._websocket_server")
