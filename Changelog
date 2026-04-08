@@ -1,6 +1,7 @@
 Version 0.2.3     unreleased
 
 	* Upgrade pygments transitive dependency to address CVE-2026-4539.
+	* Add support for Visual Studio Code as an IDE.
 
 Version 0.2.2     16 Jan 2026
 
