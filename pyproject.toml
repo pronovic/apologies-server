@@ -33,7 +33,7 @@ classifiers = [
 ]
 dependencies = [
    "apologies (>=0.4.1,<0.5.0)",
-   "websockets (>=16.0,<17.0)",
+   "websockets (>=17.1,<18.0)",
    "ordered-set (>=4.1.0,<5.0.0)",
 ]
 
