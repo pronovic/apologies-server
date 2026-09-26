@@ -21,6 +21,11 @@ designed or architected for production use.  It doesn't really look like
 something I would write today, given the benefit of more experience with async
 design patterns in Python.  But, it works.
 
+**Statement on free-threading:** This code is single-threaded by design.
+Starting with Python 3.14, the matrix build CI workflow in GitHub Actions
+ensures that the test suite passes for both standard and free-threaded
+interpreters.
+
 ## Documentation
 
 Developer documentation is found in [DEVELOPER.md](DEVELOPER.md).  See that

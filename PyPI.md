@@ -22,3 +22,9 @@ something I would write today, given the benefit of more experience with async
 design patterns in Python.  But, it works.
 
 See the [documentation](https://apologies-server.readthedocs.io/en/stable/design.html) for notes about the public interface and the event model.
+
+**Statement on free-threading:** This code is single-threaded by design.
+Starting with Python 3.14, the matrix build CI workflow in GitHub Actions
+ensures that the test suite passes for both standard and free-threaded
+interpreters.
+
