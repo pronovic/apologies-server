@@ -27,7 +27,7 @@ else:
     SHUTDOWN_SIGNALS = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
 
 
-def _lookup_method(  # noqa: PLR0911,PLR0912
+def _lookup_method(  # ruff: ignore[too-many-return-statements, too-many-branches]
     handler: EventHandler,
     message: MessageType,
 ) -> Callable[[RequestContext], None]:
@@ -112,8 +112,8 @@ async def _handle_exception(exception: Exception, websocket: ServerConnection) -
     try:  # ruff: ignore[too-many-statements-in-try-clause]
         disconnect = False
         try:
-            log.error("Handling exception: %s", exception, exc_info=True)  # noqa: LOG014
-            raise exception  # noqa: TRY301
+            log.error("Handling exception: %s", exception, exc_info=True)  # ruff: ignore[exc-info-outside-except-handler]
+            raise exception  # ruff: ignore[raise-within-try]
         except ProcessingError as e:
             disconnect = e.reason == FailureReason.WEBSOCKET_LIMIT  # this is a special case that can't easily be handled elsewhere
             reason = e.reason
@@ -122,7 +122,7 @@ async def _handle_exception(exception: Exception, websocket: ServerConnection) -
             context = RequestFailedContext(reason=reason, comment=comment, handle=handle)
         except ValueError as e:
             context = RequestFailedContext(FailureReason.INVALID_REQUEST, str(e))
-        except Exception:  # noqa: BLE001
+        except Exception:  # ruff: ignore[blind-except]
             # Note: we don't want to expose internal implementation details in the case of an internal error
             context = RequestFailedContext(FailureReason.INTERNAL_ERROR, FailureReason.INTERNAL_ERROR.value)
         message = Message(MessageType.REQUEST_FAILED, context=context)
@@ -147,7 +147,7 @@ async def _handle_connection(websocket: ServerConnection) -> None:
         async for data in websocket:
             try:
                 await _handle_data(data, websocket)
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:  # ruff: ignore[blind-except]
                 await _handle_exception(e, websocket)
     except ConnectionClosed:  # we get this if the connection closes for any reason
         pass

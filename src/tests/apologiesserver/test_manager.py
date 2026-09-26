@@ -1,5 +1,5 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
-# ruff: noqa: T201
+# ruff: file-ignore[print]
 
 import random
 from unittest.mock import MagicMock, patch
@@ -1236,7 +1236,7 @@ class TestGame:
             else:
                 moves = game.get_legal_moves(handle)
                 context = GamePlayerTurnContext.for_moves(handle=handle, game_id=game.game_id, moves=moves)
-                move_id = random.choice(list(context.moves.keys()))  # noqa: S311 # simulates input from client
+                move_id = random.choice(list(context.moves.keys()))  # ruff: ignore[suspicious-non-cryptographic-random-usage] # simulates input from client
                 (completed, _winner, comment) = game.execute_move(handle, move_id)
             history = game.get_recent_history(1)
             if history:

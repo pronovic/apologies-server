@@ -1,5 +1,6 @@
 # mypy: ignore-errors
 # ruff: noqa
+# ruff: file-ignore[noqa-comments]
 
 # This code was taken from the async-periodic package, under the
 # terms of its MIT license:

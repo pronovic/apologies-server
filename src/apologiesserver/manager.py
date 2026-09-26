@@ -105,12 +105,12 @@ class TrackedWebsocket:
 
     # noinspection PyUnresolvedReferences
     @registration_date.default
-    def _default_registration_date(self) -> Arrow:  # noqa: PLR6301
+    def _default_registration_date(self) -> Arrow:  # ruff: ignore[no-self-use]
         return arrow_utcnow()  # not using field(factory=arrow_utcnow) to support mocking in unit tests
 
     # noinspection PyUnresolvedReferences
     @last_active_date.default
-    def _default_last_active_date(self) -> Arrow:  # noqa: PLR6301
+    def _default_last_active_date(self) -> Arrow:  # ruff: ignore[no-self-use]
         return arrow_utcnow()  # not using field(factory=arrow_utcnow) to support mocking in unit tests
 
     def mark_active(self) -> None:
@@ -143,12 +143,12 @@ class TrackedPlayer:
 
     # noinspection PyUnresolvedReferences
     @registration_date.default
-    def _default_registration_date(self) -> Arrow:  # noqa: PLR6301
+    def _default_registration_date(self) -> Arrow:  # ruff: ignore[no-self-use]
         return arrow_utcnow()  # not using field(factory=arrow_utcnow) to support mocking in unit tests
 
     # noinspection PyUnresolvedReferences
     @last_active_date.default
-    def _default_last_active_date(self) -> Arrow:  # noqa: PLR6301
+    def _default_last_active_date(self) -> Arrow:  # ruff: ignore[no-self-use]
         return arrow_utcnow()  # not using field(factory=arrow_utcnow) to support mocking in unit tests
 
     @staticmethod
@@ -313,7 +313,7 @@ class TrackedEngine:
 
 
 # noinspection PyDataclass
-@define(slots=False)  # noqa: PLR0904
+@define(slots=False)  # ruff: ignore[too-many-public-methods]
 class TrackedGame:
     """The state that is tracked for a game within the state manager."""
 
@@ -337,12 +337,12 @@ class TrackedGame:
 
     # noinspection PyUnresolvedReferences
     @advertised_date.default
-    def _default_registration_date(self) -> Arrow:  # noqa: PLR6301
+    def _default_registration_date(self) -> Arrow:  # ruff: ignore[no-self-use]
         return arrow_utcnow()  # not using field(factory=arrow_utcnow) to support mocking in unit tests
 
     # noinspection PyUnresolvedReferences
     @last_active_date.default
-    def _default_last_active_date(self) -> Arrow:  # noqa: PLR6301
+    def _default_last_active_date(self) -> Arrow:  # ruff: ignore[no-self-use]
         return arrow_utcnow()  # not using field(factory=arrow_utcnow) to support mocking in unit tests
 
     @staticmethod
@@ -537,11 +537,11 @@ class TrackedGame:
         all_handles = set(_NAMES)
         used_handles = {player.handle for player in self.game_players.values()}
         available_handles = all_handles - used_handles
-        return random.choice(list(available_handles))  # noqa: S311
+        return random.choice(list(available_handles))  # ruff: ignore[suspicious-non-cryptographic-random-usage]
 
 
 # noinspection PyMethodMayBeStatic
-@define(slots=False)  # noqa: PLR0904
+@define(slots=False)  # ruff: ignore[too-many-public-methods]
 class StateManager:
     """Manages system state."""
 
@@ -681,14 +681,14 @@ class StateManager:
         """Look up the last active date and number of registered players for all websockets."""
         result: list[tuple[TrackedWebsocket, Arrow, int]] = []
         for websocket in self._websocket_map.values():
-            result.append((websocket, websocket.last_active_date, len(websocket.player_ids)))  # noqa: PERF401
+            result.append((websocket, websocket.last_active_date, len(websocket.player_ids)))  # ruff: ignore[manual-list-comprehension]
         return result
 
     def lookup_player_activity(self) -> list[tuple[TrackedPlayer, Arrow, ConnectionState]]:
         """Look up the last active date and connection state for all players."""
         result: list[tuple[TrackedPlayer, Arrow, ConnectionState]] = []
         for player in self._player_map.values():
-            result.append((player, player.last_active_date, player.connection_state))  # noqa: PERF401
+            result.append((player, player.last_active_date, player.connection_state))  # ruff: ignore[manual-list-comprehension]
         return result
 
     def lookup_game_activity(self) -> list[tuple[TrackedGame, Arrow]]:
@@ -696,7 +696,7 @@ class StateManager:
         result: list[tuple[TrackedGame, Arrow]] = []
         for game in self._game_map.values():
             if not game.completed:
-                result.append((game, game.last_active_date))  # noqa: PERF401
+                result.append((game, game.last_active_date))  # ruff: ignore[manual-list-comprehension]
         return result
 
     def lookup_game_completion(self) -> list[tuple[TrackedGame, Arrow | None]]:
@@ -704,7 +704,7 @@ class StateManager:
         result: list[tuple[TrackedGame, Arrow | None]] = []
         for game in self._game_map.values():
             if game.completed:
-                result.append((game, game.completed_date))  # noqa: PERF401
+                result.append((game, game.completed_date))  # ruff: ignore[manual-list-comprehension]
         return result
 
 
