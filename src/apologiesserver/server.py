@@ -109,7 +109,7 @@ async def _handle_disconnect(websocket: ServerConnection) -> None:
 # noinspection PyBroadException
 async def _handle_exception(exception: Exception, websocket: ServerConnection) -> None:
     """Handle an exception by sending a request failed event."""
-    try:
+    try:  # ruff: ignore[too-many-statements-in-try-clause]
         disconnect = False
         try:
             log.error("Handling exception: %s", exception, exc_info=True)  # noqa: LOG014
