@@ -1,5 +1,5 @@
 # vim: set ft=python ts=4 sw=4 expandtab:
-# ruff: noqa: PLW0603
+# ruff: file-ignore[global-statement]
 
 """
 System configuration.
@@ -140,7 +140,7 @@ def _get(parser: ConfigParser | SectionProxy | None, key: str, overrides: dict[s
     return override or (parser.get(key, default) if parser else default)  # type: ignore
 
 
-def _parse(  # noqa: PLR0914
+def _parse(  # ruff: ignore[too-many-locals]
     parser: ConfigParser | SectionProxy | None,
     overrides: dict[str, Any] | None,
     defaults: dict[str, Any],

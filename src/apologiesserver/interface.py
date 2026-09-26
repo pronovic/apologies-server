@@ -365,7 +365,7 @@ class GameMove:
         return GameMove(move_id, card, actions, side_effects)
 
 
-class Context(ABC):  # noqa: B024
+class Context(ABC):  # ruff: ignore[abstract-base-class-without-abstract-method]
     """Abstract message context."""
 
 
@@ -767,7 +767,7 @@ class Message:
         return json.dumps(d, indent="  ")
 
     @staticmethod
-    def for_json(data: str) -> Message:  # noqa: PLR0912
+    def for_json(data: str) -> Message:  # ruff: ignore[too-many-branches]
         """Create a request based on JSON data."""
         d = json.loads(data)
         if "message" not in d or d["message"] is None:

@@ -137,7 +137,7 @@ class TaskQueue:
             await asyncio.wait(tasks)  # TODO: not entirely sure how we handle errors that happen here
 
 
-@define(slots=False)  # noqa: PLR0904
+@define(slots=False)  # ruff: ignore[too-many-public-methods]
 class EventHandler:
     manager: StateManager
     queue: TaskQueue = field(factory=TaskQueue)
