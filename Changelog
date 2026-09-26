@@ -1,5 +1,6 @@
 Version 0.2.3     unreleased
 
+	* Add support for Python v3.15 and drop support for v3.11.
 	* Address Dependabot warnings for pygments and idna.
 	* Add support for Visual Studio Code as an IDE.
 	* Use pytest-cov for test coverage, for more consistency.
